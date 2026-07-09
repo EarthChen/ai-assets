@@ -1,0 +1,49 @@
+{
+  "$schema": "./third-party.schema.json",
+  "description": "Third-party plugins to install via each platform's native plugin system",
+  "plugins": [
+    {
+      "name": "superpowers",
+      "description": "Official superpowers plugin - skills, parallel agents, brainstorming",
+      "platforms": {
+        "claude": {
+          "marketplace": "claude-plugins-official",
+          "install_cmd": "/plugin install superpowers@claude-plugins-official"
+        },
+        "codex": {
+          "marketplace": "openai-curated",
+          "install_cmd": "codex plugin marketplace add openai-curated && codex plugin enable superpowers@openai-curated"
+        },
+        "cursor": {
+          "marketplace": "cursor-public",
+          "install_cmd": "cursor-plugin install superpowers@cursor-public"
+        }
+      }
+    },
+    {
+      "name": "ecc",
+      "description": "Everything Claude Code - agents, commands, language-specific rules",
+      "platforms": {
+        "claude": {
+          "marketplace": "ecc",
+          "install_cmd": "/plugin install ecc@ecc"
+        },
+        "cursor": {
+          "install_cmd": "Manual: symlink ECC .cursor/ directory"
+        }
+      }
+    },
+    {
+      "name": "understand-anything",
+      "description": "Codebase knowledge graph and analysis",
+      "platforms": {
+        "claude": {
+          "install_cmd": "Managed via ~/.agents/skills/ symlinks to ~/.understand-anything/repo/"
+        },
+        "codex": {
+          "install_cmd": "Managed via ~/.agents/skills/ symlinks to ~/.understand-anything/repo/"
+        }
+      }
+    }
+  ]
+}

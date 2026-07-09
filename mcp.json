@@ -1,0 +1,26 @@
+{
+  "mcpServers": {
+    "playwright": {
+      "command": "npx",
+      "args": ["@playwright/mcp@latest"]
+    },
+    "mcp-feedback-pro": {
+      "command": "uvx",
+      "args": ["mcp-feedback-pro@latest"],
+      "timeout": 36000,
+      "env": {
+        "MCP_FEEDBACK_TIMEOUT": "36000"
+      },
+      "autoApprove": ["interactive_feedback"],
+      "_platforms": ["cursor"]
+    },
+    "sequential-thinking": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-sequential-thinking"]
+    },
+    "exa": {
+      "type": "http",
+      "url": "https://mcp.exa.ai/mcp"
+    }
+  }
+}

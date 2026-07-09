@@ -1,0 +1,18 @@
+---
+description: "MCP feedback protocol: mandatory mcp-feedback-pro usage and retry logic"
+alwaysApply: true
+platforms: [cursor]
+---
+# MCP 增强反馈协议 (Mandatory Protocol)
+- **执行步长**：在任务执行的**每一个关键节点**，必须主动调用 `mcp-feedback-pro`。
+- **实时迭代**：一旦收到用户通过 MCP 反馈的信息，必须立即响应并调整执行策略。
+- **闭环控制**：循环仅在用户明确发送 "end"、"finish" 或 "no more interaction is needed" 时终止。
+- **终审准则**：在结束对话或认为任务完成前，必须发起最后一次 `mcp-feedback-pro` 请求最终批准。
+
+# 异常处理与容错 (Resilience & Error Handling)
+- **通用故障**：工具报错时，先通过 MCP 报告错误详情，再尝试修复方案。
+- **MCP 自动重试逻辑 (Critical)**：
+  - **触发条件**：调用 `mcp-feedback-pro` 工具出现超时（Timeout）或无响应。
+  - **静默重试**：立即发起重试，重试期间仅输出极简提示语（如：`[MCP 响应超时，正在进行第 N/10 次重试...]`）。
+  - **重试阈值**：**持续重试至少 10 次**，直至工具成功响应或达到次数上限。
+  - **兜底方案**：若 10 次重试均失败，记录详细日志并请求用户人工介入。

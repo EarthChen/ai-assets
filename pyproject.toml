@@ -1,0 +1,9 @@
+[project]
+name = "earthchen-ai-assets"
+version = "1.0.0"
+description = "Personal unified AI agent assets for Claude Code, Codex, and Cursor"
+requires-python = ">=3.10"
+dependencies = []
+
+[project.scripts]
+install-ai-assets = "install:main"
