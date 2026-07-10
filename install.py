@@ -463,35 +463,42 @@ def build_dist(dry_run: bool = False) -> None:
 def install_claude(dry_run: bool = False) -> None:
     log_section("Deploying Claude Code")
 
-    # 1. Plugin registration (Claude Code uses cache + installed_plugins.json + settings.json)
-    cache_dir = CLAUDE_HOME / "plugins" / "cache" / "earthchen-ai-assets" / "earthchen-ai-assets" / "1.0.0"
-    create_symlink(REPO_ROOT, cache_dir, dry_run)
-
-    # Register in installed_plugins.json
-    installed_path = CLAUDE_HOME / "plugins" / "installed_plugins.json"
+    # 1. Plugin: install via marketplace from GitHub
+    # Use `claude plugin marketplace add` + `claude plugin install`
+    # This does a full clone from GitHub, so skills/, agents/, .mcp.json all work.
+    import subprocess
     if not dry_run:
-        ensure_dir(installed_path.parent)
-        installed = {"version": 2, "plugins": {}}
-        if installed_path.exists():
-            installed = json.loads(installed_path.read_text(encoding="utf-8"))
-        version = json.loads((REPO_ROOT / ".claude-plugin" / "plugin.json").read_text(encoding="utf-8")).get("version", "1.0.0")
-        installed.setdefault("plugins", {})["earthchen-ai-assets@earthchen-ai-assets"] = [{
-            "scope": "user",
-            "installPath": str(cache_dir),
-            "version": version,
-            "installedAt": "2026-07-10T04:21:00.000Z",
-            "lastUpdated": "2026-07-10T04:21:00.000Z",
-        }]
-        installed_path.write_text(json.dumps(installed, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
-
-    # Enable in settings.json
-    settings_path = CLAUDE_HOME / "settings.json"
-    if not dry_run and settings_path.exists():
-        settings = json.loads(settings_path.read_text(encoding="utf-8"))
-        settings.setdefault("enabledPlugins", {})["earthchen-ai-assets@earthchen-ai-assets"] = True
-        settings_path.write_text(json.dumps(settings, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
-
-    log("Plugin registered: skills, agents, MCP (via convention discovery)")
+        # Check if already installed
+        result = subprocess.run(
+            ["claude", "plugin", "list"],
+            capture_output=True, text=True,
+        )
+        if "earthchen-ai-assets@earthchen-ai-assets" not in result.stdout:
+            # Add marketplace
+            subprocess.run(
+                ["claude", "plugin", "marketplace", "add", "https://github.com/EarthChen/ai-assets.git"],
+                capture_output=True, text=True,
+            )
+            # Install plugin
+            result = subprocess.run(
+                ["claude", "plugin", "install", "earthchen-ai-assets@earthchen-ai-assets", "--scope", "user"],
+                capture_output=True, text=True,
+            )
+            if result.returncode == 0:
+                log("Plugin installed from GitHub (skills, agents, MCP)")
+            else:
+                log(f"Plugin install failed: {result.stderr.strip()}")
+                log("Try manually: claude plugin marketplace add https://github.com/EarthChen/ai-assets.git")
+                log("             claude plugin install earthchen-ai-assets@earthchen-ai-assets")
+        else:
+            # Update existing
+            subprocess.run(
+                ["claude", "plugin", "update", "earthchen-ai-assets@earthchen-ai-assets"],
+                capture_output=True, text=True,
+            )
+            log("Plugin updated")
+    else:
+        log("[DRY-RUN] claude plugin install earthchen-ai-assets@earthchen-ai-assets")
 
     # 2. CLAUDE.md (plugin can't handle)
     dist_claude_md = DIST / "claude" / "CLAUDE.md"
@@ -579,6 +586,8 @@ PLUGIN_JSONS = [
     REPO_ROOT / ".codex-plugin" / "plugin.json",
 ]
 
+MARKETPLACE_JSON = REPO_ROOT / ".claude-plugin" / "marketplace.json"
+
 
 def _get_current_version() -> str:
     """Read version from the first available plugin.json."""
@@ -604,7 +613,7 @@ def _bump_version(current: str, part: str) -> str:
 
 
 def set_version(version: str, dry_run: bool = False) -> None:
-    """Set version across all plugin.json files."""
+    """Set version across all plugin.json files and marketplace.json."""
     log_section(f"Setting version to {version}")
     for pj in PLUGIN_JSONS:
         if not pj.exists():
@@ -618,6 +627,22 @@ def set_version(version: str, dry_run: bool = False) -> None:
             pj.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
             log(f"{pj.relative_to(REPO_ROOT)}: {old_ver} -> {version}")
 
+    # Update marketplace.json version (critical for Claude Code auto-update)
+    if MARKETPLACE_JSON.exists():
+        data = json.loads(MARKETPLACE_JSON.read_text(encoding="utf-8"))
+        for plugin in data.get("plugins", []):
+            if plugin.get("name") == "earthchen-ai-assets":
+                old_ver = plugin.get("version", "unknown")
+                plugin["version"] = version
+                if dry_run:
+                    log(f"[DRY-RUN] marketplace.json: {old_ver} -> {version}")
+                else:
+                    log(f"marketplace.json: {old_ver} -> {version}")
+                break
+        if not dry_run:
+            MARKETPLACE_JSON.write_text(
+                json.dumps(data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
+            )
 
 def _deploy_shared_skills(dry_run: bool = False) -> None:
     """Deploy skills to ~/.agents/skills/ via symlinks.

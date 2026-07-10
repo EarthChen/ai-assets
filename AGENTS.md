@@ -22,6 +22,25 @@ agents/*.md
 global-instructions.md
 ```
 
+## Update Mechanism
+
+| Platform | Method | Trigger |
+|----------|--------|---------|
+| Cursor | Local symlink (instant) | After `build` |
+| Codex | Local symlink (instant) | After `build` |
+| Claude Code | ref-tracked auto-pull | Each session start (fetches main branch HEAD) |
+
+Claude Code's `marketplace.json` uses `ref: "main"` without SHA pinning.
+No manual `claude plugin update` needed; push to main → next session picks it up.
+
+## Single Source of Truth
+
+This repo is the ONLY source for custom AI configuration:
+- Do NOT place skills in `~/.agents/skills/` manually
+- Do NOT install third-party plugins that overlap with this repo (e.g., ECC)
+- Keep only official plugins (superpowers) and independent third-party plugins (e.g., understand-anything)
+- All MCP servers managed in this repo's `mcp.json`
+
 ## Rules Deployment Strategy
 
 | Platform | User-level (always loaded) | Language rules (conditional) |

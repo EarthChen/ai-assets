@@ -69,6 +69,22 @@ uv run install.py version --bump patch # 递增版本号 (major/minor/patch)
 > `_dist/` 已提交到 git，clone 后插件可直接使用，无需先运行脚本。
 > 修改 `rules/`、`skills/`、`agents/` 或 `mcp.json` 后运行 `uv run install.py build` 重新生成。
 
+## 更新机制
+
+| 平台 | 更新方式 | 说明 |
+|------|---------|------|
+| Cursor | 符号链接（即时） | build 后即生效，无需重启 |
+| Codex | 符号链接（即时） | build 后即生效，无需重启 |
+| Claude Code | ref-tracked 自动拉取 | 每次 session 启动自动从 GitHub main 分支拉取最新 |
+
+### Claude Code 更新说明
+
+`marketplace.json` 使用 `ref: "main"` 而非 SHA 固定：
+- 无需手动 `claude plugin update`
+- 无需管理 commit SHA（无鸡生蛋问题）
+- 推送到 main → 下次启动 Claude Code 时自动生效
+- 如需固定版本（生产环境），可在 `marketplace.json` 中添加 `sha` 字段
+
 ## 架构原则
 
 **优先使用各平台原生插件系统，脚本仅处理插件无法覆盖的部分。**
@@ -78,6 +94,22 @@ uv run install.py version --bump patch # 递增版本号 (major/minor/patch)
 | Cursor | rules, skills, agents, MCP | 仅创建 symlink |
 | Claude Code | skills, agents, MCP | common rules, CLAUDE.md |
 | Codex | skills, MCP | AGENTS.md (含 common rules) |
+
+### 单一配置源原则
+
+本仓库是所有自定义 AI 配置的唯一来源。各平台不应有额外自定义配置：
+- 不在 `~/.agents/skills/` 中手动放置 skill
+- 不安装与本仓库功能重叠的第三方插件（如 ECC）
+- 各平台仅保留官方插件（superpowers）和功能独立的第三方插件（如 understand-anything）
+- MCP 服务器统一在本仓库 `mcp.json` 中管理
+
+### 各平台安装方式
+
+| 平台 | 安装 | 更新 |
+|------|------|------|
+| Cursor | `~/.cursor/plugins/local/` symlink | build 后即时生效 |
+| Codex | `~/.codex/plugins/local/` symlink + config.toml | build 后即时生效 |
+| Claude Code | `claude plugin install` (GitHub URL) | 每次 session 自动拉取 main |
 
 ## Rules 系统详解
 
