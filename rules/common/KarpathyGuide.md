@@ -1,10 +1,9 @@
 ---
-description: "Karpathy 12 Rules: behavioral guidelines to reduce common LLM coding mistakes"
+description: "Karpathy Rules: behavioral guidelines to reduce common LLM coding mistakes"
 alwaysApply: true
 ---
-# Karpathy Guidelines 12 Rules
+# Karpathy Guidelines Rules
 
-Behavioral guidelines to reduce common LLM coding mistakes, derived from [Andrej Karpathy's observations](https://x.com/karpathy/status/2015883857489522876) on LLM coding pitfalls.
 
 These rules apply to every task in this project unless explicitly overridden.
 **Tradeoff:** These guidelines bias toward caution over speed. For trivial tasks, use judgment.
@@ -68,15 +67,13 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 <!-- Extended Rules -->
 
 ## 5. Use the model only for judgment calls
-Use Claude for: classification, drafting, summarization, extraction from unstructured text.
-Do NOT use Claude for: routing, retries, status-code handling, deterministic transforms.
+Use the model for: classification, drafting, summarization, extraction from unstructured text.
+Do NOT use the model for: routing, retries, status-code handling, deterministic transforms.
 If a status code already answers the question, plain code answers the question.
 
-## 6. Token budgets are not advisory
-Per-task budget: 4,000 tokens.
-Per-session budget: 30,000 tokens.
-If a task is approaching budget, summarize and start fresh. Do not push through.
-Surfacing the breach > silently overrunning.
+## 6. Prefer concise responses
+If a task is growing beyond manageable scope, summarize progress and restart with fresh context.
+Do not push through when context is degrading — surfacing the limitation > silently overrunning.
 
 ## 7. Surface conflicts, don't average them
 If two existing patterns in the codebase contradict, don't blend them.
