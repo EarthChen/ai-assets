@@ -8,7 +8,7 @@
       "name": "earthchen-ai-assets",
       "version": "1.0.0",
       "source": {
-        "source": "directory",
+        "source": "local",
         "path": "./"
       },
       "category": "Productivity"
