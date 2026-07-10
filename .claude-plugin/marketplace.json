@@ -8,6 +8,10 @@
       "name": "earthchen-ai-assets",
       "version": "1.0.0",
       "description": "Personal unified AI agent assets: skills, agents, rules, MCP",
+      "source": {
+        "source": "url",
+        "url": "./"
+      },
       "category": "Productivity"
     }
   ]
