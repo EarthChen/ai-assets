@@ -14,3 +14,9 @@ __pycache__/
 # Build
 dist/
 *.egg-info/
+
+# Backups
+.backup-*/
+
+# Claude Code lock files
+.in_use/

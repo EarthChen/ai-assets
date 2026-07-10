@@ -5,6 +5,15 @@
   "author": {
     "name": "earthchen"
   },
-  "skills": "_dist/codex/skills",
-  "mcpServers": "_dist/codex/mcp.json"
+  "homepage": "https://github.com/EarthChen/ai-assets",
+  "repository": "https://github.com/EarthChen/ai-assets",
+  "keywords": [
+    "skills",
+    "agents",
+    "rules",
+    "mcp",
+    "coding-standards"
+  ],
+  "skills": "./skills/",
+  "mcpServers": "./.mcp.json"
 }

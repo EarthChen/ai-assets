@@ -1,10 +1,9 @@
 ---
-description: "Karpathy 12 Rules: behavioral guidelines to reduce common LLM coding mistakes"
+description: "Karpathy Rules: behavioral guidelines to reduce common LLM coding mistakes"
 alwaysApply: true
 ---
-# Karpathy Guidelines 12 Rules
+# Karpathy Guidelines Rules
 
-Behavioral guidelines to reduce common LLM coding mistakes, derived from [Andrej Karpathy's observations](https://x.com/karpathy/status/2015883857489522876) on LLM coding pitfalls.
 
 These rules apply to every task in this project unless explicitly overridden.
 **Tradeoff:** These guidelines bias toward caution over speed. For trivial tasks, use judgment.

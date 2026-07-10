@@ -1,12 +1,21 @@
 {
   "name": "earthchen-ai-assets",
+  "displayName": "EarthChen AI Assets",
   "version": "1.0.0",
   "description": "Personal unified AI agent assets for Cursor",
   "author": {
     "name": "earthchen"
   },
-  "rules": "_dist/cursor/rules",
-  "skills": "_dist/cursor/skills",
-  "agents": "_dist/cursor/agents",
-  "mcpServers": "_dist/cursor/mcp.json"
+  "homepage": "https://github.com/EarthChen/ai-assets",
+  "repository": "https://github.com/EarthChen/ai-assets",
+  "keywords": [
+    "skills",
+    "agents",
+    "rules",
+    "mcp",
+    "coding-standards"
+  ],
+  "skills": "./skills/",
+  "agents": "./agents/",
+  "rules": "./_dist/cursor/rules/"
 }

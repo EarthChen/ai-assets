@@ -463,10 +463,35 @@ def build_dist(dry_run: bool = False) -> None:
 def install_claude(dry_run: bool = False) -> None:
     log_section("Deploying Claude Code")
 
-    # 1. Plugin symlink (plugin loads: skills, agents, MCP from _dist/claude/)
-    plugin_dir = CLAUDE_HOME / "plugins" / "local" / "earthchen-ai-assets"
-    create_symlink(REPO_ROOT, plugin_dir, dry_run)
-    log("Plugin provides: skills, agents, MCP (filtered)")
+    # 1. Plugin registration (Claude Code uses cache + installed_plugins.json + settings.json)
+    cache_dir = CLAUDE_HOME / "plugins" / "cache" / "earthchen-ai-assets" / "earthchen-ai-assets" / "1.0.0"
+    create_symlink(REPO_ROOT, cache_dir, dry_run)
+
+    # Register in installed_plugins.json
+    installed_path = CLAUDE_HOME / "plugins" / "installed_plugins.json"
+    if not dry_run:
+        ensure_dir(installed_path.parent)
+        installed = {"version": 2, "plugins": {}}
+        if installed_path.exists():
+            installed = json.loads(installed_path.read_text(encoding="utf-8"))
+        version = json.loads((REPO_ROOT / ".claude-plugin" / "plugin.json").read_text(encoding="utf-8")).get("version", "1.0.0")
+        installed.setdefault("plugins", {})["earthchen-ai-assets@earthchen-ai-assets"] = [{
+            "scope": "user",
+            "installPath": str(cache_dir),
+            "version": version,
+            "installedAt": "2026-07-10T04:21:00.000Z",
+            "lastUpdated": "2026-07-10T04:21:00.000Z",
+        }]
+        installed_path.write_text(json.dumps(installed, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+
+    # Enable in settings.json
+    settings_path = CLAUDE_HOME / "settings.json"
+    if not dry_run and settings_path.exists():
+        settings = json.loads(settings_path.read_text(encoding="utf-8"))
+        settings.setdefault("enabledPlugins", {})["earthchen-ai-assets@earthchen-ai-assets"] = True
+        settings_path.write_text(json.dumps(settings, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+
+    log("Plugin registered: skills, agents, MCP (via convention discovery)")
 
     # 2. CLAUDE.md (plugin can't handle)
     dist_claude_md = DIST / "claude" / "CLAUDE.md"
@@ -480,11 +505,6 @@ def install_claude(dry_run: bool = False) -> None:
             log(f"_dist/claude/CLAUDE.md -> {dst_claude_md}")
 
     # 3. Rules: only deploy common/ rules to user-level ~/.claude/rules/
-    # Language-specific rules (java/python/react) are NOT deployed to user-level
-    # because: (1) paths frontmatter is ignored at user-level (Bug #21858),
-    # so they'd load unconditionally and pollute context for unrelated projects;
-    # (2) they're available via Skills or project-level .claude/rules/ where
-    # paths-based conditional loading works correctly.
     rules_common_src = DIST / "claude" / "rules" / "common"
     dst_rules = CLAUDE_HOME / "rules" / "common"
     if rules_common_src.exists():
@@ -508,9 +528,26 @@ def install_claude(dry_run: bool = False) -> None:
 def install_codex(dry_run: bool = False) -> None:
     log_section("Deploying Codex")
 
-    # 1. Plugin symlink (plugin loads: skills, MCP from _dist/codex/)
+    # 1. Plugin symlink
     plugin_dir = CODEX_HOME / "plugins" / "local" / "earthchen-ai-assets"
     create_symlink(REPO_ROOT, plugin_dir, dry_run)
+
+    # Register in config.toml (marketplace + enabled plugin)
+    config_path = CODEX_HOME / "config.toml"
+    if not dry_run and config_path.exists():
+        config_text = config_path.read_text(encoding="utf-8")
+        if "earthchen-ai-assets" not in config_text:
+            additions = (
+                '\n[marketplaces.earthchen-ai-assets]\n'
+                'last_updated = "2026-07-10T04:21:00Z"\n'
+                'source_type = "local"\n'
+                f'source = "{REPO_ROOT}"\n'
+                '\n[plugins."earthchen-ai-assets@earthchen-ai-assets"]\n'
+                'enabled = true\n'
+            )
+            config_path.write_text(config_text + additions, encoding="utf-8")
+            log("Registered plugin in config.toml")
+
     log("Plugin provides: skills, MCP")
 
     # 2. AGENTS.md (plugin can't handle, pre-built in _dist/)

@@ -1,0 +1,17 @@
+{
+  "name": "earthchen-ai-assets",
+  "owner": {
+    "name": "earthchen"
+  },
+  "plugins": [
+    {
+      "name": "earthchen-ai-assets",
+      "version": "1.0.0",
+      "source": {
+        "source": "directory",
+        "path": "./"
+      },
+      "category": "Productivity"
+    }
+  ]
+}
