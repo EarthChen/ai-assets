@@ -9,10 +9,9 @@
       "version": "1.0.0",
       "description": "Personal unified AI agent assets: skills, agents, rules, MCP",
       "source": {
-        "source": "git-subdir",
+        "source": "url",
         "url": "https://github.com/EarthChen/ai-assets.git",
-        "path": ".",
-        "ref": "master"
+        "sha": "09fa011747401f00c66346c4bf2c7758e1573612"
       },
       "category": "Productivity"
     }
