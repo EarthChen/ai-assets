@@ -7,17 +7,21 @@ Two-phase deployment:
   Phase 2 (deploy): Install plugin symlinks + handle non-plugin assets
 
 Plugin systems handle:
-  - Cursor: rules, skills, MCP (from _dist/cursor/)
-  - Claude Code: skills, MCP (from _dist/claude/)
-  - Codex: skills (from _dist/codex/)
+  - Cursor: rules, skills, agents, MCP (from _dist/cursor/)
+  - Claude Code: skills, agents, MCP (from _dist/claude/)
+  - Codex: skills, MCP (from _dist/codex/)
 
 Script handles (things plugins can't do):
   - Claude Code: CLAUDE.md, rules → ~/.claude/rules/common/
-  - Codex: AGENTS.md + rules appended, approval rules
-  - All: plugin symlinks, ~/.agents/skills/ symlinks
+  - Codex: AGENTS.md
+  - All: plugin symlinks
 
 Usage:
-    uv run install.py [--platform claude|codex|cursor|all] [--dry-run]
+    uv run install.py                         # build + install (all platforms)
+    uv run install.py build                   # only regenerate _dist/
+    uv run install.py install --platform X    # only install symlinks
+    uv run install.py version 1.2.0           # set version across all plugins
+    uv run install.py version --bump patch    # bump version (major/minor/patch)
 """
 
 from __future__ import annotations
@@ -80,7 +84,13 @@ def create_symlink(src: Path, dst: Path, dry_run: bool = False) -> None:
 
 
 def parse_frontmatter(content: str) -> tuple[dict, str]:
-    """Parse YAML frontmatter. Returns (metadata_dict, body_content)."""
+    """Parse YAML frontmatter. Returns (metadata_dict, body_content).
+
+    Handles both inline and multi-line YAML list syntax:
+      globs: ["**/*.ts", "**/*.tsx"]   # inline list
+      paths:                            # multi-line list
+        - "**/*.java"
+    """
     if not content.startswith("---"):
         return {}, content
     end = content.find("---", 3)
@@ -90,16 +100,47 @@ def parse_frontmatter(content: str) -> tuple[dict, str]:
     body = content[end + 3:].lstrip("\n")
 
     metadata: dict = {}
+    current_key: str | None = None
+    current_list: list[str] | None = None
+
     for line in fm_text.splitlines():
-        if ":" in line:
-            key, val = line.split(":", 1)
-            key = key.strip()
-            val = val.strip()
-            if val.startswith("[") and val.endswith("]"):
-                val = [v.strip().strip("\"'") for v in val[1:-1].split(",") if v.strip()]
-            elif val.lower() in ("true", "false"):
-                val = val.lower() == "true"
-            metadata[key] = val
+        stripped = line.strip()
+        # Multi-line list item: "  - value"
+        if stripped.startswith("- ") and current_key is not None:
+            item = stripped[2:].strip().strip("\"'")
+            if current_list is None:
+                current_list = []
+            current_list.append(item)
+            continue
+
+        # Flush pending list
+        if current_key is not None and current_list is not None:
+            metadata[current_key] = current_list
+            current_key = None
+            current_list = None
+
+        if ":" not in stripped:
+            continue
+
+        key, val = stripped.split(":", 1)
+        key = key.strip()
+        val = val.strip()
+
+        if not val:
+            # Empty value — next lines may be list items
+            current_key = key
+            current_list = []
+        elif val.startswith("[") and val.endswith("]"):
+            metadata[key] = [v.strip().strip("\"'") for v in val[1:-1].split(",") if v.strip()]
+        elif val.lower() in ("true", "false"):
+            metadata[key] = val.lower() == "true"
+        else:
+            metadata[key] = val.strip("\"'")
+
+    # Flush final pending list
+    if current_key is not None and current_list is not None:
+        metadata[current_key] = current_list
+
     return metadata, body
 
 
@@ -107,6 +148,59 @@ def strip_frontmatter(content: str) -> str:
     """Remove YAML frontmatter from markdown content."""
     _, body = parse_frontmatter(content)
     return body
+
+
+def strip_platforms_field(content: str) -> str:
+    """Convert rule to Claude Code format: normalize to paths CSV, remove platforms.
+
+    Claude Code specifics:
+      - Official field is 'paths' (not 'globs') for conditional loading
+      - Must use CSV string format (not YAML arrays) due to parser bugs
+      - Must include alwaysApply: false for lazy loading
+      - 'platforms' is build-time only, removed from output
+    """
+    metadata, body = parse_frontmatter(content)
+    if not metadata:
+        return content
+
+    # Remove platforms (build-time only field)
+    cleaned = {k: v for k, v in metadata.items() if k != "platforms"}
+    if not cleaned:
+        return body
+
+    # Normalize globs → paths for Claude Code (official field)
+    if "globs" in cleaned and "paths" not in cleaned:
+        cleaned["paths"] = cleaned.pop("globs")
+    elif "globs" in cleaned and "paths" in cleaned:
+        del cleaned["globs"]
+
+    # Reconstruct frontmatter with Claude Code compatible format
+    lines: list[str] = []
+    for key, val in cleaned.items():
+        if isinstance(val, bool):
+            lines.append(f"{key}: {str(val).lower()}")
+        elif isinstance(val, list):
+            if key == "paths":
+                # Claude Code requires CSV string, not YAML array
+                csv_val = ", ".join(val)
+                lines.append(f"paths: {csv_val}")
+            else:
+                lines.append(f"{key}:")
+                for item in val:
+                    lines.append(f'  - "{item}"')
+        else:
+            if key == "paths":
+                # Already a string, keep as-is
+                lines.append(f"paths: {val}")
+            else:
+                lines.append(f'{key}: "{val}"')
+
+    # Ensure alwaysApply: false if paths present (required for lazy loading)
+    if "paths" in cleaned and "alwaysApply" not in cleaned:
+        lines.append("alwaysApply: false")
+
+    fm = "\n".join(lines)
+    return f"---\n{fm}\n---\n{body}"
 
 
 def rule_applies_to(rule_path: Path, platform: str) -> bool:
@@ -122,12 +216,46 @@ def rule_applies_to(rule_path: Path, platform: str) -> bool:
 
 
 def convert_rule_to_mdc(src: Path) -> str:
-    """Ensure rule file has .mdc-compatible format (YAML frontmatter present)."""
+    """Convert a rule to Cursor .mdc format with proper frontmatter translation.
+
+    Translates platform-agnostic frontmatter to Cursor-specific fields:
+      - paths → globs (Cursor uses 'globs', not 'paths')
+      - Removes 'platforms' field (build-time only, not Cursor-native)
+      - Ensures alwaysApply is set appropriately
+    """
     content = src.read_text(encoding="utf-8")
-    if content.startswith("---"):
-        return content
-    name = src.stem
-    return f'---\ndescription: "{name}"\nalwaysApply: true\n---\n{content}'
+    metadata, body = parse_frontmatter(content)
+
+    if not metadata:
+        name = src.stem
+        return f'---\ndescription: "{name}"\nalwaysApply: true\n---\n{body}'
+
+    # Build Cursor-compatible frontmatter
+    mdc_fields: list[str] = []
+
+    if "description" in metadata:
+        desc = metadata["description"]
+        mdc_fields.append(f'description: "{desc}"')
+
+    # Translate paths → globs for Cursor
+    globs = metadata.get("globs") or metadata.get("paths")
+    if globs:
+        if isinstance(globs, list):
+            globs_str = json.dumps(globs)
+        else:
+            globs_str = f'["{globs}"]'
+        mdc_fields.append(f"globs: {globs_str}")
+
+    # alwaysApply: default to true unless globs/paths present
+    if "alwaysApply" in metadata:
+        mdc_fields.append(f"alwaysApply: {str(metadata['alwaysApply']).lower()}")
+    elif globs:
+        mdc_fields.append("alwaysApply: false")
+    else:
+        mdc_fields.append("alwaysApply: true")
+
+    fm = "\n".join(mdc_fields)
+    return f"---\n{fm}\n---\n{body}"
 
 
 def filter_mcp_for_platform(platform: str) -> dict:
@@ -263,17 +391,18 @@ def build_dist(dry_run: bool = False) -> None:
         rules_out = platform_dir / "rules"
         has_rules = False
         if platform != "codex":
-            for rule_file in sorted(rules_dir.glob("*.md")):
+            for rule_file in sorted(rules_dir.rglob("*.md")):
                 if not rule_applies_to(rule_file, platform):
                     continue
                 has_rules = True
-                ensure_dir(rules_out, dry_run)
+                rel = rule_file.relative_to(rules_dir)
+                ensure_dir(rules_out / rel.parent, dry_run)
                 if platform == "cursor":
-                    dst = rules_out / f"{rule_file.stem}.mdc"
+                    dst = rules_out / rel.with_suffix(".mdc")
                     content = convert_rule_to_mdc(rule_file)
                 else:
-                    dst = rules_out / rule_file.name
-                    content = strip_frontmatter(rule_file.read_text(encoding="utf-8"))
+                    dst = rules_out / rel
+                    content = strip_platforms_field(rule_file.read_text(encoding="utf-8"))
                 if dry_run:
                     log(f"[DRY-RUN] write {dst}")
                 else:
@@ -300,13 +429,17 @@ def build_dist(dry_run: bool = False) -> None:
                 else:
                     dst.write_text(gi_content, encoding="utf-8")
             elif platform == "codex":
-                # Codex AGENTS.md = global instructions + all applicable rules
+                # Codex AGENTS.md = global instructions + common rules only.
+                # Language-specific rules (java/python/react) are excluded to
+                # stay within Codex's 32KB default limit; those are available
+                # via Skills on demand.
                 codex_content = gi_content
-                rules_dir_src = REPO_ROOT / "rules"
+                common_rules_dir = REPO_ROOT / "rules" / "common"
                 rule_sections = []
-                for rf in sorted(rules_dir_src.glob("*.md")):
-                    if rule_applies_to(rf, "codex"):
-                        rule_sections.append(strip_frontmatter(rf.read_text(encoding="utf-8")))
+                if common_rules_dir.exists():
+                    for rf in sorted(common_rules_dir.rglob("*.md")):
+                        if rule_applies_to(rf, "codex"):
+                            rule_sections.append(strip_frontmatter(rf.read_text(encoding="utf-8")))
                 if rule_sections:
                     codex_content += "\n\n# --- Rules ---\n\n" + "\n\n".join(rule_sections)
                 dst = platform_dir / "AGENTS.md"
@@ -314,6 +447,12 @@ def build_dist(dry_run: bool = False) -> None:
                     log(f"[DRY-RUN] write {dst}")
                 else:
                     dst.write_text(codex_content, encoding="utf-8")
+                    size_kb = len(codex_content.encode("utf-8")) / 1024
+                    if size_kb > 32:
+                        log(f"⚠️  WARNING: Codex AGENTS.md is {size_kb:.1f}KB (exceeds 32KB default limit)")
+                        log("  Consider raising project_doc_max_bytes in ~/.codex/config.toml")
+                    else:
+                        log(f"Codex AGENTS.md: {size_kb:.1f}KB / 32KB")
 
         if has_rules and not dry_run:
             log(f"_dist/{platform}/rules/ generated")
@@ -324,10 +463,10 @@ def build_dist(dry_run: bool = False) -> None:
 def install_claude(dry_run: bool = False) -> None:
     log_section("Deploying Claude Code")
 
-    # 1. Plugin symlink (plugin loads: skills, MCP from _dist/claude/)
+    # 1. Plugin symlink (plugin loads: skills, agents, MCP from _dist/claude/)
     plugin_dir = CLAUDE_HOME / "plugins" / "local" / "earthchen-ai-assets"
     create_symlink(REPO_ROOT, plugin_dir, dry_run)
-    log("Plugin provides: skills, MCP (filtered)")
+    log("Plugin provides: skills, agents, MCP (filtered)")
 
     # 2. CLAUDE.md (plugin can't handle)
     dist_claude_md = DIST / "claude" / "CLAUDE.md"
@@ -340,30 +479,39 @@ def install_claude(dry_run: bool = False) -> None:
             shutil.copy2(dist_claude_md, dst_claude_md)
             log(f"_dist/claude/CLAUDE.md -> {dst_claude_md}")
 
-    # 3. Rules (plugin can't distribute rules for Claude Code)
-    rules_src = DIST / "claude" / "rules"
+    # 3. Rules: only deploy common/ rules to user-level ~/.claude/rules/
+    # Language-specific rules (java/python/react) are NOT deployed to user-level
+    # because: (1) paths frontmatter is ignored at user-level (Bug #21858),
+    # so they'd load unconditionally and pollute context for unrelated projects;
+    # (2) they're available via Skills or project-level .claude/rules/ where
+    # paths-based conditional loading works correctly.
+    rules_common_src = DIST / "claude" / "rules" / "common"
     dst_rules = CLAUDE_HOME / "rules" / "common"
-    if rules_src.exists():
+    if rules_common_src.exists():
+        if dst_rules.exists() and not dry_run:
+            shutil.rmtree(dst_rules)
         ensure_dir(dst_rules, dry_run)
-        for rule_file in sorted(rules_src.glob("*.md")):
-            dst = dst_rules / rule_file.name
+        for rule_file in sorted(rules_common_src.rglob("*.md")):
+            rel = rule_file.relative_to(rules_common_src)
+            dst = dst_rules / rel
+            ensure_dir(dst.parent, dry_run)
             if dry_run:
                 log(f"[DRY-RUN] write {dst}")
             else:
                 shutil.copy2(rule_file, dst)
-                log(f"Rule {rule_file.name} -> {dst}")
-
-    # 4. Shared skills -> ~/.agents/skills/
-    _deploy_shared_skills(dry_run)
+        if not dry_run:
+            count = sum(1 for _ in rules_common_src.rglob("*.md"))
+            log(f"Deployed {count} common rules to {dst_rules}")
+            log("Language rules available via Skills or project-level .claude/rules/")
 
 
 def install_codex(dry_run: bool = False) -> None:
     log_section("Deploying Codex")
 
-    # 1. Plugin symlink (plugin loads: skills from _dist/codex/)
+    # 1. Plugin symlink (plugin loads: skills, MCP from _dist/codex/)
     plugin_dir = CODEX_HOME / "plugins" / "local" / "earthchen-ai-assets"
     create_symlink(REPO_ROOT, plugin_dir, dry_run)
-    log("Plugin provides: skills")
+    log("Plugin provides: skills, MCP")
 
     # 2. AGENTS.md (plugin can't handle, pre-built in _dist/)
     dist_agents = DIST / "codex" / "AGENTS.md"
@@ -376,31 +524,71 @@ def install_codex(dry_run: bool = False) -> None:
             shutil.copy2(dist_agents, dst_agents)
             log(f"_dist/codex/AGENTS.md -> {dst_agents}")
 
-    # 3. Command approval rules
-    approval_src = REPO_ROOT / "rules" / "codex-approval.rules"
-    approval_dst = CODEX_HOME / "rules" / "default.rules"
-    if approval_src.exists():
-        copy_file(approval_src, approval_dst, dry_run)
-
-    # 4. Shared skills -> ~/.agents/skills/
-    _deploy_shared_skills(dry_run)
-
 
 def install_cursor(dry_run: bool = False) -> None:
     log_section("Deploying Cursor")
 
-    # Plugin handles everything (rules, skills, MCP from _dist/cursor/)
-    # Script only creates the symlink
+    # Plugin handles everything (rules, skills, agents, MCP from _dist/cursor/)
     plugin_dir = CURSOR_HOME / "plugins" / "local" / "earthchen-ai-assets"
     create_symlink(REPO_ROOT, plugin_dir, dry_run)
-    log("Plugin provides: rules, skills, MCP (all via native plugin system)")
+    log("Plugin provides: rules, skills, agents, MCP (all via native plugin system)")
 
-    # Shared skills -> ~/.agents/skills/
-    _deploy_shared_skills(dry_run)
+
+# ─── Version Management ───────────────────────────────────────────────────────
+
+PLUGIN_JSONS = [
+    REPO_ROOT / ".cursor-plugin" / "plugin.json",
+    REPO_ROOT / ".claude-plugin" / "plugin.json",
+    REPO_ROOT / ".codex-plugin" / "plugin.json",
+]
+
+
+def _get_current_version() -> str:
+    """Read version from the first available plugin.json."""
+    for pj in PLUGIN_JSONS:
+        if pj.exists():
+            data = json.loads(pj.read_text(encoding="utf-8"))
+            return data.get("version", "0.0.0")
+    return "0.0.0"
+
+
+def _bump_version(current: str, part: str) -> str:
+    """Bump major/minor/patch of a semver string."""
+    parts = [int(x) for x in current.split(".")]
+    while len(parts) < 3:
+        parts.append(0)
+    if part == "major":
+        parts = [parts[0] + 1, 0, 0]
+    elif part == "minor":
+        parts = [parts[0], parts[1] + 1, 0]
+    elif part == "patch":
+        parts = [parts[0], parts[1], parts[2] + 1]
+    return ".".join(str(x) for x in parts)
+
+
+def set_version(version: str, dry_run: bool = False) -> None:
+    """Set version across all plugin.json files."""
+    log_section(f"Setting version to {version}")
+    for pj in PLUGIN_JSONS:
+        if not pj.exists():
+            continue
+        data = json.loads(pj.read_text(encoding="utf-8"))
+        old_ver = data.get("version", "unknown")
+        data["version"] = version
+        if dry_run:
+            log(f"[DRY-RUN] {pj.relative_to(REPO_ROOT)}: {old_ver} -> {version}")
+        else:
+            pj.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+            log(f"{pj.relative_to(REPO_ROOT)}: {old_ver} -> {version}")
 
 
 def _deploy_shared_skills(dry_run: bool = False) -> None:
-    """Deploy skills to ~/.agents/skills/ via symlinks."""
+    """Deploy skills to ~/.agents/skills/ via symlinks.
+
+    Legacy fallback for platforms whose plugin system does not support
+    skills distribution. Currently unused since all platforms (Cursor,
+    Claude Code, Codex) handle skills via their native plugin system.
+    """
     skills_dir = REPO_ROOT / "skills"
     dst_skills = AGENTS_HOME / "skills"
     ensure_dir(dst_skills, dry_run)
@@ -414,21 +602,63 @@ def _deploy_shared_skills(dry_run: bool = False) -> None:
 
 # ─── Main ──────────────────────────────────────────────────────────────────────
 
+def _do_install(platform: str, dry_run: bool) -> None:
+    """Run platform installers."""
+    platforms = {
+        "claude": install_claude,
+        "codex": install_codex,
+        "cursor": install_cursor,
+    }
+    if platform == "all":
+        for installer in platforms.values():
+            installer(dry_run)
+    else:
+        platforms[platform](dry_run)
+
+
 def main() -> None:
-    parser = argparse.ArgumentParser(
-        description="Install unified AI agent assets to all platforms"
+    parent = argparse.ArgumentParser(add_help=False)
+    parent.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Preview changes without executing",
     )
-    parser.add_argument(
+
+    parser = argparse.ArgumentParser(
+        description="Unified AI agent assets: build plugin content and/or install to platforms",
+        parents=[parent],
+    )
+    sub = parser.add_subparsers(dest="command")
+
+    sub.add_parser("build", parents=[parent], help="Only regenerate _dist/ (plugin content)")
+
+    install_parser = sub.add_parser("install", parents=[parent], help="Only install symlinks to platforms")
+    install_parser.add_argument(
         "--platform",
         choices=["claude", "codex", "cursor", "all"],
         default="all",
         help="Target platform (default: all)",
     )
-    parser.add_argument(
-        "--dry-run",
-        action="store_true",
-        help="Preview changes without executing",
+
+    version_parser = sub.add_parser("version", parents=[parent], help="Set or bump plugin version")
+    version_parser.add_argument(
+        "new_version",
+        nargs="?",
+        help="Explicit version (e.g. 1.2.0)",
     )
+    version_parser.add_argument(
+        "--bump",
+        choices=["major", "minor", "patch"],
+        help="Bump version part instead of setting explicitly",
+    )
+
+    parser.add_argument(
+        "--platform",
+        choices=["claude", "codex", "cursor", "all"],
+        default="all",
+        help="Target platform (default: all, used when no subcommand given)",
+    )
+
     args = parser.parse_args()
 
     print("╔══════════════════════════════════════════════════════════╗")
@@ -438,21 +668,22 @@ def main() -> None:
     if args.dry_run:
         print("\n⚠️  DRY-RUN MODE - No changes will be made\n")
 
-    # Phase 1: Build _dist/
-    build_dist(args.dry_run)
-
-    # Phase 2: Deploy
-    platforms = {
-        "claude": install_claude,
-        "codex": install_codex,
-        "cursor": install_cursor,
-    }
-
-    if args.platform == "all":
-        for installer in platforms.values():
-            installer(args.dry_run)
+    if args.command == "build":
+        build_dist(args.dry_run)
+    elif args.command == "install":
+        _do_install(args.platform, args.dry_run)
+    elif args.command == "version":
+        if args.new_version:
+            set_version(args.new_version, args.dry_run)
+        elif args.bump:
+            current = _get_current_version()
+            new_ver = _bump_version(current, args.bump)
+            set_version(new_ver, args.dry_run)
+        else:
+            print(f"  Current version: {_get_current_version()}")
     else:
-        platforms[args.platform](args.dry_run)
+        build_dist(args.dry_run)
+        _do_install(args.platform, args.dry_run)
 
     log_section("Done")
     if not args.dry_run:

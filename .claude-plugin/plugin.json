@@ -2,10 +2,10 @@
   "name": "earthchen-ai-assets",
   "version": "1.0.0",
   "description": "Personal unified AI agent assets for Claude Code",
-  "author": "earthchen",
-  "components": {
-    "skills": "_dist/claude/skills",
-    "agents": "_dist/claude/agents",
-    "mcp": "_dist/claude/mcp.json"
-  }
+  "author": {
+    "name": "earthchen"
+  },
+  "skills": "_dist/claude/skills",
+  "agents": "_dist/claude/agents",
+  "mcpServers": "_dist/claude/mcp.json"
 }

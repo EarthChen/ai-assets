@@ -29,7 +29,7 @@
           "install_cmd": "/plugin install ecc@ecc"
         },
         "cursor": {
-          "install_cmd": "Manual: symlink ECC .cursor/ directory"
+          "note": "Agents distributed via earthchen-ai-assets plugin (agents/ directory)"
         }
       }
     },

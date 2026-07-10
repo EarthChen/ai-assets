@@ -2,8 +2,9 @@
   "name": "earthchen-ai-assets",
   "version": "1.0.0",
   "description": "Personal unified AI agent assets for Codex",
-  "author": "earthchen",
-  "components": {
-    "skills": "_dist/codex/skills"
-  }
+  "author": {
+    "name": "earthchen"
+  },
+  "skills": "_dist/codex/skills",
+  "mcpServers": "_dist/codex/mcp.json"
 }

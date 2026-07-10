@@ -6,23 +6,54 @@ This repository manages unified AI agent assets across Claude Code, Codex, and C
 
 - Language: Chinese for communication, English for code/comments
 - Package manager: `uv` for Python, `pnpm` for Node.js
-- After modifying `rules/`, `mcp.json`, or `global-instructions.md`, run `uv run install.py` to regenerate `_dist/`
+- After modifying `rules/`, `skills/`, `agents/`, `mcp.json`, or `global-instructions.md`, run `uv run install.py build` to regenerate `_dist/`
 - Commit `_dist/` changes along with source changes
+- Bump version before release: `uv run install.py version --bump patch`
 
 ## Architecture
 
 ```
-Source (single truth)     →  _dist/ (per-platform filtered)  →  Plugin loads
-rules/*.md                    _dist/cursor/rules/*.mdc           .cursor-plugin
-mcp.json (_platforms tag)     _dist/cursor/mcp.json              .claude-plugin
-skills/                       _dist/claude/mcp.json              .codex-plugin
-global-instructions.md        _dist/codex/...
+Source (single truth)     →  _dist/ (per-platform filtered)  →  Plugin loads / Script deploys
+rules/common/*.md              _dist/cursor/rules/**/*.mdc       .cursor-plugin (all via plugin)
+rules/{java,python,react}/     _dist/claude/rules/**/*.md        .claude-plugin (skills,agents,mcp)
+mcp.json (_platforms tag)      _dist/codex/AGENTS.md             .codex-plugin (skills,mcp)
+skills/                        _dist/codex/mcp.json
+agents/*.md
+global-instructions.md
 ```
+
+## Rules Deployment Strategy
+
+| Platform | User-level (always loaded) | Language rules (conditional) |
+|----------|---------------------------|------------------------------|
+| Cursor | `rules/common/*.mdc` (alwaysApply: true) | Auto-attached via `globs` field |
+| Claude Code | `~/.claude/rules/common/` (no frontmatter needed) | Project `.claude/rules/` (paths field) |
+| Codex | Embedded in `~/.codex/AGENTS.md` (common only) | Via Skills on demand |
+
+### Critical Platform Differences
+
+- **Cursor**: uses `globs` field (NOT `paths`); extension must be `.mdc`
+- **Claude Code user-level**: `paths` frontmatter is ignored (Bug #21858); rules always load unconditionally
+- **Claude Code project-level**: `paths` works correctly for conditional loading
+- **Codex**: no frontmatter support; 32KB limit on AGENTS.md; common rules only
+
+### Build Transforms
+
+| Source field | → Cursor | → Claude Code | → Codex |
+|---|---|---|---|
+| `paths: [...]` | `globs: [...]` (JSON array) | `paths: csv` (CSV string + alwaysApply: false) | stripped (plain text) |
+| `globs: [...]` | kept as JSON array | → `paths: csv` (converted + alwaysApply: false) | stripped |
+| `platforms: [...]` | removed | removed | used for filtering then stripped |
+| `description` | kept | kept | stripped |
+| `alwaysApply` | kept | kept | stripped |
 
 ## Key Files
 
-- `install.py` - Build + deploy script
-- `global-instructions.md` - Deployed as ~/.claude/CLAUDE.md and ~/.codex/AGENTS.md
-- `rules/*.md` - YAML frontmatter with optional `platforms: [cursor]` for filtering
+- `install.py` - Build + deploy script (subcommands: `build`, `install`, `version`)
+- `global-instructions.md` - Deployed as `~/.claude/CLAUDE.md` and embedded in `~/.codex/AGENTS.md`
+- `rules/common/*.md` - Always-on rules for all platforms
+- `rules/{java,python,react}/*.md` - Language-specific rules with paths/globs
+- `agents/*.md` - Subagent definitions (YAML frontmatter: name, description, model, tools)
+- `skills/<name>/SKILL.md` - Agent skill definitions
 - `mcp.json` - `_platforms` field for per-platform MCP server filtering
 - `third-party.json` - Third-party plugin references (not bundled)

@@ -1,4 +1,4 @@
-# earthchen-ai-assets
+# ai-assets
 
 个人统一 AI Agent 资产管理仓库。一处维护，全平台同步。
 
@@ -6,47 +6,42 @@
 
 | 平台 | 插件加载 | 脚本补充 |
 |------|---------|---------|
-| Cursor | rules, skills, MCP | 仅 symlink |
-| Claude Code | skills | rules → `~/.claude/rules/`, CLAUDE.md |
-| Codex | skills | AGENTS.md + rules, approval rules |
+| Cursor | rules, skills, agents, MCP | 仅 symlink |
+| Claude Code | skills, agents, MCP | common rules → `~/.claude/rules/common/`, CLAUDE.md |
+| Codex | skills, MCP | AGENTS.md (global-instructions + common rules) |
 
 ## 目录结构
 
 ```
-ai-plugins/
+ai-assets/
 ├── global-instructions.md     # 全局基础指令 (部署为 CLAUDE.md / AGENTS.md)
-├── rules/                     # 共享规则 (部署到所有平台)
-│   ├── KarpathyGuide.md       # Karpathy 12 Rules
-│   ├── likaifuGuide.md        # Epistemic Auditor
-│   ├── mcp-feedback-protocol.md  # platforms: [cursor]
-│   └── codex-approval.rules   # Codex 命令审批规则
+├── rules/                     # 共享规则 (按子目录分类)
+│   ├── common/                # 通用规则 (所有平台/项目始终加载)
+│   │   ├── common-coding-style.md
+│   │   ├── KarpathyGuide.md
+│   │   └── ...
+│   ├── java/                  # Java 规则 (paths: **/*.java)
+│   ├── python/                # Python 规则 (globs: **/*.py)
+│   └── react/                 # React 规则 (globs: **/*.tsx)
 ├── skills/                    # 共享技能 (所有平台可用)
-│   ├── api-design/
-│   ├── backend-patterns/
-│   └── ...  (24 skills)
 ├── agents/                    # Subagent 定义 (Cursor + Claude)
-│   ├── ecc-architect.md
-│   ├── ecc-code-reviewer.md
-│   └── ...  (34 agents)
 ├── mcp.json                   # 统一 MCP 配置 (_platforms 过滤)
 ├── _dist/                     # 自动生成的平台产物 (已提交)
-│   ├── cursor/                # rules/ + skills + agents + mcp.json
+│   ├── cursor/                # rules/*.mdc + skills + agents + mcp.json
 │   ├── claude/                # rules/ + skills + agents + mcp.json + CLAUDE.md
 │   └── codex/                 # skills + mcp.json + AGENTS.md
-├── third-party.json           # 三方插件清单
 ├── .cursor-plugin/plugin.json
 ├── .claude-plugin/plugin.json
 ├── .codex-plugin/plugin.json
 ├── install.py                 # 一键安装脚本
 ├── AGENTS.md                  # 本项目开发指令
-├── CLAUDE.md → AGENTS.md      # symlink
-└── pyproject.toml
+└── third-party.json           # 三方插件清单
 ```
 
 ## 安装
 
 ```bash
-# 全平台安装（生成 _dist/ + 部署）
+# 全平台 build + install（默认行为）
 uv run install.py
 
 # 仅特定平台
@@ -56,8 +51,23 @@ uv run install.py --platform cursor
 uv run install.py --dry-run
 ```
 
+### 子命令
+
+```bash
+# 仅重建 _dist/（修改 rules/skills/mcp.json 后）
+uv run install.py build
+
+# 仅安装 symlinks（新机器 / _dist/ 已是最新）
+uv run install.py install --platform cursor
+
+# 版本管理
+uv run install.py version              # 查看当前版本
+uv run install.py version 1.2.0        # 设定指定版本
+uv run install.py version --bump patch # 递增版本号 (major/minor/patch)
+```
+
 > `_dist/` 已提交到 git，clone 后插件可直接使用，无需先运行脚本。
-> 修改 `rules/` 或 `mcp.json` 后运行 `uv run install.py` 重新生成。
+> 修改 `rules/`、`skills/`、`agents/` 或 `mcp.json` 后运行 `uv run install.py build` 重新生成。
 
 ## 架构原则
 
@@ -65,24 +75,81 @@ uv run install.py --dry-run
 
 | 平台 | 插件系统管理 | 脚本补充 |
 |------|-------------|---------|
-| Cursor | rules, skills, MCP | 仅创建 symlink |
-| Claude Code | skills, MCP | rules, CLAUDE.md |
-| Codex | skills | AGENTS.md, approval rules |
+| Cursor | rules, skills, agents, MCP | 仅创建 symlink |
+| Claude Code | skills, agents, MCP | common rules, CLAUDE.md |
+| Codex | skills, MCP | AGENTS.md (含 common rules) |
 
-### 平台过滤机制
+## Rules 系统详解
+
+### 目录组织
+
+```
+rules/
+├── common/     # 通用规则：始终加载，适用所有项目
+├── java/       # 仅在编辑 Java 文件时加载
+├── python/     # 仅在编辑 Python 文件时加载
+└── react/      # 仅在编辑 React/TSX 文件时加载
+```
+
+### Frontmatter 格式（源文件统一格式）
+
+```yaml
+---
+description: "规则描述"           # Cursor 用于智能选择
+globs: ["**/*.py", "**/*.pyi"]   # 文件匹配模式 (Cursor/Claude)
+paths:                           # 同 globs 的别名 (YAML 列表格式)
+  - "**/*.java"
+alwaysApply: true                # true=始终加载; false=条件加载
+platforms: [cursor, claude]      # 平台过滤 (build-time, 不进入输出)
+---
+```
+
+### 各平台 Frontmatter 转换
+
+| 源字段 | Cursor (.mdc) | Claude Code (.md) | Codex (AGENTS.md) |
+|--------|---------------|-------------------|--------------------|
+| `description` | 保留 (Agent 智能选择) | 保留 | 无 (纯文本) |
+| `paths` | → `globs` (JSON数组) | → `paths: CSV` (单行无引号) | N/A |
+| `globs` | 保留 (JSON数组) | → `paths: CSV` (转换字段名) | N/A |
+| `alwaysApply` | 保留 | 保留; paths 存在时自动加 false | N/A |
+| `platforms` | **移除** | **移除** | N/A (build时过滤) |
+
+### 各平台加载行为
+
+| 规则类型 | Cursor | Claude Code | Codex |
+|---------|--------|-------------|-------|
+| **common/** (alwaysApply: true) | 始终加载 | 用户级始终加载 | 嵌入 AGENTS.md |
+| **java/** (globs: \*\*.java) | 编辑 Java 文件时自动附加 | 项目级条件加载; 用户级不部署 | 不包含 |
+| **python/** | 同上 (Python) | 同上 | 不包含 |
+| **react/** | 同上 (React) | 同上 | 不包含 |
+
+### 重要限制
+
+1. **Cursor**: 必须使用 `globs`（不认 `paths`），规则扩展名必须为 `.mdc`
+2. **Claude Code 用户级** (`~/.claude/rules/`): `paths` frontmatter 不生效 (Bug #21858)，规则始终无条件加载
+3. **Claude Code 项目级** (`.claude/rules/`): `paths` 正常工作，可条件加载
+4. **Codex**: 不支持 frontmatter，只认纯 Markdown；默认 32KB 限制
+
+### Codex 32KB 限制
+
+Codex `~/.codex/AGENTS.md` 默认限制 32KB (`project_doc_max_bytes`)。
+本项目只嵌入 `rules/common/` (~20KB)，语言规则通过 Skills 按需提供。
+
+如需调大：在 `~/.codex/config.toml` 设置 `project_doc_max_bytes = 131072`。
+
+## 平台过滤机制
 
 通过 YAML frontmatter 的 `platforms` 字段标记平台归属：
 
 ```yaml
 ---
-description: "Only for Cursor"
-alwaysApply: true
 platforms: [cursor]
 ---
 ```
 
 - 无 `platforms` 字段 → 所有平台共享
-- `platforms: [cursor]` → 仅 Cursor 加载（脚本部署时自动跳过其他平台）
+- `platforms: [cursor]` → 仅 Cursor 加载
+- `platforms: [cursor, claude]` → Cursor + Claude Code
 
 MCP 配置中使用 `_platforms` 字段：
 ```json
@@ -95,42 +162,33 @@ MCP 配置中使用 `_platforms` 字段：
 }
 ```
 
-### 为什么 Plugin Manifest 声明不同组件？
+### Plugin Manifest 声明
 
-避免跨平台污染：
-- **Cursor plugin** 声明 `rules + skills + agents + mcp` — 全功能
-- **Claude plugin** 声明 `skills + agents + mcp` — rules 不支持插件分发
-- **Codex plugin** 声明 `skills` — agents/rules 不支持
+| 插件 | 组件 | 原因 |
+|------|------|------|
+| `.cursor-plugin` | rules, skills, agents, mcp | 全功能原生支持 |
+| `.claude-plugin` | skills, agents, mcp | rules 需脚本部署 |
+| `.codex-plugin` | skills, mcp | agents/rules 不支持 |
 
-### 平台过滤（统一机制）
+## 新增规则
 
-所有资产类型（rules, skills, agents, MCP）都支持 `platforms` 标记：
+1. 在 `rules/<category>/` 添加规则文件（`.md` + YAML frontmatter）
+2. 通用规则放 `rules/common/`，语言规则放对应子目录
+3. 语言规则需添加 `paths` 或 `globs` 字段指定文件匹配
+4. 如需限定平台，添加 `platforms: [cursor, claude]`
+5. 运行 `uv run install.py build` 重新生成 `_dist/`
+6. 运行 `uv run install.py install` 部署
+7. 重启 agent 生效
 
-| 资产类型 | 标记位置 | 格式 |
-|---------|---------|------|
-| Rules | YAML frontmatter | `platforms: [cursor]` |
-| Skills | `SKILL.md` frontmatter | `platforms: [cursor, claude]` |
-| Agents | Agent `.md` frontmatter | `platforms: [cursor]` |
-| MCP | JSON 字段 | `"_platforms": ["cursor"]` |
+### 语言规则部署到项目
 
-无标记 = 全平台共享。构建时自动过滤：
-- 有过滤项 → 逐个 symlink（精确控制）
-- 无过滤项 → 整目录 symlink（零开销）
+Claude Code 的语言规则需手动复制到项目才能条件加载：
+
+```bash
+# 复制 Java 规则到当前项目
+cp -r _dist/claude/rules/java .claude/rules/
+```
 
 ## 三方插件
 
-三方插件不包含在本仓库中，通过各平台原生插件系统独立管理：
-
-- **superpowers**: Claude Code / Codex / Cursor 均可用
-- **ECC**: Claude Code / Cursor (提供 agents, commands, 语言专属 rules)
-- **understand-anything**: 通过 `~/.agents/skills/` symlink 引用
-
-安装命令见 `third-party.json`。
-
-## 新增规则/技能
-
-1. 在 `rules/` 添加规则（Markdown + YAML frontmatter）
-2. 在 `skills/<name>/SKILL.md` 添加技能
-3. 如需限定平台，在 frontmatter 加 `platforms: [cursor]`
-4. 运行 `uv run install.py` 同步
-5. 重启 agent 生效
+三方插件通过各平台原生插件系统独立管理。安装命令见 `third-party.json`。

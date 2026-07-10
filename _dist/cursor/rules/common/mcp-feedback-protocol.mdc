@@ -1,7 +1,6 @@
 ---
 description: "MCP feedback protocol: mandatory mcp-feedback-pro usage and retry logic"
 alwaysApply: true
-platforms: [cursor]
 ---
 # MCP 增强反馈协议 (Mandatory Protocol)
 - **执行步长**：在任务执行的**每一个关键节点**，必须主动调用 `mcp-feedback-pro`。

@@ -2,11 +2,11 @@
   "name": "earthchen-ai-assets",
   "version": "1.0.0",
   "description": "Personal unified AI agent assets for Cursor",
-  "author": "earthchen",
-  "components": {
-    "rules": "_dist/cursor/rules",
-    "skills": "_dist/cursor/skills",
-    "agents": "_dist/cursor/agents",
-    "mcp": "_dist/cursor/mcp.json"
-  }
+  "author": {
+    "name": "earthchen"
+  },
+  "rules": "_dist/cursor/rules",
+  "skills": "_dist/cursor/skills",
+  "agents": "_dist/cursor/agents",
+  "mcpServers": "_dist/cursor/mcp.json"
 }
