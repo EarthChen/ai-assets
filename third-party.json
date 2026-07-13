@@ -3,33 +3,11 @@
   "description": "Third-party plugins to install via each platform's native plugin system",
   "plugins": [
     {
-      "name": "superpowers",
-      "description": "Official superpowers plugin - skills, parallel agents, brainstorming",
+      "name": "mattpocock-skills",
+      "description": "Engineering skills by Matt Pocock - vendored as git submodule at vendor/mattpocock-skills, symlinked into skills/",
       "platforms": {
-        "claude": {
-          "marketplace": "claude-plugins-official",
-          "install_cmd": "/plugin install superpowers@claude-plugins-official"
-        },
-        "codex": {
-          "marketplace": "openai-curated",
-          "install_cmd": "codex plugin marketplace add openai-curated && codex plugin enable superpowers@openai-curated"
-        },
-        "cursor": {
-          "marketplace": "cursor-public",
-          "install_cmd": "cursor-plugin install superpowers@cursor-public"
-        }
-      }
-    },
-    {
-      "name": "ecc",
-      "description": "Everything Claude Code - agents, commands, language-specific rules",
-      "platforms": {
-        "claude": {
-          "marketplace": "ecc",
-          "install_cmd": "/plugin install ecc@ecc"
-        },
-        "cursor": {
-          "note": "Agents distributed via earthchen-ai-assets plugin (agents/ directory)"
+        "all": {
+          "note": "Managed as git submodule, no separate install needed. Run: git submodule update --init"
         }
       }
     },

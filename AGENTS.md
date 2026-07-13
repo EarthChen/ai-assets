@@ -37,9 +37,16 @@ No manual `claude plugin update` needed; push to main → next session picks it 
 
 This repo is the ONLY source for custom AI configuration:
 - Do NOT place skills in `~/.agents/skills/` manually
-- Do NOT install third-party plugins that overlap with this repo (e.g., ECC)
-- Keep only official plugins (superpowers) and independent third-party plugins (e.g., understand-anything)
+- Do NOT install third-party plugins that overlap with this repo
 - All MCP servers managed in this repo's `mcp.json`
+
+## Vendored Skills (mattpocock/skills)
+
+Engineering skills from [mattpocock/skills](https://github.com/mattpocock/skills) are vendored as a git submodule at `vendor/mattpocock-skills/`, with selected skills symlinked into `skills/`.
+
+After cloning, run `git submodule update --init` to initialize.
+
+Workflow: `grill-with-docs` → `to-spec` → `to-tickets` → `implement` → `code-review`
 
 ## Rules Deployment Strategy
 
@@ -73,6 +80,7 @@ This repo is the ONLY source for custom AI configuration:
 - `rules/common/*.md` - Always-on rules for all platforms
 - `rules/{java,python,react}/*.md` - Language-specific rules with paths/globs
 - `agents/*.md` - Subagent definitions (YAML frontmatter: name, description, model, tools)
-- `skills/<name>/SKILL.md` - Agent skill definitions
+- `skills/<name>/SKILL.md` - Agent skill definitions (own + symlinked from vendor)
+- `vendor/mattpocock-skills/` - Git submodule of mattpocock/skills
 - `mcp.json` - `_platforms` field for per-platform MCP server filtering
 - `third-party.json` - Third-party plugin references (not bundled)

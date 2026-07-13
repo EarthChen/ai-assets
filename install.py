@@ -308,9 +308,36 @@ def _has_platform_filtered_content(src_dir: Path, platform: str) -> bool:
 
 # ─── Phase 1: Build _dist/ ─────────────────────────────────────────────────────
 
+def _ensure_submodules(dry_run: bool = False) -> None:
+    """Initialize git submodules if not already present."""
+    import subprocess
+
+    vendor_dir = REPO_ROOT / "vendor" / "mattpocock-skills"
+    if vendor_dir.exists() and any(vendor_dir.iterdir()):
+        return
+
+    if dry_run:
+        log("[DRY-RUN] git submodule update --init")
+        return
+
+    log("Initializing git submodules...")
+    result = subprocess.run(
+        ["git", "submodule", "update", "--init"],
+        cwd=REPO_ROOT,
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode == 0:
+        log("Git submodules initialized")
+    else:
+        log(f"Warning: submodule init failed: {result.stderr.strip()}")
+
+
 def build_dist(dry_run: bool = False) -> None:
     """Generate platform-filtered content in _dist/."""
     log_section("Building _dist/ (platform-filtered content)")
+
+    _ensure_submodules(dry_run)
 
     if not dry_run:
         if DIST.exists():
@@ -666,6 +693,7 @@ def _deploy_shared_skills(dry_run: bool = False) -> None:
 
 def _do_install(platform: str, dry_run: bool) -> None:
     """Run platform installers."""
+    _ensure_submodules(dry_run)
     platforms = {
         "claude": install_claude,
         "codex": install_codex,
@@ -750,8 +778,8 @@ def main() -> None:
     log_section("Done")
     if not args.dry_run:
         print("\nNext steps:")
-        print("  1. Install third-party plugins (see third-party.json)")
-        print("  2. Restart agents to pick up changes")
+        print("  1. Restart agents to pick up changes")
+        print("  2. (Optional) Uninstall superpowers plugin if previously installed")
     else:
         print("\nRe-run without --dry-run to apply.")
 

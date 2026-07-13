@@ -23,8 +23,10 @@ ai-assets/
 │   ├── java/                  # Java 规则 (paths: **/*.java)
 │   ├── python/                # Python 规则 (globs: **/*.py)
 │   └── react/                 # React 规则 (globs: **/*.tsx)
-├── skills/                    # 共享技能 (所有平台可用)
+├── skills/                    # 共享技能 (自有 + symlinked from vendor)
 ├── agents/                    # Subagent 定义 (Cursor + Claude)
+├── vendor/                    # 第三方 git submodules
+│   └── mattpocock-skills/     # mattpocock/skills 工程技能库
 ├── mcp.json                   # 统一 MCP 配置 (_platforms 过滤)
 ├── _dist/                     # 自动生成的平台产物 (已提交)
 │   ├── cursor/                # rules/*.mdc + skills + agents + mcp.json
@@ -99,9 +101,25 @@ uv run install.py version --bump patch # 递增版本号 (major/minor/patch)
 
 本仓库是所有自定义 AI 配置的唯一来源。各平台不应有额外自定义配置：
 - 不在 `~/.agents/skills/` 中手动放置 skill
-- 不安装与本仓库功能重叠的第三方插件（如 ECC）
-- 各平台仅保留官方插件（superpowers）和功能独立的第三方插件（如 understand-anything）
+- 不安装与本仓库功能重叠的第三方插件
+- 第三方 skills（如 mattpocock/skills）通过 git submodule + symlink 纳入管理
 - MCP 服务器统一在本仓库 `mcp.json` 中管理
+
+### Vendored Skills（mattpocock/skills）
+
+来自 [mattpocock/skills](https://github.com/mattpocock/skills) 的工程技能通过 git submodule 管理：
+
+```bash
+# 初始化 submodule（clone 后首次执行）
+git submodule update --init
+
+# 更新到上游最新版本
+git submodule update --remote vendor/mattpocock-skills
+```
+
+选中的 skills 通过 symlink 链接到 `skills/` 目录，与自有 skills 统一分发。
+
+推荐工作流：`/grill-with-docs` → `/to-spec` → `/to-tickets` → `/implement` → `/code-review`
 
 ### 各平台安装方式
 
@@ -223,4 +241,4 @@ cp -r _dist/claude/rules/java .claude/rules/
 
 ## 三方插件
 
-三方插件通过各平台原生插件系统独立管理。安装命令见 `third-party.json`。
+三方插件记录在 `third-party.json` 中。mattpocock/skills 已通过 git submodule 内置，不再依赖 superpowers 插件。
