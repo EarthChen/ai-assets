@@ -6,7 +6,7 @@
   "plugins": [
     {
       "name": "earthchen-ai-assets",
-      "version": "1.0.1",
+      "version": "1.0.2",
       "description": "Personal unified AI agent assets: skills, agents, rules, MCP",
       "source": {
         "source": "url",

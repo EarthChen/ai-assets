@@ -370,11 +370,11 @@ def build_dist(dry_run: bool = False) -> None:
         platform_dir = DIST / platform
         ensure_dir(platform_dir, dry_run)
 
-        # Skills: Claude uses deep copy (git clone can't resolve submodule symlinks),
-        # other platforms use symlinks (loaded from local filesystem)
+        # Skills: Claude/Codex use deep copy (git clone can't resolve submodule symlinks),
+        # Cursor uses symlinks (loaded purely from local filesystem, no git cache)
         skills_src = REPO_ROOT / "skills"
         skills_out = platform_dir / "skills"
-        use_deep_copy = platform == "claude"
+        use_deep_copy = platform in ("claude", "codex")
 
         if use_deep_copy:
             _deep_copy_skills(skills_src, skills_out, platform, dry_run)
