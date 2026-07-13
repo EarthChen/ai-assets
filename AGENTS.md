@@ -17,7 +17,8 @@ Source (single truth)     →  _dist/ (per-platform filtered)  →  Plugin loads
 rules/common/*.md              _dist/cursor/rules/**/*.mdc       .cursor-plugin (all via plugin)
 rules/{java,python,react}/     _dist/claude/rules/**/*.md        .claude-plugin (skills,agents,mcp)
 mcp.json (_platforms tag)      _dist/codex/AGENTS.md             .codex-plugin (skills,mcp)
-skills/                        _dist/codex/mcp.json
+skills/ (own + vendored)       _dist/codex/mcp.json
+vendor/mattpocock-skills/
 agents/*.md
 global-instructions.md
 ```
@@ -42,11 +43,49 @@ This repo is the ONLY source for custom AI configuration:
 
 ## Vendored Skills (mattpocock/skills)
 
-Engineering skills from [mattpocock/skills](https://github.com/mattpocock/skills) are vendored as a git submodule at `vendor/mattpocock-skills/`, with selected skills symlinked into `skills/`.
+Engineering skills from [mattpocock/skills](https://github.com/mattpocock/skills) are vendored as a git submodule at `vendor/mattpocock-skills/`, with 16 selected skills symlinked into `skills/`.
 
 After cloning, run `git submodule update --init` to initialize.
 
-Workflow: `grill-with-docs` → `to-spec` → `to-tickets` → `implement` → `code-review`
+### Included Skills
+
+User-invoked (workflow chain):
+- `grill-with-docs` → Grilling session + domain model / CONTEXT.md / ADRs
+- `to-spec` → Synthesize conversation into structured spec
+- `to-tickets` → Break spec into tracer-bullet tickets (supports local markdown)
+- `implement` → Execute tickets with TDD + code-review
+- `improve-codebase-architecture` → Architecture scan + HTML report + grilling
+- `setup-matt-pocock-skills` → One-time project setup (issue tracker, domain docs)
+- `grill-me` → Relentless interview to sharpen a plan or design
+
+Model-invoked (auto-selected by agent):
+- `tdd` → Red-green-refactor loop with seam-based testing
+- `diagnosing-bugs` → 6-phase diagnosis: feedback loop → reproduce → hypothesise → instrument → fix → cleanup
+- `code-review` → Dual-axis (Standards + Spec) parallel sub-agent review
+- `prototype` → Throwaway prototype (logic terminal app or UI variations)
+- `research` → Background agent investigation with cited markdown output
+- `domain-modeling` → Build/sharpen CONTEXT.md glossary and ADRs
+- `codebase-design` → Deep module design vocabulary (module, interface, depth, seam, adapter)
+- `grilling` → Core reusable interview loop
+
+Productivity:
+- `handoff` → Compact conversation into handoff document for another agent
+
+### Managing Vendored Skills
+
+```bash
+# Add a new mattpocock skill
+ln -s ../vendor/mattpocock-skills/skills/engineering/<name> skills/<name>
+
+# Remove a vendored skill
+rm skills/<name>
+
+# Update to upstream latest
+git submodule update --remote vendor/mattpocock-skills
+
+# After changes, rebuild
+uv run install.py build
+```
 
 ## Rules Deployment Strategy
 

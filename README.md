@@ -107,7 +107,7 @@ uv run install.py version --bump patch # 递增版本号 (major/minor/patch)
 
 ### Vendored Skills（mattpocock/skills）
 
-来自 [mattpocock/skills](https://github.com/mattpocock/skills) 的工程技能通过 git submodule 管理：
+来自 [mattpocock/skills](https://github.com/mattpocock/skills) 的 16 个工程技能通过 git submodule 管理，symlink 到 `skills/` 目录统一分发。
 
 ```bash
 # 初始化 submodule（clone 后首次执行）
@@ -117,9 +117,49 @@ git submodule update --init
 git submodule update --remote vendor/mattpocock-skills
 ```
 
-选中的 skills 通过 symlink 链接到 `skills/` 目录，与自有 skills 统一分发。
+#### 推荐工作流
 
-推荐工作流：`/grill-with-docs` → `/to-spec` → `/to-tickets` → `/implement` → `/code-review`
+```
+/grill-with-docs  →  需求对齐（深度询问 + 领域建模）
+/to-spec          →  生成结构化 spec 文档
+/to-tickets       →  拆解为可执行 ticket（本地 markdown 或 GitHub Issues）
+/implement        →  按 ticket 顺序实现（TDD + code-review）
+/code-review      →  双轴并行 review（Standards + Spec）
+```
+
+#### 技能清单
+
+| 分类 | 技能 | 说明 |
+|------|------|------|
+| **工作流** | `grill-with-docs` | Grilling + 领域建模 + CONTEXT.md / ADR |
+| | `to-spec` | 将对话综合为 spec |
+| | `to-tickets` | 拆解为 tracer-bullet 垂直切片 |
+| | `implement` | 按 spec/ticket 实现，驱动 TDD + code-review |
+| | `setup-matt-pocock-skills` | 项目一次性配置（issue tracker、domain docs） |
+| **核心能力** | `tdd` | Red-green-refactor + seam 测试 |
+| | `diagnosing-bugs` | 6 阶段诊断法（含 feedback loop 构建） |
+| | `code-review` | 双轴并行 subagent review |
+| | `prototype` | 快速原型（logic 或 UI 两条路径） |
+| | `research` | 后台 agent 研究 + 引用式 markdown |
+| **设计** | `domain-modeling` | CONTEXT.md 术语表 + ADR 管理 |
+| | `codebase-design` | 深模块设计词汇（module, seam, depth, adapter） |
+| | `improve-codebase-architecture` | 架构扫描 + HTML 报告 + grilling |
+| **通用** | `grilling` | 可复用的深度询问循环 |
+| | `grill-me` | 用户触发的需求对齐面试 |
+| | `handoff` | 跨 session 上下文传递 |
+
+#### 管理 Vendored Skills
+
+```bash
+# 添加新 skill
+ln -s ../vendor/mattpocock-skills/skills/engineering/<name> skills/<name>
+
+# 移除 skill
+rm skills/<name>
+
+# 更新后重建
+uv run install.py build
+```
 
 ### 各平台安装方式
 
