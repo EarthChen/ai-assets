@@ -333,6 +333,28 @@ def _ensure_submodules(dry_run: bool = False) -> None:
         log(f"Warning: submodule init failed: {result.stderr.strip()}")
 
 
+def _deep_copy_skills(
+    skills_src: Path, skills_out: Path, platform: str, dry_run: bool
+) -> None:
+    """Copy resolved skill directories (follows symlinks) for git-cloned distribution."""
+    ensure_dir(skills_out, dry_run)
+    count = 0
+    for skill_dir in sorted(skills_src.iterdir()):
+        resolved = skill_dir.resolve()
+        if not resolved.is_dir():
+            continue
+        if not _asset_applies_to(skill_dir, platform):
+            continue
+        dst = skills_out / skill_dir.name
+        if dry_run:
+            log(f"[DRY-RUN] copy {skill_dir.name}")
+        else:
+            shutil.copytree(resolved, dst)
+            count += 1
+    if not dry_run:
+        log(f"_dist/{platform}/skills ({count} skills, deep copy)")
+
+
 def build_dist(dry_run: bool = False) -> None:
     """Generate platform-filtered content in _dist/."""
     log_section("Building _dist/ (platform-filtered content)")
@@ -348,11 +370,15 @@ def build_dist(dry_run: bool = False) -> None:
         platform_dir = DIST / platform
         ensure_dir(platform_dir, dry_run)
 
-        # Skills: symlink to shared skills/ (or filtered if platform-specific)
+        # Skills: Claude uses deep copy (git clone can't resolve submodule symlinks),
+        # other platforms use symlinks (loaded from local filesystem)
         skills_src = REPO_ROOT / "skills"
         skills_out = platform_dir / "skills"
-        if _has_platform_filtered_content(skills_src, platform):
-            # Some skills have platform restrictions, build filtered directory
+        use_deep_copy = platform == "claude"
+
+        if use_deep_copy:
+            _deep_copy_skills(skills_src, skills_out, platform, dry_run)
+        elif _has_platform_filtered_content(skills_src, platform):
             ensure_dir(skills_out, dry_run)
             for skill_dir in skills_src.iterdir():
                 if not skill_dir.is_dir():
@@ -367,7 +393,6 @@ def build_dist(dry_run: bool = False) -> None:
             if not dry_run:
                 log(f"_dist/{platform}/skills (filtered)")
         else:
-            # No filtering needed, direct symlink
             if dry_run:
                 log(f"[DRY-RUN] symlink {skills_out} -> ../../skills")
             else:
