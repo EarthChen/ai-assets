@@ -61,9 +61,9 @@ Before marking code complete:
 
 Use these agents for code review:
 
-| Agent | Purpose |
+| Agent / Skill | Purpose |
 |-------|---------|
-| **code-reviewer** | General code quality, patterns, best practices |
+| **/code-review** skill (mattpocock/skills) | General code quality, dual-axis Standards + Spec review |
 | **security-reviewer** | Security vulnerabilities, OWASP Top 10 |
 | **typescript-reviewer** | TypeScript/JavaScript specific issues |
 | **python-reviewer** | Python specific issues |

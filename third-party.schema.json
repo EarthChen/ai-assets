@@ -1,0 +1,51 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "./third-party.schema.json",
+  "title": "Third-party plugins",
+  "description": "Third-party plugins to install via each platform's native plugin system. Plugins with structured claude fields (marketplace_ref + plugin_id) are auto-installed by install.py; others are managed manually.",
+  "type": "object",
+  "required": ["plugins"],
+  "additionalProperties": false,
+  "properties": {
+    "description": { "type": "string" },
+    "plugins": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/plugin" }
+    }
+  },
+  "definitions": {
+    "plugin": {
+      "type": "object",
+      "required": ["name", "platforms"],
+      "additionalProperties": false,
+      "properties": {
+        "name": { "type": "string" },
+        "description": { "type": "string" },
+        "platforms": {
+          "type": "object",
+          "additionalProperties": { "$ref": "#/definitions/platformConfig" },
+          "description": "Keys are platform names: claude, codex, cursor."
+        }
+      }
+    },
+    "platformConfig": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "marketplace_ref": {
+          "type": "string",
+          "description": "Claude marketplace source (GitHub repo or URL). Presence of this + plugin_id triggers auto-install by install.py."
+        },
+        "plugin_id": {
+          "type": "string",
+          "description": "Claude plugin identifier in plugin@marketplace form. Presence of this + marketplace_ref triggers auto-install by install.py."
+        },
+        "install_cmd": {
+          "type": "string",
+          "description": "Human-readable install/management note. For non-auto-installable platforms (codex/cursor) or manually-managed plugins."
+        },
+        "note": { "type": "string" }
+      }
+    }
+  }
+}

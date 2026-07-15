@@ -102,18 +102,29 @@ uv run install.py version --bump patch # 递增版本号 (major/minor/patch)
 本仓库是所有自定义 AI 配置的唯一来源。各平台不应有额外自定义配置：
 - 不在 `~/.agents/skills/` 中手动放置 skill
 - 不安装与本仓库功能重叠的第三方插件
-- 第三方 skills（如 mattpocock/skills）通过 git submodule + symlink 纳入管理
+- 第三方 skills（如 mattpocock/skills）：Claude 走原生插件安装；Codex/Cursor 通过 git submodule + vendor 分发
 - MCP 服务器统一在本仓库 `mcp.json` 中管理
 
-### Vendored Skills（mattpocock/skills）
+### mattpocock/skills（混合管理）
 
-来自 [mattpocock/skills](https://github.com/mattpocock/skills) 的 16 个工程技能通过 git submodule 管理，symlink 到 `skills/` 目录统一分发。
+来自 [mattpocock/skills](https://github.com/mattpocock/skills) 的 21 个工程技能，对齐上游 [plugin.json](https://github.com/mattpocock/skills/blob/main/.claude-plugin/plugin.json) 的 skills 清单。采用**混合模式**分发，因 mattpocock 仓库只发布了 Claude 原生插件（无 Codex/Cursor 插件）：
+
+| 平台 | 分发方式 | 说明 |
+|------|---------|------|
+| Claude Code | 原生插件 `mattpocock-skills@mattpocock` | 由上游插件提供，本仓库 build 时从 Claude 分发中排除，避免重复 |
+| Codex | vendor submodule → deep copy 到 `_dist/codex/skills/` | 无上游 Codex 插件，由本仓库 build 分发 |
+| Cursor | vendor submodule → `skills/` symlink | 无上游 Cursor 插件，由本仓库插件分发 |
 
 ```bash
-# 初始化 submodule（clone 后首次执行）
+# Claude Code：原生插件由 install.py install 自动安装（配置在 third-party.json）
+# 手动 fallback（安装失败时）：
+#   claude plugin marketplace add mattpocock/skills
+#   claude plugin install mattpocock-skills@mattpocock
+
+# Codex/Cursor：初始化 submodule（clone 后首次执行）
 git submodule update --init
 
-# 更新到上游最新版本
+# 更新 vendor 到上游最新版本
 git submodule update --remote vendor/mattpocock-skills
 ```
 
@@ -127,7 +138,7 @@ git submodule update --remote vendor/mattpocock-skills
 /code-review      →  双轴并行 review（Standards + Spec）
 ```
 
-#### 技能清单
+#### 技能清单（21 个，对齐上游 plugin.json）
 
 | 分类 | 技能 | 说明 |
 |------|------|------|
@@ -136,6 +147,8 @@ git submodule update --remote vendor/mattpocock-skills
 | | `to-tickets` | 拆解为 tracer-bullet 垂直切片 |
 | | `implement` | 按 spec/ticket 实现，驱动 TDD + code-review |
 | | `setup-matt-pocock-skills` | 项目一次性配置（issue tracker、domain docs） |
+| | `triage` | issue 分类与优先级判断 |
+| | `wayfinder` | 在复杂代码库中定位实现路径 |
 | **核心能力** | `tdd` | Red-green-refactor + seam 测试 |
 | | `diagnosing-bugs` | 6 阶段诊断法（含 feedback loop 构建） |
 | | `code-review` | 双轴并行 subagent review |
@@ -147,12 +160,18 @@ git submodule update --remote vendor/mattpocock-skills
 | **通用** | `grilling` | 可复用的深度询问循环 |
 | | `grill-me` | 用户触发的需求对齐面试 |
 | | `handoff` | 跨 session 上下文传递 |
+| | `teach` | 教学型技能编写与讲解 |
+| | `writing-great-skills` | skill 编写规范与最佳实践 |
+| | `ask-matt` | 向 Matt 提问的模板 |
 
-#### 管理 Vendored Skills
+#### 管理 Vendored Skills（仅影响 Codex/Cursor）
+
+Claude 平台的 mattpocock skills 由原生插件提供，无需在此维护。下列命令仅调整 Codex/Cursor 分发的 symlink 清单：
 
 ```bash
-# 添加新 skill
+# 添加新 skill（保持与上游 plugin.json 清单一致）
 ln -s ../vendor/mattpocock-skills/skills/engineering/<name> skills/<name>
+ln -s ../vendor/mattpocock-skills/skills/productivity/<name> skills/<name>
 
 # 移除 skill
 rm skills/<name>
@@ -281,4 +300,4 @@ cp -r _dist/claude/rules/java .claude/rules/
 
 ## 三方插件
 
-三方插件记录在 `third-party.json` 中。mattpocock/skills 已通过 git submodule 内置，不再依赖 superpowers 插件。
+三方插件记录在 `third-party.json` 中。mattpocock/skills 采用混合管理：Claude 走原生插件安装，Codex/Cursor 由本仓库 vendor（submodule）分发，不再依赖 superpowers 插件。

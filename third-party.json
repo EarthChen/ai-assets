@@ -3,11 +3,32 @@
   "description": "Third-party plugins to install via each platform's native plugin system",
   "plugins": [
     {
-      "name": "mattpocock-skills",
-      "description": "Engineering skills by Matt Pocock - vendored as git submodule at vendor/mattpocock-skills, symlinked into skills/",
+      "name": "earthchen-ai-assets",
+      "description": "This repo's own plugin — deployed to Claude Code via marketplace clone.",
       "platforms": {
-        "all": {
-          "note": "Managed as git submodule, no separate install needed. Run: git submodule update --init"
+        "claude": {
+          "marketplace_ref": "https://github.com/EarthChen/ai-assets.git",
+          "plugin_id": "earthchen-ai-assets@earthchen-ai-assets",
+          "note": "Self-plugin; provides skills, agents, MCP on Claude."
+        }
+      }
+    },
+    {
+      "name": "mattpocock-skills",
+      "description": "Engineering skills by Matt Pocock (mattpocock/skills). Hybrid management: Claude uses the native plugin; Codex/Cursor use the vendored submodule.",
+      "platforms": {
+        "claude": {
+          "marketplace_ref": "mattpocock/skills",
+          "plugin_id": "mattpocock-skills@mattpocock",
+          "note": "Native plugin is the sole source of mattpocock skills on Claude; this repo's build excludes them from its Claude distribution."
+        },
+        "codex": {
+          "install_cmd": "Managed via vendor/mattpocock-skills submodule (deep-copied into _dist/codex/skills by install.py build)",
+          "note": "No upstream Codex plugin; skills distributed by this repo's build."
+        },
+        "cursor": {
+          "install_cmd": "Managed via vendor/mattpocock-skills submodule (symlinked from skills/)",
+          "note": "No upstream Cursor plugin; skills distributed by this repo's plugin."
         }
       }
     },

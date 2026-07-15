@@ -10,20 +10,25 @@ The Feature Implementation Workflow describes the development pipeline: planning
 
 ## Feature Implementation Workflow
 
+Planning, TDD, and code review use the mattpocock/skills workflow (native
+plugin `mattpocock-skills@mattpocock` on Claude Code; vendored on
+Codex/Cursor), not sub-agents.
+
 1. **Plan First**
-   - Use **planner** agent to create implementation plan
+   - Run `/grill-with-docs` to align requirements + build the domain model
+   - Run `/to-spec` to synthesize the conversation into a spec
+   - Run `/to-tickets` to break it into tracer-bullet tickets
    - Identify dependencies and risks
-   - Break down into phases
 
 2. **TDD Approach**
-   - Use **tdd-guide** agent
+   - Use the `/tdd` skill for the red-green-refactor loop
    - Write tests first (RED)
    - Implement to pass tests (GREEN)
    - Refactor (IMPROVE)
    - Verify 80%+ coverage
 
 3. **Code Review**
-   - Use **code-reviewer** agent immediately after writing code
+   - Use the `/code-review` skill (dual-axis: Standards + Spec) immediately after writing code
    - Address CRITICAL and HIGH issues
    - Fix MEDIUM issues when possible
 

@@ -23,11 +23,11 @@ MANDATORY workflow:
 
 ## Troubleshooting Test Failures
 
-1. Use **tdd-guide** agent
+1. Use the `/tdd` skill (mattpocock/skills workflow)
 2. Check test isolation
 3. Verify mocks are correct
 4. Fix implementation, not tests (unless tests are wrong)
 
-## Agent Support
+## Skill Support
 
-- **tdd-guide** - Use PROACTIVELY for new features, enforces write-tests-first
+- `/tdd` (mattpocock/skills) - Red-green-refactor loop with seam-based testing; use for new features and bug fixes

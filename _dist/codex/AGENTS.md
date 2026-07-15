@@ -147,23 +147,28 @@ Default to surfacing uncertainty, not hiding it.
 
 | Agent | Purpose | When to Use |
 |-------|---------|-------------|
-| planner | Implementation planning | Complex features, refactoring |
 | architect | System design | Architectural decisions |
-| tdd-guide | Test-driven development | New features, bug fixes |
-| code-reviewer | Code review | After writing code |
 | security-reviewer | Security analysis | Before commits |
 | build-error-resolver | Fix build errors | When build fails |
 | e2e-runner | E2E testing | Critical user flows |
 | refactor-cleaner | Dead code cleanup | Code maintenance |
 | doc-updater | Documentation | Updating docs |
 
+> Planning, TDD, and code review are handled by the mattpocock/skills workflow
+> (provided on Claude Code by the `mattpocock-skills@mattpocock` native plugin;
+> vendored on Codex/Cursor), not by sub-agents:
+> - **Planning** → `/grill-with-docs` → `/to-spec` → `/to-tickets` workflow chain
+> - **TDD** → `/tdd` skill (red-green-refactor loop)
+> - **Code review** → `/code-review` skill (dual-axis Standards + Spec review)
+
 ## Immediate Agent Usage
 
 No user prompt needed:
-1. Complex feature requests - Use **planner** agent
-2. Code just written/modified - Use **code-reviewer** agent
-3. Bug fix or new feature - Use **tdd-guide** agent
-4. Architectural decision - Use **architect** agent
+1. Architectural decision - Use **architect** agent
+2. Security-sensitive code - Use **security-reviewer** agent
+3. Build failure - Use **build-error-resolver** agent
+
+For planning / TDD / code review, invoke the mattpocock skills above instead.
 
 ## Parallel Task Execution
 
@@ -253,9 +258,9 @@ Before marking code complete:
 
 Use these agents for code review:
 
-| Agent | Purpose |
+| Agent / Skill | Purpose |
 |-------|---------|
-| **code-reviewer** | General code quality, patterns, best practices |
+| **/code-review** skill (mattpocock/skills) | General code quality, dual-axis Standards + Spec review |
 | **security-reviewer** | Security vulnerabilities, OWASP Top 10 |
 | **typescript-reviewer** | TypeScript/JavaScript specific issues |
 | **python-reviewer** | Python specific issues |
@@ -374,20 +379,25 @@ The Feature Implementation Workflow describes the development pipeline: planning
 
 ## Feature Implementation Workflow
 
+Planning, TDD, and code review use the mattpocock/skills workflow (native
+plugin `mattpocock-skills@mattpocock` on Claude Code; vendored on
+Codex/Cursor), not sub-agents.
+
 1. **Plan First**
-   - Use **planner** agent to create implementation plan
+   - Run `/grill-with-docs` to align requirements + build the domain model
+   - Run `/to-spec` to synthesize the conversation into a spec
+   - Run `/to-tickets` to break it into tracer-bullet tickets
    - Identify dependencies and risks
-   - Break down into phases
 
 2. **TDD Approach**
-   - Use **tdd-guide** agent
+   - Use the `/tdd` skill for the red-green-refactor loop
    - Write tests first (RED)
    - Implement to pass tests (GREEN)
    - Refactor (IMPROVE)
    - Verify 80%+ coverage
 
 3. **Code Review**
-   - Use **code-reviewer** agent immediately after writing code
+   - Use the `/code-review` skill (dual-axis: Standards + Spec) immediately after writing code
    - Address CRITICAL and HIGH issues
    - Fix MEDIUM issues when possible
 
@@ -530,11 +540,11 @@ MANDATORY workflow:
 
 ## Troubleshooting Test Failures
 
-1. Use **tdd-guide** agent
+1. Use the `/tdd` skill (mattpocock/skills workflow)
 2. Check test isolation
 3. Verify mocks are correct
 4. Fix implementation, not tests (unless tests are wrong)
 
-## Agent Support
+## Skill Support
 
-- **tdd-guide** - Use PROACTIVELY for new features, enforces write-tests-first
+- `/tdd` (mattpocock/skills) - Red-green-refactor loop with seam-based testing; use for new features and bug fixes

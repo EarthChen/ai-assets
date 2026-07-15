@@ -41,13 +41,16 @@ This repo is the ONLY source for custom AI configuration:
 - Do NOT install third-party plugins that overlap with this repo
 - All MCP servers managed in this repo's `mcp.json`
 
-## Vendored Skills (mattpocock/skills)
+## mattpocock/skills (hybrid management)
 
-Engineering skills from [mattpocock/skills](https://github.com/mattpocock/skills) are vendored as a git submodule at `vendor/mattpocock-skills/`, with 16 selected skills symlinked into `skills/`.
+Engineering skills from [mattpocock/skills](https://github.com/mattpocock/skills), aligned to the 21 skills declared in upstream `vendor/mattpocock-skills/.claude-plugin/plugin.json`. **Hybrid management** because mattpocock ships only a Claude native plugin (no Codex/Cursor plugin):
 
-After cloning, run `git submodule update --init` to initialize.
+- **Claude Code**: provided by the native plugin `mattpocock-skills@mattpocock`. `install.py build` excludes these vendored skills from the Claude distribution so they aren't duplicated.
+- **Codex / Cursor**: vendored as a git submodule at `vendor/mattpocock-skills/`, symlinked into `skills/`. Codex deep-copies them into `_dist/codex/skills/` at build; Cursor reads `skills/` directly.
 
-### Included Skills
+After cloning, run `git submodule update --init` to initialize (needed for Codex/Cursor).
+
+### Included Skills (21, aligned to upstream plugin.json)
 
 User-invoked (workflow chain):
 - `grill-with-docs` → Grilling session + domain model / CONTEXT.md / ADRs
@@ -57,6 +60,9 @@ User-invoked (workflow chain):
 - `improve-codebase-architecture` → Architecture scan + HTML report + grilling
 - `setup-matt-pocock-skills` → One-time project setup (issue tracker, domain docs)
 - `grill-me` → Relentless interview to sharpen a plan or design
+- `triage` → Move issues/external PRs through a triage state machine into agent-ready briefs
+- `wayfinder` → Plan work too large for one session as a map of investigation tickets
+- `ask-matt` → Router that picks which skill/flow fits your situation
 
 Model-invoked (auto-selected by agent):
 - `tdd` → Red-green-refactor loop with seam-based testing
@@ -70,12 +76,17 @@ Model-invoked (auto-selected by agent):
 
 Productivity:
 - `handoff` → Compact conversation into handoff document for another agent
+- `teach` → Teach the user a new skill or concept within the workspace
+- `writing-great-skills` → Reference for writing/editing skills well
 
-### Managing Vendored Skills
+### Managing Vendored Skills (Codex/Cursor only)
+
+Claude gets mattpocock skills from its native plugin — no symlink maintenance needed there. The commands below only adjust the Codex/Cursor distribution. Keep the symlink set in sync with upstream `vendor/mattpocock-skills/.claude-plugin/plugin.json`.
 
 ```bash
-# Add a new mattpocock skill
+# Add a new mattpocock skill (match upstream plugin.json list)
 ln -s ../vendor/mattpocock-skills/skills/engineering/<name> skills/<name>
+ln -s ../vendor/mattpocock-skills/skills/productivity/<name> skills/<name>
 
 # Remove a vendored skill
 rm skills/<name>

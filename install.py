@@ -29,6 +29,7 @@ from __future__ import annotations
 import argparse
 import json
 import shutil
+import subprocess
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent
@@ -274,8 +275,31 @@ def filter_mcp_for_platform(platform: str) -> dict:
     return filtered
 
 
+def _is_mattpocock_vendored(path: Path) -> bool:
+    """Check if a skill/agent path is a symlink into vendor/mattpocock-skills.
+
+    mattpocock/skills ships its own native Claude plugin
+    (mattpocock-skills@mattpocock), so on Claude Code these are provided by
+    that plugin and must NOT also be distributed by this repo's plugin.
+    """
+    if not path.is_symlink():
+        return False
+    vendor_prefix = (REPO_ROOT / "vendor" / "mattpocock-skills").resolve()
+    try:
+        resolved = path.resolve()
+    except OSError:
+        return False
+    return vendor_prefix in resolved.parents or resolved == vendor_prefix
+
+
 def _asset_applies_to(path: Path, platform: str) -> bool:
     """Check if a skill directory or agent file applies to the given platform."""
+    # Claude Code: mattpocock skills are provided by their own native plugin,
+    # so exclude them from this repo's Claude distribution. This must run
+    # before the is_dir() branch below, which follows the symlink into the
+    # vendor and reads SKILL.md (no platforms field → would return True).
+    if platform == "claude" and _is_mattpocock_vendored(path):
+        return False
     # For skill dirs, check SKILL.md frontmatter
     if path.is_dir():
         skill_md = path / "SKILL.md"
@@ -310,8 +334,6 @@ def _has_platform_filtered_content(src_dir: Path, platform: str) -> bool:
 
 def _ensure_submodules(dry_run: bool = False) -> None:
     """Initialize git submodules if not already present."""
-    import subprocess
-
     vendor_dir = REPO_ROOT / "vendor" / "mattpocock-skills"
     if vendor_dir.exists() and any(vendor_dir.iterdir()):
         return
@@ -512,45 +534,88 @@ def build_dist(dry_run: bool = False) -> None:
 
 # ─── Phase 2: Deploy ───────────────────────────────────────────────────────────
 
+THIRD_PARTY_JSON = REPO_ROOT / "third-party.json"
+
+
+def _load_third_party_plugins() -> list[dict]:
+    """Load third-party plugin config from third-party.json."""
+    if not THIRD_PARTY_JSON.exists():
+        return []
+    data = json.loads(THIRD_PARTY_JSON.read_text(encoding="utf-8"))
+    return data.get("plugins", [])
+
+
+def _claude_plugins_to_install() -> list[dict]:
+    """Filter third-party plugins that are auto-installable on Claude Code.
+
+    A plugin is auto-installable when its claude platform entry has both
+    `marketplace_ref` and `plugin_id`. Entries without these (e.g.
+    understand-anything's "Managed via ~/.agents/skills/...") are skipped —
+    they are managed manually and logged, not auto-installed.
+    """
+    result = []
+    for plugin in _load_third_party_plugins():
+        claude_cfg = plugin.get("platforms", {}).get("claude", {})
+        ref = claude_cfg.get("marketplace_ref")
+        pid = claude_cfg.get("plugin_id")
+        if ref and pid:
+            result.append({"name": plugin.get("name", pid), "marketplace_ref": ref, "plugin_id": pid})
+    return result
+
+
+def _ensure_claude_plugin(installed: str, marketplace_ref: str, plugin_id: str) -> None:
+    """Install a Claude Code plugin from a marketplace if absent, else update it.
+
+    Both paths check the subprocess return code — a silent `update` that logs
+    "updated" on failure is the failure mode this guards against. The
+    `marketplace add` return code is intentionally not checked: install is the
+    real gate (a failed add surfaces as a failed install right after).
+    """
+    if plugin_id not in installed:
+        subprocess.run(
+            ["claude", "plugin", "marketplace", "add", marketplace_ref],
+            capture_output=True, text=True,
+        )
+        result = subprocess.run(
+            ["claude", "plugin", "install", plugin_id, "--scope", "user"],
+            capture_output=True, text=True,
+        )
+        if result.returncode == 0:
+            log(f"{plugin_id} installed")
+        else:
+            log(f"{plugin_id} install failed: {result.stderr.strip()}")
+            log(f"Try manually: claude plugin marketplace add {marketplace_ref}")
+            log(f"             claude plugin install {plugin_id}")
+    else:
+        result = subprocess.run(
+            ["claude", "plugin", "update", plugin_id],
+            capture_output=True, text=True,
+        )
+        if result.returncode == 0:
+            log(f"{plugin_id} updated")
+        else:
+            log(f"{plugin_id} update failed: {result.stderr.strip()}")
+
+
 def install_claude(dry_run: bool = False) -> None:
     log_section("Deploying Claude Code")
 
-    # 1. Plugin: install via marketplace from GitHub
-    # Use `claude plugin marketplace add` + `claude plugin install`
-    # This does a full clone from GitHub, so skills/, agents/, .mcp.json all work.
-    import subprocess
-    if not dry_run:
-        # Check if already installed
-        result = subprocess.run(
+    # 1. Plugins: install those declared in third-party.json (claude platform
+    # entries with marketplace_ref + plugin_id). `claude plugin install` does a
+    # full clone from GitHub, so skills/, agents/, .mcp.json all work.
+    plugins = _claude_plugins_to_install()
+    if dry_run:
+        for p in plugins:
+            log(f"[DRY-RUN] claude plugin install {p['plugin_id']}")
+    else:
+        # One list call covers all plugins in the config
+        list_result = subprocess.run(
             ["claude", "plugin", "list"],
             capture_output=True, text=True,
         )
-        if "earthchen-ai-assets@earthchen-ai-assets" not in result.stdout:
-            # Add marketplace
-            subprocess.run(
-                ["claude", "plugin", "marketplace", "add", "https://github.com/EarthChen/ai-assets.git"],
-                capture_output=True, text=True,
-            )
-            # Install plugin
-            result = subprocess.run(
-                ["claude", "plugin", "install", "earthchen-ai-assets@earthchen-ai-assets", "--scope", "user"],
-                capture_output=True, text=True,
-            )
-            if result.returncode == 0:
-                log("Plugin installed from GitHub (skills, agents, MCP)")
-            else:
-                log(f"Plugin install failed: {result.stderr.strip()}")
-                log("Try manually: claude plugin marketplace add https://github.com/EarthChen/ai-assets.git")
-                log("             claude plugin install earthchen-ai-assets@earthchen-ai-assets")
-        else:
-            # Update existing
-            subprocess.run(
-                ["claude", "plugin", "update", "earthchen-ai-assets@earthchen-ai-assets"],
-                capture_output=True, text=True,
-            )
-            log("Plugin updated")
-    else:
-        log("[DRY-RUN] claude plugin install earthchen-ai-assets@earthchen-ai-assets")
+        installed = list_result.stdout
+        for p in plugins:
+            _ensure_claude_plugin(installed, p["marketplace_ref"], p["plugin_id"])
 
     # 2. CLAUDE.md (plugin can't handle)
     dist_claude_md = DIST / "claude" / "CLAUDE.md"

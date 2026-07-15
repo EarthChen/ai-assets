@@ -8,23 +8,28 @@ alwaysApply: true
 
 | Agent | Purpose | When to Use |
 |-------|---------|-------------|
-| planner | Implementation planning | Complex features, refactoring |
 | architect | System design | Architectural decisions |
-| tdd-guide | Test-driven development | New features, bug fixes |
-| code-reviewer | Code review | After writing code |
 | security-reviewer | Security analysis | Before commits |
 | build-error-resolver | Fix build errors | When build fails |
 | e2e-runner | E2E testing | Critical user flows |
 | refactor-cleaner | Dead code cleanup | Code maintenance |
 | doc-updater | Documentation | Updating docs |
 
+> Planning, TDD, and code review are handled by the mattpocock/skills workflow
+> (provided on Claude Code by the `mattpocock-skills@mattpocock` native plugin;
+> vendored on Codex/Cursor), not by sub-agents:
+> - **Planning** → `/grill-with-docs` → `/to-spec` → `/to-tickets` workflow chain
+> - **TDD** → `/tdd` skill (red-green-refactor loop)
+> - **Code review** → `/code-review` skill (dual-axis Standards + Spec review)
+
 ## Immediate Agent Usage
 
 No user prompt needed:
-1. Complex feature requests - Use **planner** agent
-2. Code just written/modified - Use **code-reviewer** agent
-3. Bug fix or new feature - Use **tdd-guide** agent
-4. Architectural decision - Use **architect** agent
+1. Architectural decision - Use **architect** agent
+2. Security-sensitive code - Use **security-reviewer** agent
+3. Build failure - Use **build-error-resolver** agent
+
+For planning / TDD / code review, invoke the mattpocock skills above instead.
 
 ## Parallel Task Execution
 
