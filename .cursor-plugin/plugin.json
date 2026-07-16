@@ -15,7 +15,7 @@
     "mcp",
     "coding-standards"
   ],
-  "skills": "./skills/",
+  "skills": "./_dist/cursor/skills/",
   "agents": "./agents/",
   "rules": "./_dist/cursor/rules/"
 }

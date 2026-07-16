@@ -392,11 +392,15 @@ def build_dist(dry_run: bool = False) -> None:
         platform_dir = DIST / platform
         ensure_dir(platform_dir, dry_run)
 
-        # Skills: Codex uses deep copy (git clone doesn't init submodules),
-        # Claude/Cursor use symlinks (Claude inits submodules, Cursor uses local only)
+        # Skills: Codex and Cursor use deep copy (Codex: git clone doesn't init
+        # submodules; Cursor: read build artifacts so manifest can point at
+        # _dist/cursor/skills/ instead of runtime symlinks into the repo root).
+        # Claude uses symlinks, but mattpocock-vendored skills are excluded
+        # from the Claude distribution because the mattpocock-skills@mattpocock
+        # native plugin provides them.
         skills_src = REPO_ROOT / "skills"
         skills_out = platform_dir / "skills"
-        use_deep_copy = platform == "codex"
+        use_deep_copy = platform in ("codex", "cursor")
 
         if use_deep_copy:
             _deep_copy_skills(skills_src, skills_out, platform, dry_run)
