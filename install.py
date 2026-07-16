@@ -789,7 +789,6 @@ PLUGIN_JSONS = [
 ]
 
 MARKETPLACE_JSON = REPO_ROOT / ".claude-plugin" / "marketplace.json"
-CURSOR_MARKETPLACE_JSON = REPO_ROOT / ".cursor-plugin" / "marketplace.json"
 
 
 def _get_current_version() -> str:
@@ -831,21 +830,19 @@ def set_version(version: str, dry_run: bool = False) -> None:
             log(f"{pj.relative_to(REPO_ROOT)}: {old_ver} -> {version}")
 
     # Update marketplace.json version (critical for Claude Code auto-update)
-    for mpj in (MARKETPLACE_JSON, CURSOR_MARKETPLACE_JSON):
-        if not mpj.exists():
-            continue
-        data = json.loads(mpj.read_text(encoding="utf-8"))
+    if MARKETPLACE_JSON.exists():
+        data = json.loads(MARKETPLACE_JSON.read_text(encoding="utf-8"))
         for plugin in data.get("plugins", []):
             if plugin.get("name") == "earthchen-ai-assets":
                 old_ver = plugin.get("version", "unknown")
                 plugin["version"] = version
                 if dry_run:
-                    log(f"[DRY-RUN] {mpj.relative_to(REPO_ROOT)}: {old_ver} -> {version}")
+                    log(f"[DRY-RUN] {MARKETPLACE_JSON.relative_to(REPO_ROOT)}: {old_ver} -> {version}")
                 else:
-                    log(f"{mpj.relative_to(REPO_ROOT)}: {old_ver} -> {version}")
+                    log(f"{MARKETPLACE_JSON.relative_to(REPO_ROOT)}: {old_ver} -> {version}")
                 break
         if not dry_run:
-            mpj.write_text(
+            MARKETPLACE_JSON.write_text(
                 json.dumps(data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
             )
 
