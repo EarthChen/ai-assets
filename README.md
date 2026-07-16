@@ -75,9 +75,16 @@ uv run install.py version --bump patch # 递增版本号 (major/minor/patch)
 
 | 平台 | 更新方式 | 说明 |
 |------|---------|------|
-| Cursor | 符号链接（即时） | build 后即生效，无需重启 |
+| Cursor | Marketplace（URL 安装） | 推送到 main → 下次 session Cursor 重新拉取 |
 | Codex | 符号链接（即时） | build 后即生效，无需重启 |
 | Claude Code | ref-tracked 自动拉取 | 每次 session 启动自动从 GitHub main 分支拉取最新 |
+
+> Cursor 不支持脚本/CLI 安装，也不认 `~/.cursor/plugins/local/` 的 symlink（不计入
+> `state.vscdb` 的 `installedIds`）。必须通过 Settings → Customize 手动添加 marketplace
+> URL 安装一次。`install.py install --platform cursor` 仅清理残留的 local symlink 并提示。
+> `.claude-plugin/marketplace.json` 的 `source` 必须是字符串相对路径（`"./"`），
+> 不能用对象格式 `{source:"url",...}`——否则 Cursor 报 "unresolved or unsafe source path"。
+> 详见 AGENTS.md "Cursor Plugin Error loading plugin"。
 
 ### Claude Code 更新说明
 
@@ -185,7 +192,7 @@ uv run install.py build
 
 | 平台 | 安装 | 更新 |
 |------|------|------|
-| Cursor | `~/.cursor/plugins/local/` symlink | build 后即时生效 |
+| Cursor | Settings → Customize 添加 `https://github.com/EarthChen/ai-assets`（marketplace URL） | 推送 main 后下次 session 自动拉取 |
 | Codex | `~/.codex/plugins/local/` symlink + config.toml | build 后即时生效 |
 | Claude Code | `claude plugin install` (GitHub URL) | 每次 session 自动拉取 main |
 

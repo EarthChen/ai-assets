@@ -131,6 +131,22 @@ uv run install.py build
 - **Claude Code project-level**: `paths` works correctly for conditional loading
 - **Codex**: no frontmatter support; 32KB limit on AGENTS.md; common rules only
 
+### Cursor Plugin "Error loading plugin" — 根因与诊断
+
+Cursor 插件加载失败的 UI 提示 "Error loading plugin" **不写进任何文件日志**，console 也只有 `getPluginMcpServers took Xms` 之类的性能 warn（零红色 error）。真实原因只藏在 UI 的 "Copy error details" 按钮剪贴板里。诊断顺序（踩过 7 轮坑的总结）：
+
+1. **先读剪贴板错误，不要猜配置**。UI 卡片旁有 `aria-label="Copy error details"` 按钮，点击后用 `pbpaste` 读。本仓库命中的是：
+   ```
+   Unable to install plugin "earthchen-ai-assets" without gitPath:
+   Plugin "earthchen-ai-assets" has unresolved or unsafe source path
+   ```
+2. **`unresolved or unsafe source path` = marketplace 的 `source` 解析出空 path**，不是 symlink 问题。Cursor 读 `.claude-plugin/marketplace.json`（和 Claude 同一个文件；ecc 连 `.cursor-plugin/` 都没有也照常加载）。`source` 必须是**字符串相对路径**（`"./"` 或 `"./_dist/cursor"`），写成 Claude 的对象格式 `{source:"url", url, ref}` 会让 Cursor 解析出 empty path → 把仓库根当 unsafe surface → 整个 plugin 失败 → skills/agents/rules/MCP 一个都不显示。
+3. **`source: "./"` 时 plugin 根 = clone 根 = 仓库根**，Cursor 会整树安全扫描。前提是仓库根在 fresh clone（不 init submodule）下**零含 `..` 的 symlink**。所以下面的清理是 `source "./"` 能工作的必要前提，但单独做不解决 empty path：
+   - 顶层 `skills/<name>` 的 mattpocock symlink 不能提交进 git（clone 不 init submodule → 断链 + 含 `..`）→ `.gitignore` 排除，由 `_ensure_mattpocock_skill_symlinks()` 在 build/install 时从上游 `plugin.json` 生成。
+   - `_dist/claude/` 和 `_dist/cursor/` 的 skills/agents 必须深拷贝（`shutil.copytree`/`copy2`），不能用 symlink（`→ ../../skills` 含 `..`）。
+4. **对照成功案例验证结构**：`~/.cursor/plugins/cache/cursor-public/superpowers/`（官方，加载成功）和 `~/.cursor/plugins/marketplaces/github.com/affaan-m/ecc/`（GitHub marketplace，`source: "./"`）。ecc 是最贴近本仓库的参照——同为 GitHub marketplace、`source: "./"`、根 skills 实目录、零含 `..` symlink。
+5. **CDP 抓 console/剪贴板**：Cursor 带 `--remote-debugging-port=9333` 启动后，用 Cursor 自带的 `ws` 模块（`/Applications/Cursor.app/.../node_modules/ws`）连 `ws://127.0.0.1:9333/devtools/page/<id>`，`Runtime.evaluate` 点 `Copy error details` 按钮 + `pbpaste` 读系统剪贴板。`reload window` 不会 re-clone marketplace；要 re-clone 需完全退出 + 删 `~/.cursor/plugins/marketplaces/<host>/<owner>/<repo>/` + 重启。`fresh-clone`（`git clone --depth 1` 到 /tmp）可预先验证仓库根是否干净，不必反复发版。
+
 ### Build Transforms
 
 | Source field | → Cursor | → Claude Code | → Codex |
