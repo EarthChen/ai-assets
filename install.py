@@ -562,41 +562,6 @@ def build_dist(dry_run: bool = False) -> None:
         if has_rules and not dry_run:
             log(f"_dist/{platform}/rules/ generated")
 
-        # Cursor: write a self-contained plugin manifest at
-        # _dist/cursor/.cursor-plugin/plugin.json. The root marketplace.json
-        # points the plugin source at _dist/cursor (a subpath), so Cursor
-        # clones the repo and loads the plugin from there — the manifest's
-        # paths are relative to _dist/cursor itself. This keeps the plugin
-        # root inside the deep-copied _dist tree and away from any
-        # repo-root content Cursor's safety scan might reject.
-        if platform == "cursor":
-            version = _get_current_version()
-            manifest = {
-                "name": "earthchen-ai-assets",
-                "displayName": "EarthChen AI Assets",
-                "version": version,
-                "description": "Personal unified AI agent assets for Cursor",
-                "author": {"name": "earthchen"},
-                "homepage": "https://github.com/EarthChen/ai-assets",
-                "repository": "https://github.com/EarthChen/ai-assets",
-                "keywords": ["skills", "agents", "rules", "mcp", "coding-standards"],
-                "skills": "./skills/",
-                "agents": "./agents/",
-                "rules": "./rules/",
-                "mcpServers": "./mcp.json",
-            }
-            manifest_dir = platform_dir / ".cursor-plugin"
-            ensure_dir(manifest_dir, dry_run)
-            manifest_path = manifest_dir / "plugin.json"
-            if dry_run:
-                log(f"[DRY-RUN] write {manifest_path}")
-            else:
-                manifest_path.write_text(
-                    json.dumps(manifest, indent=2, ensure_ascii=False) + "\n",
-                    encoding="utf-8",
-                )
-                log(f"_dist/cursor/.cursor-plugin/plugin.json (self-contained)")
-
 
 # ─── Phase 2: Deploy ───────────────────────────────────────────────────────────
 
