@@ -4,6 +4,7 @@ alwaysApply: true
 platforms: [cursor]
 ---
 # MCP 增强反馈协议 (Mandatory Protocol)
+- **执行边界 (Critical)**：本协议**仅适用于主代理（main/primary agent）**。只有主代理可调用 `mcp-feedback-pro`；**子代理（subagent）严禁调用**——不得发起反馈循环、不得重试该 MCP 工具、不得请求用户审批。子代理应将结果直接返回主代理，由主代理统一汇总后与用户进行反馈闭环。原因：`mcp-feedback-pro` 是面向终端用户的交互式反馈通道，子代理在后台运行、无直接用户交互上下文，调用会导致阻塞、重复弹窗与上下文污染，反馈决策权必须集中于主代理。
 - **执行步长**：在任务执行的**每一个关键节点**，必须主动调用 `mcp-feedback-pro`。
 - **实时迭代**：一旦收到用户通过 MCP 反馈的信息，必须立即响应并调整执行策略。
 - **闭环控制**：循环仅在用户明确发送 "end"、"finish" 或 "no more interaction is needed" 时终止。
