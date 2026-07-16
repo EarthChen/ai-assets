@@ -27,12 +27,30 @@ global-instructions.md
 
 | Platform | Method | Trigger |
 |----------|--------|---------|
-| Cursor | Local symlink (instant) | After `build` |
+| Cursor | Marketplace (URL install) | Push to main → Cursor re-pulls on session |
 | Codex | Local symlink (instant) | After `build` |
 | Claude Code | ref-tracked auto-pull | Each session start (fetches main branch HEAD) |
 
 Claude Code's `marketplace.json` uses `ref: "main"` without SHA pinning.
 No manual `claude plugin update` needed; push to main → next session picks it up.
+
+Cursor: `install.py install` no longer creates a `~/.cursor/plugins/local/`
+symlink — Cursor's plugin registry only recognizes plugins installed via the
+marketplace (each gets a numeric id in `state.vscdb`'s
+`cursor.plugins.installedIds.*` keys; a local symlink is never counted, so it
+silently failed to surface the plugin). Install via Settings → Customize →
+add `https://github.com/EarthChen/ai-assets`. For dev preview only, manually
+symlink this repo to `~/.cursor/plugins/local/` + Reload Window (not counted
+in installedIds; marketplace install is the source of truth).
+
+**Cursor "Include third-party Plugins, Skills, and other configs" (Settings →
+Rules, Skills, Subagents): keep this OFF.** When on, Cursor recursively scans
+`~/.claude/plugins/cache/*` (every version of this repo's Claude clone, each
+with a full `skills/`), `~/.codex/skills/`, `~/.agents/skills/`, etc. with no
+de-duplication, so every skill (e.g. `tdd`) loads ~11×. This is a known Cursor
+bug (no ETA). Off is safe here because this repo's own `~/.claude/skills`,
+`~/.codex/skills`, `~/.agents/skills` are essentially empty — the marketplace
+install is the sole source.
 
 ## Single Source of Truth
 

@@ -693,10 +693,29 @@ def install_codex(dry_run: bool = False) -> None:
 def install_cursor(dry_run: bool = False) -> None:
     log_section("Deploying Cursor")
 
-    # Plugin handles everything (rules, skills, agents, MCP from _dist/cursor/)
-    plugin_dir = CURSOR_HOME / "plugins" / "local" / "earthchen-ai-assets"
-    create_symlink(REPO_ROOT, plugin_dir, dry_run)
+    # Cursor's plugin registry only recognizes plugins installed via the
+    # marketplace (each gets a numeric id recorded in state.vscdb's
+    # `cursor.plugins.installedIds.<team>|<workspace>` keys). A local symlink
+    # under ~/.cursor/plugins/local/ is *not* registered as an installed plugin
+    # — it's a dev-preview path that requires a manual Reload Window and is
+    # never counted in installedIds, so it silently failed to surface the
+    # plugin (e.g. opening this repo's own workspace showed installedIds `[]`).
+    #
+    # Therefore Cursor, like Claude Code, is deployed via the marketplace:
+    #   Settings → Customize → add marketplace URL → install.
+    # The committed `_dist/cursor/` is what the marketplace clone loads.
+    local_symlink = CURSOR_HOME / "plugins" / "local" / "earthchen-ai-assets"
+    if local_symlink.is_symlink() and not dry_run:
+        local_symlink.unlink()
+        log(f"Removed stale local symlink {local_symlink} (Cursor ignores it)")
+    elif local_symlink.is_symlink() and dry_run:
+        log(f"[DRY-RUN] remove stale local symlink {local_symlink}")
+
     log("Plugin provides: rules, skills, agents, MCP (all via native plugin system)")
+    log("Install via marketplace: Cursor → Settings → Customize → add URL")
+    log("  https://github.com/EarthChen/ai-assets")
+    log("Dev preview (optional): symlink this repo to ~/.cursor/plugins/local/ + Reload Window")
+    log("  (not counted in installedIds; marketplace install is the source of truth)")
 
 
 # ─── Version Management ───────────────────────────────────────────────────────
