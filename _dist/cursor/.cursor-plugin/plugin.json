@@ -1,7 +1,8 @@
 {
   "name": "earthchen-ai-assets",
+  "displayName": "EarthChen AI Assets",
   "version": "1.0.12",
-  "description": "Personal unified AI agent assets for Claude Code",
+  "description": "Personal unified AI agent assets for Cursor",
   "author": {
     "name": "earthchen"
   },
@@ -14,6 +15,8 @@
     "mcp",
     "coding-standards"
   ],
-  "skills": "./_dist/claude/skills/",
-  "agents": "./_dist/claude/agents/"
+  "skills": "./skills/",
+  "agents": "./agents/",
+  "rules": "./rules/",
+  "mcpServers": "./mcp.json"
 }

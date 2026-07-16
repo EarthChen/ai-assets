@@ -1,0 +1,25 @@
+{
+  "name": "earthchen-ai-assets",
+  "owner": {
+    "name": "earthchen"
+  },
+  "metadata": {
+    "description": "Personal unified AI agent assets for Cursor"
+  },
+  "plugins": [
+    {
+      "name": "earthchen-ai-assets",
+      "version": "1.0.12",
+      "description": "Personal unified AI agent assets: skills, agents, rules, MCP",
+      "source": {
+        "source": "github",
+        "repo": "EarthChen/ai-assets",
+        "ref": "master",
+        "path": "_dist/cursor"
+      },
+      "homepage": "https://github.com/EarthChen/ai-assets",
+      "repository": "https://github.com/EarthChen/ai-assets",
+      "category": "Productivity"
+    }
+  ]
+}

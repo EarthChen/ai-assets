@@ -562,6 +562,41 @@ def build_dist(dry_run: bool = False) -> None:
         if has_rules and not dry_run:
             log(f"_dist/{platform}/rules/ generated")
 
+        # Cursor: write a self-contained plugin manifest at
+        # _dist/cursor/.cursor-plugin/plugin.json. The root marketplace.json
+        # points the plugin source at _dist/cursor (a subpath), so Cursor
+        # clones the repo and loads the plugin from there — the manifest's
+        # paths are relative to _dist/cursor itself. This keeps the plugin
+        # root inside the deep-copied _dist tree and away from any
+        # repo-root content Cursor's safety scan might reject.
+        if platform == "cursor":
+            version = _get_current_version()
+            manifest = {
+                "name": "earthchen-ai-assets",
+                "displayName": "EarthChen AI Assets",
+                "version": version,
+                "description": "Personal unified AI agent assets for Cursor",
+                "author": {"name": "earthchen"},
+                "homepage": "https://github.com/EarthChen/ai-assets",
+                "repository": "https://github.com/EarthChen/ai-assets",
+                "keywords": ["skills", "agents", "rules", "mcp", "coding-standards"],
+                "skills": "./skills/",
+                "agents": "./agents/",
+                "rules": "./rules/",
+                "mcpServers": "./mcp.json",
+            }
+            manifest_dir = platform_dir / ".cursor-plugin"
+            ensure_dir(manifest_dir, dry_run)
+            manifest_path = manifest_dir / "plugin.json"
+            if dry_run:
+                log(f"[DRY-RUN] write {manifest_path}")
+            else:
+                manifest_path.write_text(
+                    json.dumps(manifest, indent=2, ensure_ascii=False) + "\n",
+                    encoding="utf-8",
+                )
+                log(f"_dist/cursor/.cursor-plugin/plugin.json (self-contained)")
+
 
 # ─── Phase 2: Deploy ───────────────────────────────────────────────────────────
 
@@ -754,6 +789,7 @@ PLUGIN_JSONS = [
 ]
 
 MARKETPLACE_JSON = REPO_ROOT / ".claude-plugin" / "marketplace.json"
+CURSOR_MARKETPLACE_JSON = REPO_ROOT / ".cursor-plugin" / "marketplace.json"
 
 
 def _get_current_version() -> str:
@@ -795,19 +831,21 @@ def set_version(version: str, dry_run: bool = False) -> None:
             log(f"{pj.relative_to(REPO_ROOT)}: {old_ver} -> {version}")
 
     # Update marketplace.json version (critical for Claude Code auto-update)
-    if MARKETPLACE_JSON.exists():
-        data = json.loads(MARKETPLACE_JSON.read_text(encoding="utf-8"))
+    for mpj in (MARKETPLACE_JSON, CURSOR_MARKETPLACE_JSON):
+        if not mpj.exists():
+            continue
+        data = json.loads(mpj.read_text(encoding="utf-8"))
         for plugin in data.get("plugins", []):
             if plugin.get("name") == "earthchen-ai-assets":
                 old_ver = plugin.get("version", "unknown")
                 plugin["version"] = version
                 if dry_run:
-                    log(f"[DRY-RUN] marketplace.json: {old_ver} -> {version}")
+                    log(f"[DRY-RUN] {mpj.relative_to(REPO_ROOT)}: {old_ver} -> {version}")
                 else:
-                    log(f"marketplace.json: {old_ver} -> {version}")
+                    log(f"{mpj.relative_to(REPO_ROOT)}: {old_ver} -> {version}")
                 break
         if not dry_run:
-            MARKETPLACE_JSON.write_text(
+            mpj.write_text(
                 json.dumps(data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
             )
 
