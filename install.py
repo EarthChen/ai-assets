@@ -355,6 +355,52 @@ def _ensure_submodules(dry_run: bool = False) -> None:
         log(f"Warning: submodule init failed: {result.stderr.strip()}")
 
 
+def _ensure_mattpocock_skill_symlinks(dry_run: bool = False) -> None:
+    """Create skills/<name> symlinks for vendored mattpocock skills.
+
+    These symlinks point into vendor/mattpocock-skills/ (a git submodule) and
+    are generated at build time rather than committed. Committing them is
+    unsafe for Cursor: a marketplace clone does not `git submodule update
+    --init`, so the symlinks ship as broken links with a `../vendor/...`
+    target. Cursor's install-time whole-tree safety scan rejects the whole
+    plugin ("unresolved or unsafe source path"). The skill set is read from
+    the upstream plugin.json so it stays in sync with the submodule.
+    """
+    upstream_pj = REPO_ROOT / "vendor" / "mattpocock-skills" / ".claude-plugin" / "plugin.json"
+    skills_dir = REPO_ROOT / "skills"
+    if not upstream_pj.exists():
+        log("Skipping mattpocock skill symlinks (submodule not initialized)")
+        return
+    data = json.loads(upstream_pj.read_text(encoding="utf-8"))
+    entries = data.get("skills", [])
+    if isinstance(entries, str):
+        entries = [entries]
+    ensure_dir(skills_dir, dry_run)
+    count = 0
+    for entry in entries:
+        # entry looks like "./skills/engineering/tdd"
+        skill_name = Path(entry).name
+        link = skills_dir / skill_name
+        # entry minus "./" prefix → "skills/engineering/tdd"
+        sub_path = entry[2:] if entry.startswith("./") else entry
+        target = Path(f"../vendor/mattpocock-skills/{sub_path}")
+        if dry_run:
+            log(f"[DRY-RUN] symlink skills/{skill_name}")
+            count += 1
+            continue
+        # Recreate if missing or pointing at the wrong target
+        current = link.readlink() if link.is_symlink() else None
+        if current == target:
+            count += 1
+            continue
+        if link.exists() or link.is_symlink():
+            link.unlink()
+        link.symlink_to(target)
+        count += 1
+    if not dry_run:
+        log(f"skills/ mattpocock symlinks ({count}, generated from upstream plugin.json)")
+
+
 def _deep_copy_skills(
     skills_src: Path, skills_out: Path, platform: str, dry_run: bool
 ) -> None:
@@ -382,6 +428,7 @@ def build_dist(dry_run: bool = False) -> None:
     log_section("Building _dist/ (platform-filtered content)")
 
     _ensure_submodules(dry_run)
+    _ensure_mattpocock_skill_symlinks(dry_run)
 
     if not dry_run:
         if DIST.exists():
@@ -817,6 +864,7 @@ def _deploy_shared_skills(dry_run: bool = False) -> None:
 def _do_install(platform: str, dry_run: bool) -> None:
     """Run platform installers."""
     _ensure_submodules(dry_run)
+    _ensure_mattpocock_skill_symlinks(dry_run)
     platforms = {
         "claude": install_claude,
         "codex": install_codex,
