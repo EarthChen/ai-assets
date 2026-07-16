@@ -439,41 +439,21 @@ def build_dist(dry_run: bool = False) -> None:
         platform_dir = DIST / platform
         ensure_dir(platform_dir, dry_run)
 
-        # Skills: Codex and Cursor use deep copy (Codex: git clone doesn't init
-        # submodules; Cursor: read build artifacts so manifest can point at
-        # _dist/cursor/skills/ instead of runtime symlinks into the repo root).
-        # Claude uses symlinks, but mattpocock-vendored skills are excluded
-        # from the Claude distribution because the mattpocock-skills@mattpocock
-        # native plugin provides them.
+        # Skills: all platforms use deep copy. A marketplace clone runs a
+        # plain git clone (no submodule init), and Cursor's install-time
+        # safety scan rejects any plugin whose tree contains a symlink with
+        # ".." in its target ("unresolved or unsafe source path"). So every
+        # platform's _dist skills must be real files, never symlinks. The
+        # mattpocock-vendored skills are excluded from the Claude distribution
+        # (handled by _asset_applies_to) because mattpocock-skills@mattpocock
+        # provides them natively on Claude.
         skills_src = REPO_ROOT / "skills"
         skills_out = platform_dir / "skills"
-        use_deep_copy = platform in ("codex", "cursor")
+        _deep_copy_skills(skills_src, skills_out, platform, dry_run)
 
-        if use_deep_copy:
-            _deep_copy_skills(skills_src, skills_out, platform, dry_run)
-        elif _has_platform_filtered_content(skills_src, platform):
-            ensure_dir(skills_out, dry_run)
-            for skill_dir in skills_src.iterdir():
-                if not skill_dir.is_dir():
-                    continue
-                if not _asset_applies_to(skill_dir, platform):
-                    continue
-                dst = skills_out / skill_dir.name
-                if dry_run:
-                    log(f"[DRY-RUN] symlink {dst}")
-                else:
-                    dst.symlink_to(Path(f"../../../skills/{skill_dir.name}"))
-            if not dry_run:
-                log(f"_dist/{platform}/skills (filtered)")
-        else:
-            if dry_run:
-                log(f"[DRY-RUN] symlink {skills_out} -> ../../skills")
-            else:
-                ensure_dir(platform_dir)
-                skills_out.symlink_to(Path("../../skills"))
-                log(f"_dist/{platform}/skills -> ../../skills")
-
-        # Agents: for platforms that support it via plugin
+        # Agents: for platforms that support it via plugin. Deep-copied for
+        # every platform (same ".."-in-symlink reason as skills; Cursor's
+        # safety scan flags any ".." symlink target as unsafe source path).
         if platform in ("cursor", "claude"):
             agents_src = REPO_ROOT / "agents"
             agents_out = platform_dir / "agents"
@@ -486,26 +466,16 @@ def build_dist(dry_run: bool = False) -> None:
                         dst = agents_out / agent_file.name
                         if dry_run:
                             log(f"[DRY-RUN] copy {agent_file.name}")
-                        elif platform == "cursor":
-                            # Cursor rejects plugins whose source paths
-                            # contain ".." (treats them as "unresolved or
-                            # unsafe source path" → "Error loading plugin").
-                            # Deep-copy instead of symlinking so no component
-                            # path escapes the plugin dir on resolve.
-                            shutil.copy2(agent_file, dst)
                         else:
-                            dst.symlink_to(Path(f"../../../agents/{agent_file.name}"))
+                            shutil.copy2(agent_file, dst)
                     if not dry_run:
                         log(f"_dist/{platform}/agents (filtered)")
                 else:
                     if dry_run:
                         log(f"[DRY-RUN] {agents_out}")
-                    elif platform == "cursor":
+                    else:
                         shutil.copytree(agents_src, agents_out)
                         log(f"_dist/{platform}/agents (deep copy)")
-                    else:
-                        agents_out.symlink_to(Path("../../agents"))
-                        log(f"_dist/{platform}/agents -> ../../agents")
 
         # MCP: filtered per platform
         mcp_servers = filter_mcp_for_platform(platform)
