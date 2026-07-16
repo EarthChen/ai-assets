@@ -113,7 +113,7 @@ uv run install.py version --bump patch # 递增版本号 (major/minor/patch)
 |------|---------|------|
 | Claude Code | 原生插件 `mattpocock-skills@mattpocock` | 由上游插件提供，本仓库 build 时从 Claude 分发中排除，避免重复 |
 | Codex | vendor submodule → deep copy 到 `_dist/codex/skills/` | 无上游 Codex 插件，由本仓库 build 分发 |
-| Cursor | vendor submodule → `skills/` symlink | 无上游 Cursor 插件，由本仓库插件分发 |
+| Cursor | vendor submodule → deep copy 到 `_dist/cursor/skills/` | 无上游 Cursor 插件，由本仓库 build 分发 |
 
 ```bash
 # Claude Code：原生插件由 install.py install 自动安装（配置在 third-party.json）
@@ -121,7 +121,8 @@ uv run install.py version --bump patch # 递增版本号 (major/minor/patch)
 #   claude plugin marketplace add mattpocock/skills
 #   claude plugin install mattpocock-skills@mattpocock
 
-# Codex/Cursor：初始化 submodule（clone 后首次执行）
+# Codex/Cursor：_dist/ 已入库，clone 后可直接用；
+# 仅在需要重新 build（修改 vendored skills 后）时才初始化 submodule
 git submodule update --init
 
 # 更新 vendor 到上游最新版本

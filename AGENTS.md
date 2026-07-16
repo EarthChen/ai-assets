@@ -46,9 +46,9 @@ This repo is the ONLY source for custom AI configuration:
 Engineering skills from [mattpocock/skills](https://github.com/mattpocock/skills), aligned to the 21 skills declared in upstream `vendor/mattpocock-skills/.claude-plugin/plugin.json`. **Hybrid management** because mattpocock ships only a Claude native plugin (no Codex/Cursor plugin):
 
 - **Claude Code**: provided by the native plugin `mattpocock-skills@mattpocock`. `install.py build` excludes these vendored skills from the Claude distribution so they aren't duplicated.
-- **Codex / Cursor**: vendored as a git submodule at `vendor/mattpocock-skills/`, symlinked into `skills/`. Codex deep-copies them into `_dist/codex/skills/` at build; Cursor reads `skills/` directly.
+- **Codex / Cursor**: vendored as a git submodule at `vendor/mattpocock-skills/`, symlinked into `skills/`. Both deep-copy the resolved skill directories into `_dist/<platform>/skills/` at build (Codex → `_dist/codex/skills/`, Cursor → `_dist/cursor/skills/`). `_dist/` is committed, so both platforms work on clone without initializing the submodule.
 
-After cloning, run `git submodule update --init` to initialize (needed for Codex/Cursor).
+After cloning, run `git submodule update --init` only if you need to rebuild `_dist/` (the committed `_dist/` already works without it).
 
 ### Included Skills (21, aligned to upstream plugin.json)
 
