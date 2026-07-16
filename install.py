@@ -423,6 +423,35 @@ def _deep_copy_skills(
         log(f"_dist/{platform}/skills ({count} skills, deep copy)")
 
 
+def _sync_claude_manifest_agents(dry_run: bool = False) -> None:
+    """Sync .claude-plugin/plugin.json `agents` field with _dist/claude/agents/.
+
+    Claude Code's manifest schema requires `agents` to be file paths
+    (string|array), NOT a directory — unlike `skills` which accepts a
+    directory. A directory value fails validation with "agents: Invalid input"
+    and the whole plugin fails to load (none of its skills/agents register).
+    After build copies agent files into _dist/claude/agents/, enumerate those
+    files into the manifest so the two never drift.
+    """
+    manifest = REPO_ROOT / ".claude-plugin" / "plugin.json"
+    agents_dir = DIST / "claude" / "agents"
+    if not manifest.exists() or not agents_dir.exists():
+        return
+    agent_files = sorted(f.name for f in agents_dir.glob("*.md"))
+    agents_value = [f"./_dist/claude/agents/{name}" for name in agent_files]
+    data = json.loads(manifest.read_text(encoding="utf-8"))
+    if data.get("agents") == agents_value:
+        return  # already in sync; skip write to avoid touching git mtime
+    data["agents"] = agents_value
+    if dry_run:
+        log(f"[DRY-RUN] sync {manifest.relative_to(REPO_ROOT)} agents "
+            f"({len(agent_files)} files)")
+    else:
+        manifest.write_text(
+            json.dumps(data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+        log(f".claude-plugin/plugin.json agents synced ({len(agent_files)} files)")
+
+
 def build_dist(dry_run: bool = False) -> None:
     """Generate platform-filtered content in _dist/."""
     log_section("Building _dist/ (platform-filtered content)")
@@ -561,6 +590,13 @@ def build_dist(dry_run: bool = False) -> None:
 
         if has_rules and not dry_run:
             log(f"_dist/{platform}/rules/ generated")
+
+    # Sync .claude-plugin/plugin.json agents array with the built
+    # _dist/claude/agents/ files. Claude's manifest schema rejects a directory
+    # path for `agents` (only file paths, unlike `skills` which accepts a
+    # directory), so this must run after the agents copy above. See
+    # https://code.claude.com/docs/en/plugins-reference "Component path fields".
+    _sync_claude_manifest_agents(dry_run)
 
 
 # ─── Phase 2: Deploy ───────────────────────────────────────────────────────────
