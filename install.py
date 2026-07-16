@@ -438,14 +438,24 @@ def build_dist(dry_run: bool = False) -> None:
                             continue
                         dst = agents_out / agent_file.name
                         if dry_run:
-                            log(f"[DRY-RUN] symlink {dst}")
+                            log(f"[DRY-RUN] copy {agent_file.name}")
+                        elif platform == "cursor":
+                            # Cursor rejects plugins whose source paths
+                            # contain ".." (treats them as "unresolved or
+                            # unsafe source path" → "Error loading plugin").
+                            # Deep-copy instead of symlinking so no component
+                            # path escapes the plugin dir on resolve.
+                            shutil.copy2(agent_file, dst)
                         else:
                             dst.symlink_to(Path(f"../../../agents/{agent_file.name}"))
                     if not dry_run:
                         log(f"_dist/{platform}/agents (filtered)")
                 else:
                     if dry_run:
-                        log(f"[DRY-RUN] symlink {agents_out} -> ../../agents")
+                        log(f"[DRY-RUN] {agents_out}")
+                    elif platform == "cursor":
+                        shutil.copytree(agents_src, agents_out)
+                        log(f"_dist/{platform}/agents (deep copy)")
                     else:
                         agents_out.symlink_to(Path("../../agents"))
                         log(f"_dist/{platform}/agents -> ../../agents")
