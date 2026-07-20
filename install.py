@@ -292,44 +292,6 @@ def _is_mattpocock_vendored(path: Path) -> bool:
     return vendor_prefix in resolved.parents or resolved == vendor_prefix
 
 
-def _asset_applies_to(path: Path, platform: str) -> bool:
-    """Check if a skill directory or agent file applies to the given platform."""
-    # Claude Code: mattpocock skills are provided by their own native plugin,
-    # so exclude them from this repo's Claude distribution. This must run
-    # before the is_dir() branch below, which follows the symlink into the
-    # vendor and reads SKILL.md (no platforms field → would return True).
-    if platform == "claude" and _is_mattpocock_vendored(path):
-        return False
-    # For skill dirs, check SKILL.md frontmatter
-    if path.is_dir():
-        skill_md = path / "SKILL.md"
-        if skill_md.exists():
-            content = skill_md.read_text(encoding="utf-8")
-            metadata, _ = parse_frontmatter(content)
-            platforms = metadata.get("platforms")
-            if platforms and isinstance(platforms, list):
-                return platform in platforms
-        return True
-    # For agent .md files, check frontmatter
-    if path.suffix == ".md":
-        content = path.read_text(encoding="utf-8")
-        metadata, _ = parse_frontmatter(content)
-        platforms = metadata.get("platforms")
-        if platforms and isinstance(platforms, list):
-            return platform in platforms
-    return True
-
-
-def _has_platform_filtered_content(src_dir: Path, platform: str) -> bool:
-    """Check if any item in the directory has platform restrictions."""
-    if not src_dir.exists():
-        return False
-    for item in src_dir.iterdir():
-        if not _asset_applies_to(item, platform):
-            return True
-    return False
-
-
 # ─── Phase 1: Build _dist/ ─────────────────────────────────────────────────────
 
 def _ensure_submodules(dry_run: bool = False) -> None:
@@ -359,14 +321,17 @@ def _clean_mattpocock_skill_symlinks(dry_run: bool = False) -> None:
     """Remove leftover mattpocock symlinks under skills/.
 
     Historically build created skills/<name> symlinks into
-    vendor/mattpocock-skills/ so _deep_copy_skills would follow them into
-    _dist/<platform>/skills/. That distribution path is gone now: Claude
-    uses the native mattpocock-skills@mattpocock plugin, and Codex/Cursor
-    install via `install.py manual` (symlinks into ~/.agents/skills/, NOT
-    skills/). So any skills/<name> symlink still pointing at the mattpocock
-    submodule is stale and MUST be removed before build — otherwise
-    _deep_copy_skills follows it and pollutes _dist with mattpocock skills
-    that no platform should get from this repo's plugin.
+    vendor/mattpocock-skills/ and deep-copied them into _dist/<platform>/skills/.
+    That distribution path is gone now: Claude uses the native
+    mattpocock-skills@mattpocock plugin, Codex/Cursor install via
+    `install.py manual` (symlinks into ~/.agents/skills/, NOT skills/), and
+    skills are no longer copied into _dist at all (all platforms scan the
+    repo-root skills/). So any skills/<name> symlink still pointing at the
+    mattpocock submodule is stale — left over from an older build on this
+    checkout. It MUST be removed so the repo-root skills/ stays clean (the
+    single source all platforms scan), and so a stale broken link (if the
+    submodule isn't initialized) doesn't trip Cursor's "unsafe source path"
+    whole-tree scan.
 
     Reads the upstream plugin.json skill list (same source `install.py manual`
     uses) so the cleanup stays in sync if upstream adds/removes skills.
@@ -397,44 +362,24 @@ def _clean_mattpocock_skill_symlinks(dry_run: bool = False) -> None:
         log(f"skills/ stale mattpocock symlinks removed ({count})")
 
 
-def _deep_copy_skills(
-    skills_src: Path, skills_out: Path, platform: str, dry_run: bool
-) -> None:
-    """Copy resolved skill directories (follows symlinks) for git-cloned distribution."""
-    ensure_dir(skills_out, dry_run)
-    count = 0
-    for skill_dir in sorted(skills_src.iterdir()):
-        resolved = skill_dir.resolve()
-        if not resolved.is_dir():
-            continue
-        if not _asset_applies_to(skill_dir, platform):
-            continue
-        dst = skills_out / skill_dir.name
-        if dry_run:
-            log(f"[DRY-RUN] copy {skill_dir.name}")
-        else:
-            shutil.copytree(resolved, dst)
-            count += 1
-    if not dry_run:
-        log(f"_dist/{platform}/skills ({count} skills, deep copy)")
-
-
 def _sync_claude_manifest_agents(dry_run: bool = False) -> None:
-    """Sync .claude-plugin/plugin.json `agents` field with _dist/claude/agents/.
+    """Sync .claude-plugin/plugin.json `agents` field with the root agents/ dir.
 
     Claude Code's manifest schema requires `agents` to be file paths
     (string|array), NOT a directory — unlike `skills` which accepts a
     directory. A directory value fails validation with "agents: Invalid input"
     and the whole plugin fails to load (none of its skills/agents register).
-    After build copies agent files into _dist/claude/agents/, enumerate those
-    files into the manifest so the two never drift.
+    Skills/agents are no longer deep-copied into _dist/ (all three platforms
+    scan the repo-root skills/ and agents/ directly now that those dirs hold
+    only committed real files, no vendor symlinks). So enumerate the root
+    agents/*.md into the manifest so the two never drift.
     """
     manifest = REPO_ROOT / ".claude-plugin" / "plugin.json"
-    agents_dir = DIST / "claude" / "agents"
+    agents_dir = REPO_ROOT / "agents"
     if not manifest.exists() or not agents_dir.exists():
         return
     agent_files = sorted(f.name for f in agents_dir.glob("*.md"))
-    agents_value = [f"./_dist/claude/agents/{name}" for name in agent_files]
+    agents_value = [f"./agents/{name}" for name in agent_files]
     data = json.loads(manifest.read_text(encoding="utf-8"))
     if data.get("agents") == agents_value:
         return  # already in sync; skip write to avoid touching git mtime
@@ -464,43 +409,17 @@ def build_dist(dry_run: bool = False) -> None:
         platform_dir = DIST / platform
         ensure_dir(platform_dir, dry_run)
 
-        # Skills: all platforms use deep copy. A marketplace clone runs a
-        # plain git clone (no submodule init), and Cursor's install-time
-        # safety scan rejects any plugin whose tree contains a symlink with
-        # ".." in its target ("unresolved or unsafe source path"). So every
-        # platform's _dist skills must be real files, never symlinks. The
-        # mattpocock-vendored skills are excluded from the Claude distribution
-        # (handled by _asset_applies_to) because mattpocock-skills@mattpocock
-        # provides them natively on Claude.
-        skills_src = REPO_ROOT / "skills"
-        skills_out = platform_dir / "skills"
-        _deep_copy_skills(skills_src, skills_out, platform, dry_run)
-
-        # Agents: for platforms that support it via plugin. Deep-copied for
-        # every platform (same ".."-in-symlink reason as skills; Cursor's
-        # safety scan flags any ".." symlink target as unsafe source path).
-        if platform in ("cursor", "claude"):
-            agents_src = REPO_ROOT / "agents"
-            agents_out = platform_dir / "agents"
-            if agents_src.exists():
-                if _has_platform_filtered_content(agents_src, platform):
-                    ensure_dir(agents_out, dry_run)
-                    for agent_file in agents_src.glob("*.md"):
-                        if not _asset_applies_to(agent_file, platform):
-                            continue
-                        dst = agents_out / agent_file.name
-                        if dry_run:
-                            log(f"[DRY-RUN] copy {agent_file.name}")
-                        else:
-                            shutil.copy2(agent_file, dst)
-                    if not dry_run:
-                        log(f"_dist/{platform}/agents (filtered)")
-                else:
-                    if dry_run:
-                        log(f"[DRY-RUN] {agents_out}")
-                    else:
-                        shutil.copytree(agents_src, agents_out)
-                        log(f"_dist/{platform}/agents (deep copy)")
+        # Skills and agents are NOT copied into _dist/. All three platforms
+        # scan the repo-root skills/ and agents/ directly via their manifest
+        # (Cursor/Codex: "skills": "./skills/"; Claude: skills field omitted
+        # → scans plugin-root skills/, agents field enumerates ./agents/*.md).
+        # This works because mattpocock/anysearch moved to manual install
+        # (~/.agents/skills/ symlinks), so root skills/ holds only committed
+        # real files — no vendor symlinks that would break on a fresh clone
+        # (no submodule init) and trip Cursor's "unsafe source path" scan.
+        # _dist/ now holds only what genuinely differs per platform:
+        # mcp.json (_platforms filter), rules (.mdc vs .md), and the
+        # global-instructions deploy (CLAUDE.md / AGENTS.md).
 
         # MCP: filtered per platform
         mcp_servers = filter_mcp_for_platform(platform)
@@ -887,8 +806,9 @@ def _do_install(platform: str, dry_run: bool) -> None:
 # `ref: main` pull — any file the agent writes there is lost on the next
 # session. So these skills install as user-level symlinks pointing into
 # vendor/, where each platform follows the symlink and persistent files
-# survive. The submodules stay out of build/_dist (no skills/ symlink, no
-# _deep_copy_skills entry), so they never enter any platform's plugin tree.
+# survive. The submodules stay out of build/_dist (skills aren't copied into
+# _dist at all anymore — all platforms scan the repo-root skills/), so they
+# never enter any platform's plugin tree.
 #
 # Which skills install this way, their source submodule, and the user-level
 # paths to symlink are declared in third-party.json as a top-level `install`

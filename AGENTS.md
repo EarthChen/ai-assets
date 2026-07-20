@@ -13,16 +13,22 @@ This repository manages unified AI agent assets across Claude Code, Codex, and C
 ## Architecture
 
 ```
-Source (single truth)     →  _dist/ (per-platform filtered)  →  Plugin loads / Script deploys
-rules/common/*.md              _dist/cursor/rules/**/*.mdc       .cursor-plugin (all via plugin)
-rules/{java,python,react}/     _dist/claude/rules/**/*.md        .claude-plugin (skills,agents,mcp)
-mcp.json (_platforms tag)      _dist/codex/AGENTS.md             .codex-plugin (skills,mcp)
-skills/ (own + vendored)       _dist/codex/mcp.json
-vendor/mattpocock-skills/
-vendor/anysearch-skill/  (excluded from _dist; manual install only)
-agents/*.md
-global-instructions.md
+Source (single truth)     →  _dist/ (only platform-specific)  →  Plugin loads / Script deploys
+rules/common/*.md              _dist/cursor/rules/**/*.mdc       .cursor-plugin (skills→./skills/, agents→./agents/)
+rules/{java,python,react}/     _dist/claude/rules/**/*.md        .claude-plugin (skills省略扫根, agents→./agents/*.md, mcp)
+mcp.json (_platforms tag)      _dist/codex/AGENTS.md             .codex-plugin (skills→./skills/, mcp)
+global-instructions.md         _dist/codex/mcp.json
+skills/      ──────────────────┐  (all 3 platforms scan repo-root skills/ directly;
+agents/*.md  ──────────────────┘   NOT copied into _dist/ — root is committed
+                                  real files only, no vendor symlinks to break)
+vendor/mattpocock-skills/  (manual install only → ~/.agents/skills/, not in _dist)
+vendor/anysearch-skill/    (manual install only → ~/.claude+~/.agents/skills/, not in _dist)
 ```
+
+`_dist/` now holds only what genuinely differs per platform: `mcp.json`
+(`_platforms` filter), `rules/` (`.mdc` vs `.md`), and the global-instructions
+deploy (`CLAUDE.md` / `AGENTS.md`). Skills and agents are read directly from the
+repo root by all three platforms — no per-platform copy.
 
 ## Update Mechanism
 
@@ -62,7 +68,7 @@ This repo is the ONLY source for custom AI configuration:
 
 ## anysearch-skill (manual install exception)
 
-[anysearch-ai/anysearch-skill](https://github.com/anysearch-ai/anysearch-skill) is the **ONE skill that bypasses plugin distribution**, on purpose. It is a CLI skill (calls `api.anysearch.com`, NOT an MCP server) that replaces the former `exa` MCP server (removed from `mcp.json`). It is pinned at `vendor/anysearch-skill/` (submodule, tag `v2.1.0`) but **deliberately excluded from build/_dist** — no `skills/anysearch` symlink, no `_deep_copy_skills` entry, so it never enters any platform's plugin tree.
+[anysearch-ai/anysearch-skill](https://github.com/anysearch-ai/anysearch-skill) is the **ONE skill that bypasses plugin distribution**, on purpose. It is a CLI skill (calls `api.anysearch.com`, NOT an MCP server) that replaces the former `exa` MCP server (removed from `mcp.json`). It is pinned at `vendor/anysearch-skill/` (submodule, tag `v2.1.0`) and installed manually via `install.py manual` (symlinks into `~/.claude/skills/` + `~/.agents/skills/`), never entering the repo-root `skills/` that the three platforms scan.
 
 **Why not plugin-distributed?** The skill needs `runtime.conf` (agent-written at first use, picks python3/node/bash) and an optional `.env` (`ANYSEARCH_API_KEY`) to persist across sessions. But plugin cache (`~/.claude/plugins/cache/.../`) is a **read-only snapshot overwritten on every `ref: main` pull** (see Update Mechanism) — any file the agent writes there is lost on the next session. So anysearch installs as user-level symlinks outside the plugin cache, where each platform follows the symlink and persistent files survive.
 
@@ -92,10 +98,10 @@ Both links point at the same submodule, so a submodule update flows to all platf
 
 Engineering skills from [mattpocock/skills](https://github.com/mattpocock/skills), aligned to the 22 skills declared in upstream `vendor/mattpocock-skills/.claude-plugin/plugin.json`. **Hybrid management** because mattpocock ships only a Claude native plugin (no Codex/Cursor plugin):
 
-- **Claude Code**: provided by the native plugin `mattpocock-skills@mattpocock`. NOT distributed by this repo's build (excluded from `_dist/claude/skills/`).
-- **Codex / Cursor**: NOT build-distributed either. Installed manually via `install.py manual mattpocock-skills`, which reads the upstream `vendor/mattpocock-skills/.claude-plugin/plugin.json` skill list and symlinks each into `~/.agents/skills/` (the standard user-level path both Codex and Cursor scan). The submodule stays at `vendor/mattpocock-skills/` but is deliberately excluded from `_dist/` — build runs `_clean_mattpocock_skill_symlinks` to remove any stale `skills/<name>` links so `_deep_copy_skills` doesn't follow them and pollute `_dist`.
+- **Claude Code**: provided by the native plugin `mattpocock-skills@mattpocock`. NOT in the repo-root `skills/` that Claude scans.
+- **Codex / Cursor**: NOT in repo-root `skills/` either. Installed manually via `install.py manual mattpocock-skills`, which reads the upstream `vendor/mattpocock-skills/.claude-plugin/plugin.json` skill list and symlinks each into `~/.agents/skills/` (the standard user-level path both Codex and Cursor scan). The submodule stays at `vendor/mattpocock-skills/` and never touches repo-root `skills/` — build runs `_clean_mattpocock_skill_symlinks` to remove any stale `skills/<name>` links left from older builds, keeping the root `skills/` clean (the single source all three platforms scan).
 
-Trade-off vs the old build-deep-copy: submodule updates now flow to Codex/Cursor immediately (`git submodule update --remote` → symlinks point at new content, no rebuild/republish needed), but Codex/Cursor users must run `install.py manual` once after cloning (no longer zero-dependency on fresh clone). See Cursor caveat below.
+Trade-off vs the old build-deep-copy: submodule updates now flow to Codex/Cursor immediately (`git submodule update --remote` → symlinks point at new content, no rebuild/republish needed), but Codex/Cursor users must run `install.py manual` once after cloning. See Cursor caveat below.
 
 ### Included Skills (22, aligned to upstream plugin.json)
 
@@ -167,9 +173,7 @@ Cursor 插件加载失败的 UI 提示 "Error loading plugin" **不写进任何�
    Plugin "earthchen-ai-assets" has unresolved or unsafe source path
    ```
 2. **`unresolved or unsafe source path` = marketplace 的 `source` 解析出空 path**，不是 symlink 问题。Cursor 读 `.claude-plugin/marketplace.json`（和 Claude 同一个文件；ecc 连 `.cursor-plugin/` 都没有也照常加载）。`source` 必须是**字符串相对路径**（`"./"` 或 `"./_dist/cursor"`），写成 Claude 的对象格式 `{source:"url", url, ref}` 会让 Cursor 解析出 empty path → 把仓库根当 unsafe surface → 整个 plugin 失败 → skills/agents/rules/MCP 一个都不显示。
-3. **`source: "./"` 时 plugin 根 = clone 根 = 仓库根**，Cursor 会整树安全扫描。前提是仓库根在 fresh clone（不 init submodule）下**零含 `..` 的 symlink**。所以下面的清理是 `source "./"` 能工作的必要前提，但单独做不解决 empty path：
-   - 顶层 `skills/<name>` 的 mattpocock symlink 不能提交进 git（clone 不 init submodule → 断链 + 含 `..`）→ `.gitignore` 排除，由 `_ensure_mattpocock_skill_symlinks()` 在 build/install 时从上游 `plugin.json` 生成。
-   - `_dist/claude/` 和 `_dist/cursor/` 的 skills/agents 必须深拷贝（`shutil.copytree`/`copy2`），不能用 symlink（`→ ../../skills` 含 `..`）。
+3. **`source: "./"` 时 plugin 根 = clone 根 = 仓库根**，Cursor 会整树安全扫描。前提是仓库根在 fresh clone（不 init submodule）下**零含 `..` 的 symlink**。历史上 mattpocock 曾在 `skills/<name>` 建 vendor symlink（含 `..`、且 fresh clone 不 init submodule 会断链）触发 unsafe；现已改手动安装（`~/.agents/skills/`），根 `skills/` 只剩 committed 实目录，零 symlink。build 的 `_clean_mattpocock_skill_symlinks` 仍会清理本地残留旧 symlink 防污染。`_dist/` 不再拷 skills/agents（三平台都扫根）。
 4. **对照成功案例验证结构**：`~/.cursor/plugins/cache/cursor-public/superpowers/`（官方，加载成功）和 `~/.cursor/plugins/marketplaces/github.com/affaan-m/ecc/`（GitHub marketplace，`source: "./"`）。ecc 是最贴近本仓库的参照——同为 GitHub marketplace、`source: "./"`、根 skills 实目录、零含 `..` symlink。
 5. **CDP 抓 console/剪贴板**：Cursor 带 `--remote-debugging-port=9333` 启动后，用 Cursor 自带的 `ws` 模块（`/Applications/Cursor.app/.../node_modules/ws`）连 `ws://127.0.0.1:9333/devtools/page/<id>`，`Runtime.evaluate` 点 `Copy error details` 按钮 + `pbpaste` 读系统剪贴板。`reload window` 不会 re-clone marketplace；要 re-clone 需完全退出 + 删 `~/.cursor/plugins/marketplaces/<host>/<owner>/<repo>/` + 重启。`fresh-clone`（`git clone --depth 1` 到 /tmp）可预先验证仓库根是否干净，不必反复发版。
 
@@ -185,10 +189,10 @@ Cursor 插件加载失败的 UI 提示 "Error loading plugin" **不写进任何�
 
 ### `.claude-plugin/plugin.json` manifest fields (build-synced)
 
-Claude's manifest schema differs from Cursor/Codex in two fields that `install.py build` must keep in sync with `_dist/claude/`:
+Claude's manifest schema differs from Cursor/Codex in two fields that `install.py build` keeps in sync with the repo root (not `_dist/` — skills/agents are no longer copied there):
 
-- **`agents`** accepts only **file paths** (string|array), NOT a directory (unlike `skills` which accepts a directory). A directory value fails `claude plugin validate` with `agents: Invalid input` and the whole plugin fails to load. So `_sync_claude_manifest_agents()` rewrites `agents` to the enumerated `./_dist/claude/agents/*.md` array after build. The committed value is `[]` (placeholder); build fills it.
-- **`skills`** is deliberately **omitted**. Per schema it *adds to* the default `skills/` scan, so pointing it at `_dist/claude/skills/` would load every skill twice (root `skills/` + `_dist/claude/skills/`). Claude scans the plugin-root `skills/` instead, which on a marketplace clone contains only the 15 self-owned skills (the 21 mattpocock symlinks are `.gitignore`-excluded, provided by `mattpocock-skills@mattpocock`).
+- **`agents`** accepts only **file paths** (string|array), NOT a directory (unlike `skills` which accepts a directory). A directory value fails `claude plugin validate` with `agents: Invalid input` and the whole plugin fails to load. So `_sync_claude_manifest_agents()` enumerates the root `agents/*.md` into the `./agents/<name>` array after build. The committed value is `[]` (placeholder); build fills it.
+- **`skills`** is deliberately **omitted**. Per schema it *adds to* the default `skills/` scan, so setting it would duplicate. Claude scans the plugin-root `skills/` instead, which holds only the 15 self-owned skills (mattpocock/anysearch are manual-installed elsewhere, not symlinked into root `skills/`).
 
 ## Key Files
 
@@ -197,7 +201,7 @@ Claude's manifest schema differs from Cursor/Codex in two fields that `install.p
 - `rules/common/*.md` - Always-on rules for all platforms
 - `rules/{java,python,react}/*.md` - Language-specific rules with paths/globs
 - `agents/*.md` - Subagent definitions (YAML frontmatter: name, description, model, tools)
-- `skills/<name>/SKILL.md` - Agent skill definitions (own + symlinked from vendor)
+- `skills/<name>/SKILL.md` - Agent skill definitions (15 self-owned, committed real dirs; scanned directly by all 3 platforms, NOT copied into `_dist/`)
 - `vendor/mattpocock-skills/` - Git submodule of mattpocock/skills
 - `vendor/anysearch-skill/` - Git submodule of anysearch-ai/anysearch-skill (manual install only, excluded from `_dist`)
 - `mcp.json` - `_platforms` field for per-platform MCP server filtering
