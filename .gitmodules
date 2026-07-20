@@ -1,3 +1,7 @@
 [submodule "vendor/mattpocock-skills"]
 	path = vendor/mattpocock-skills
 	url = https://github.com/mattpocock/skills
+[submodule "vendor/anysearch-skill"]
+	path = vendor/anysearch-skill
+	url = https://github.com/anysearch-ai/anysearch-skill.git
+	branch = main

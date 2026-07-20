@@ -43,6 +43,28 @@
           "install_cmd": "Managed via ~/.agents/skills/ symlinks to ~/.understand-anything/repo/"
         }
       }
+    },
+    {
+      "name": "anysearch",
+      "description": "Unified real-time search engine skill (web/vertical/batch/extract). Replaces exa MCP — anysearch is a CLI skill calling api.anysearch.com, NOT an MCP server. NOT plugin-distributed: needs persistent runtime.conf/.env that plugin cache (a read-only snapshot overwritten on every ref:main pull) cannot hold.",
+      "install": {
+        "source": "vendor/anysearch-skill",
+        "links": [
+          "~/.claude/skills/anysearch",
+          "~/.agents/skills/anysearch"
+        ]
+      },
+      "platforms": {
+        "claude": {
+          "note": "ONLY user-level path Claude scans (Claude does NOT read ~/.agents/skills/). Submodule at vendor/anysearch-skill (pinned v2.1.0) stays out of build/_dist — no skills/ symlink, no _deep_copy_skills entry."
+        },
+        "codex": {
+          "note": "Codex follows symlinks per loader.rs (User scope = Follow). ~/.codex/skills is deprecated legacy; ~/.agents/skills is the standard."
+        },
+        "cursor": {
+          "note": "Cursor scans ~/.agents/skills/ by default. Known bug: home-dir skill symlinks may vanish after restart (v2.5.x); if hit, copy the folder instead of symlinking."
+        }
+      }
     }
   ]
 }

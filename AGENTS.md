@@ -19,6 +19,7 @@ rules/{java,python,react}/     _dist/claude/rules/**/*.md        .claude-plugin 
 mcp.json (_platforms tag)      _dist/codex/AGENTS.md             .codex-plugin (skills,mcp)
 skills/ (own + vendored)       _dist/codex/mcp.json
 vendor/mattpocock-skills/
+vendor/anysearch-skill/  (excluded from _dist; manual install only)
 agents/*.md
 global-instructions.md
 ```
@@ -58,6 +59,34 @@ This repo is the ONLY source for custom AI configuration:
 - Do NOT place skills in `~/.agents/skills/` manually
 - Do NOT install third-party plugins that overlap with this repo
 - All MCP servers managed in this repo's `mcp.json`
+
+## anysearch-skill (manual install exception)
+
+[anysearch-ai/anysearch-skill](https://github.com/anysearch-ai/anysearch-skill) is the **ONE skill that bypasses plugin distribution**, on purpose. It is a CLI skill (calls `api.anysearch.com`, NOT an MCP server) that replaces the former `exa` MCP server (removed from `mcp.json`). It is pinned at `vendor/anysearch-skill/` (submodule, tag `v2.1.0`) but **deliberately excluded from build/_dist** — no `skills/anysearch` symlink, no `_deep_copy_skills` entry, so it never enters any platform's plugin tree.
+
+**Why not plugin-distributed?** The skill needs `runtime.conf` (agent-written at first use, picks python3/node/bash) and an optional `.env` (`ANYSEARCH_API_KEY`) to persist across sessions. But plugin cache (`~/.claude/plugins/cache/.../`) is a **read-only snapshot overwritten on every `ref: main` pull** (see Update Mechanism) — any file the agent writes there is lost on the next session. So anysearch installs as user-level symlinks outside the plugin cache, where each platform follows the symlink and persistent files survive.
+
+**Install (all three platforms):**
+
+```bash
+uv run install.py manual           # install all manual skills
+uv run install.py manual anysearch # install just this one
+```
+
+This subcommand is config-driven: it reads plugins in `third-party.json` that declare a top-level `install` object (`source` submodule path + `links` list of user-level paths) and symlinks each link → source. Adding a second manual skill means adding a `install` object to its `third-party.json` entry — no code change in `install.py`. For anysearch the declared links cover all three platforms' user-level skill paths (per each platform's official docs):
+
+| symlink | read by | official source |
+|---|---|---|
+| `~/.claude/skills/anysearch` | Claude Code | Claude skills doc — `~/.claude/skills/` is Claude's ONLY user-level path. Claude does NOT scan `~/.agents/skills/`. |
+| `~/.agents/skills/anysearch` | Codex (standard) + Cursor (standard) | Codex `loader.rs` — `~/.agents/skills` is the standard User scope (`~/.codex/skills` is deprecated legacy); Cursor skills doc — scans `~/.agents/skills/` and `~/.cursor/skills/`. |
+
+Both links point at the same submodule, so a submodule update flows to all platforms at once. On first use the agent probes the runtime and writes `runtime.conf` inside the skill dir per `SKILL.md`. For higher rate limits set `ANYSEARCH_API_KEY` via env var or `<skill_dir>/.env` — anonymous access works without a key.
+
+**Cursor caveat:** Cursor has a known bug where home-dir skill symlinks (`~/.agents/skills/`, `~/.cursor/skills/`) may vanish from the Skills panel after restart (unfixed as of v2.5.x). If hit, replace the `~/.agents/skills/anysearch` symlink with a copied folder for Cursor only (Codex follows symlinks correctly and needs no such workaround).
+
+**Upgrade:** `git submodule update --remote vendor/anysearch-skill` (then re-pin to a release tag). The symlinks need no update — they point at the submodule, so content changes flow through automatically.
+
+**This is the sole exception to "Single Source of Truth = this repo's plugin."** Do not add more skills to `~/.claude/skills/` or `~/.agents/skills/` manually — if a skill can be plugin-distributed, it goes in `skills/` and through `install.py build`. A manual skill is appropriate only when it needs persistent runtime files the plugin cache cannot hold; declare it in `third-party.json` with an `install` object and install via `install.py manual`.
 
 ## mattpocock/skills (hybrid management)
 
@@ -166,12 +195,13 @@ Claude's manifest schema differs from Cursor/Codex in two fields that `install.p
 
 ## Key Files
 
-- `install.py` - Build + deploy script (subcommands: `build`, `install`, `version`)
+- `install.py` - Build + deploy script (subcommands: `build`, `install`, `version`, `manual`)
 - `global-instructions.md` - Deployed as `~/.claude/CLAUDE.md` and embedded in `~/.codex/AGENTS.md`
 - `rules/common/*.md` - Always-on rules for all platforms
 - `rules/{java,python,react}/*.md` - Language-specific rules with paths/globs
 - `agents/*.md` - Subagent definitions (YAML frontmatter: name, description, model, tools)
 - `skills/<name>/SKILL.md` - Agent skill definitions (own + symlinked from vendor)
 - `vendor/mattpocock-skills/` - Git submodule of mattpocock/skills
+- `vendor/anysearch-skill/` - Git submodule of anysearch-ai/anysearch-skill (manual install only, excluded from `_dist`)
 - `mcp.json` - `_platforms` field for per-platform MCP server filtering
 - `third-party.json` - Third-party plugin references (not bundled)

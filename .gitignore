@@ -15,6 +15,9 @@ __pycache__/
 dist/
 *.egg-info/
 
+# Local Claude Code session artifacts (plans, settings.local.json)
+.claude/
+
 # Backups
 .backup-*/
 

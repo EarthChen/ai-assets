@@ -883,6 +883,99 @@ def _do_install(platform: str, dry_run: bool) -> None:
         platforms[platform](dry_run)
 
 
+# ─── manual skills (symlink-installed, NOT plugin-distributed) ─────────────────
+#
+# Skills that bypass plugin distribution: they need runtime files
+# (runtime.conf, .env) to persist across sessions, but plugin cache
+# (~/.claude/plugins/cache/.../) is a read-only snapshot overwritten on every
+# `ref: main` pull — any file the agent writes there is lost on the next
+# session. So these skills install as user-level symlinks pointing into
+# vendor/, where each platform follows the symlink and persistent files
+# survive. The submodules stay out of build/_dist (no skills/ symlink, no
+# _deep_copy_skills entry), so they never enter any platform's plugin tree.
+#
+# Which skills install this way, their source submodule, and the user-level
+# paths to symlink are declared in third-party.json as a top-level `install`
+# object per plugin:
+#   "install": {"source": "vendor/<name>", "links": ["~/.claude/skills/<name>", ...]}
+# `links` entries use ~ which is expanded with Path.expanduser(). Platform-
+# specific caveats live in each platform's `note` field. This loader is
+# generic: adding a second manual skill means adding a third-party.json entry
+# with an `install` object, no code change here.
+
+def _manual_skills() -> list[dict]:
+    """Plugins in third-party.json that declare an `install` object.
+
+    Each returned dict: {name, source (Path), links (list[Path])}.
+    Plugins with a string `install_cmd` per-platform (mattpocock etc.) are
+    skipped — they're not symlink-installed by this command.
+    """
+    result = []
+    for plugin in _load_third_party_plugins():
+        install = plugin.get("install")
+        if not isinstance(install, dict):
+            continue
+        source = REPO_ROOT / install["source"]
+        links = [Path(p).expanduser() for p in install.get("links", [])]
+        result.append({"name": plugin["name"], "source": source, "links": links})
+    return result
+
+
+def install_manual_skills(name: str | None, dry_run: bool = False) -> None:
+    """Install manual (symlink) skills declared in third-party.json.
+
+    For each plugin with an `install` object (or just the named one), ensure
+    the source submodule is initialized, then create an absolute symlink at
+    each declared link path → the source. Absolute links survive same-machine
+    repo moves; these user-level skill dirs are machine-local anyway.
+    """
+    skills = _manual_skills()
+    if name is not None:
+        skills = [s for s in skills if s["name"] == name]
+        if not skills:
+            log(f"ERROR: no manual skill named '{name}' in third-party.json "
+                f"(look for plugins with an `install` object)")
+            return
+    if not skills:
+        log("No manual skills declared in third-party.json "
+            "(no plugin has an `install` object)")
+        return
+
+    log_section(f"Installing manual skills ({len(skills)}): "
+                f"{', '.join(s['name'] for s in skills)}")
+
+    for skill in skills:
+        src, links = skill["source"], skill["links"]
+        # Ensure the submodule is initialized before symlinking into it.
+        if not (src / "SKILL.md").exists():
+            rel = src.relative_to(REPO_ROOT)
+            if dry_run:
+                log(f"[DRY-RUN] git submodule update --init {rel}")
+            else:
+                log(f"[{skill['name']}] initializing submodule {rel}...")
+                result = subprocess.run(
+                    ["git", "submodule", "update", "--init", str(rel)],
+                    cwd=REPO_ROOT, capture_output=True, text=True,
+                )
+                if result.returncode != 0:
+                    log(f"ERROR: submodule init failed: {result.stderr.strip()}")
+                    continue
+                if not (src / "SKILL.md").exists():
+                    log(f"ERROR: SKILL.md still missing at {src}")
+                    continue
+
+        target = src.resolve()
+        for link in links:
+            create_symlink(target, link, dry_run)
+
+    if dry_run:
+        return
+    log("Manual skills installed. Each symlink points at its vendor submodule,")
+    log("so `git submodule update --remote <path>` (then re-pin to a tag) flows")
+    log("to all platforms at once. Caveats per platform are in third-party.json")
+    log("under each platform's `note` (e.g. Cursor's home-dir symlink bug).")
+
+
 def main() -> None:
     parent = argparse.ArgumentParser(add_help=False)
     parent.add_argument(
@@ -919,6 +1012,20 @@ def main() -> None:
         help="Bump version part instead of setting explicitly",
     )
 
+    manual_parser = sub.add_parser(
+        "manual",
+        parents=[parent],
+        help="Install manual (symlink) skills declared in third-party.json "
+        "(NOT plugin-distributed; needs persistent runtime.conf/.env that "
+        "plugin cache cannot hold). Without a name, installs all.",
+    )
+    manual_parser.add_argument(
+        "name",
+        nargs="?",
+        help="Optional skill name (the `name` field in third-party.json). "
+        "If omitted, install every plugin with an `install` object.",
+    )
+
     parser.add_argument(
         "--platform",
         choices=["claude", "codex", "cursor", "all"],
@@ -948,6 +1055,8 @@ def main() -> None:
             set_version(new_ver, args.dry_run)
         else:
             print(f"  Current version: {_get_current_version()}")
+    elif args.command == "manual":
+        install_manual_skills(getattr(args, "name", None), args.dry_run)
     else:
         build_dist(args.dry_run)
         _do_install(args.platform, args.dry_run)
