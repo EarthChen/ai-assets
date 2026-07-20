@@ -355,50 +355,46 @@ def _ensure_submodules(dry_run: bool = False) -> None:
         log(f"Warning: submodule init failed: {result.stderr.strip()}")
 
 
-def _ensure_mattpocock_skill_symlinks(dry_run: bool = False) -> None:
-    """Create skills/<name> symlinks for vendored mattpocock skills.
+def _clean_mattpocock_skill_symlinks(dry_run: bool = False) -> None:
+    """Remove leftover mattpocock symlinks under skills/.
 
-    These symlinks point into vendor/mattpocock-skills/ (a git submodule) and
-    are generated at build time rather than committed. Committing them is
-    unsafe for Cursor: a marketplace clone does not `git submodule update
-    --init`, so the symlinks ship as broken links with a `../vendor/...`
-    target. Cursor's install-time whole-tree safety scan rejects the whole
-    plugin ("unresolved or unsafe source path"). The skill set is read from
-    the upstream plugin.json so it stays in sync with the submodule.
+    Historically build created skills/<name> symlinks into
+    vendor/mattpocock-skills/ so _deep_copy_skills would follow them into
+    _dist/<platform>/skills/. That distribution path is gone now: Claude
+    uses the native mattpocock-skills@mattpocock plugin, and Codex/Cursor
+    install via `install.py manual` (symlinks into ~/.agents/skills/, NOT
+    skills/). So any skills/<name> symlink still pointing at the mattpocock
+    submodule is stale and MUST be removed before build — otherwise
+    _deep_copy_skills follows it and pollutes _dist with mattpocock skills
+    that no platform should get from this repo's plugin.
+
+    Reads the upstream plugin.json skill list (same source `install.py manual`
+    uses) so the cleanup stays in sync if upstream adds/removes skills.
     """
     upstream_pj = REPO_ROOT / "vendor" / "mattpocock-skills" / ".claude-plugin" / "plugin.json"
     skills_dir = REPO_ROOT / "skills"
     if not upstream_pj.exists():
-        log("Skipping mattpocock skill symlinks (submodule not initialized)")
-        return
+        return  # submodule not initialized → no symlinks to clean
     data = json.loads(upstream_pj.read_text(encoding="utf-8"))
     entries = data.get("skills", [])
     if isinstance(entries, str):
         entries = [entries]
-    ensure_dir(skills_dir, dry_run)
     count = 0
     for entry in entries:
-        # entry looks like "./skills/engineering/tdd"
         skill_name = Path(entry).name
         link = skills_dir / skill_name
-        # entry minus "./" prefix → "skills/engineering/tdd"
-        sub_path = entry[2:] if entry.startswith("./") else entry
-        target = Path(f"../vendor/mattpocock-skills/{sub_path}")
+        if not link.is_symlink():
+            continue
+        if not _is_mattpocock_vendored(link):
+            continue  # not a mattpocock link someone else owns — leave it
         if dry_run:
-            log(f"[DRY-RUN] symlink skills/{skill_name}")
+            log(f"[DRY-RUN] rm stale skills/{skill_name} symlink")
             count += 1
             continue
-        # Recreate if missing or pointing at the wrong target
-        current = link.readlink() if link.is_symlink() else None
-        if current == target:
-            count += 1
-            continue
-        if link.exists() or link.is_symlink():
-            link.unlink()
-        link.symlink_to(target)
+        link.unlink()
         count += 1
-    if not dry_run:
-        log(f"skills/ mattpocock symlinks ({count}, generated from upstream plugin.json)")
+    if count and not dry_run:
+        log(f"skills/ stale mattpocock symlinks removed ({count})")
 
 
 def _deep_copy_skills(
@@ -457,7 +453,7 @@ def build_dist(dry_run: bool = False) -> None:
     log_section("Building _dist/ (platform-filtered content)")
 
     _ensure_submodules(dry_run)
-    _ensure_mattpocock_skill_symlinks(dry_run)
+    _clean_mattpocock_skill_symlinks(dry_run)
 
     if not dry_run:
         if DIST.exists():
@@ -870,7 +866,7 @@ def _deploy_shared_skills(dry_run: bool = False) -> None:
 def _do_install(platform: str, dry_run: bool) -> None:
     """Run platform installers."""
     _ensure_submodules(dry_run)
-    _ensure_mattpocock_skill_symlinks(dry_run)
+    _clean_mattpocock_skill_symlinks(dry_run)
     platforms = {
         "claude": install_claude,
         "codex": install_codex,
@@ -903,12 +899,46 @@ def _do_install(platform: str, dry_run: bool) -> None:
 # generic: adding a second manual skill means adding a third-party.json entry
 # with an `install` object, no code change here.
 
+def _expand_install_links(install: dict, source: Path) -> list[tuple[Path, Path]]:
+    """Resolve an `install` object into (link_path, target_path) pairs.
+
+    Two forms, mutually exclusive:
+    - `links`: explicit list of user-level paths (each → source root).
+      For single-skill repos whose root IS the skill root (e.g. anysearch).
+    - `generate`: {from, field, link_dir} — read <source>/<from> JSON, take
+      its <field> (a list of relative paths like "./skills/eng/tdd"), and
+      create one symlink per entry at <link_dir>/<skill-name> → <source>/<sub>.
+      For multi-skill repos that declare their skill set upstream (e.g.
+      mattpocock's 22 skills listed in its .claude-plugin/plugin.json).
+    """
+    if "links" in install and "generate" in install:
+        raise ValueError("install: use `links` OR `generate`, not both")
+    if "links" in install:
+        return [(Path(p).expanduser(), source) for p in install["links"]]
+    if "generate" in install:
+        gen = install["generate"]
+        manifest = source / gen["from"]
+        data = json.loads(manifest.read_text(encoding="utf-8"))
+        entries = data.get(gen["field"], [])
+        if isinstance(entries, str):
+            entries = [entries]
+        link_dir = Path(gen["link_dir"]).expanduser()
+        pairs = []
+        for entry in entries:
+            # entry looks like "./skills/engineering/tdd"
+            sub = entry[2:] if entry.startswith("./") else entry
+            skill_name = Path(sub).name
+            pairs.append((link_dir / skill_name, source / sub))
+        return pairs
+    return []
+
+
 def _manual_skills() -> list[dict]:
     """Plugins in third-party.json that declare an `install` object.
 
-    Each returned dict: {name, source (Path), links (list[Path])}.
-    Plugins with a string `install_cmd` per-platform (mattpocock etc.) are
-    skipped — they're not symlink-installed by this command.
+    Each returned dict: {name, source (Path), pairs (list[(link, target)])}.
+    Plugins with a string `install_cmd` per-platform are skipped — they're not
+    symlink-installed by this command.
     """
     result = []
     for plugin in _load_third_party_plugins():
@@ -916,8 +946,8 @@ def _manual_skills() -> list[dict]:
         if not isinstance(install, dict):
             continue
         source = REPO_ROOT / install["source"]
-        links = [Path(p).expanduser() for p in install.get("links", [])]
-        result.append({"name": plugin["name"], "source": source, "links": links})
+        pairs = _expand_install_links(install, source)
+        result.append({"name": plugin["name"], "source": source, "pairs": pairs})
     return result
 
 
@@ -925,8 +955,8 @@ def install_manual_skills(name: str | None, dry_run: bool = False) -> None:
     """Install manual (symlink) skills declared in third-party.json.
 
     For each plugin with an `install` object (or just the named one), ensure
-    the source submodule is initialized, then create an absolute symlink at
-    each declared link path → the source. Absolute links survive same-machine
+    the source submodule is initialized, then create an absolute symlink for
+    each resolved (link, target) pair. Absolute links survive same-machine
     repo moves; these user-level skill dirs are machine-local anyway.
     """
     skills = _manual_skills()
@@ -945,9 +975,12 @@ def install_manual_skills(name: str | None, dry_run: bool = False) -> None:
                 f"{', '.join(s['name'] for s in skills)}")
 
     for skill in skills:
-        src, links = skill["source"], skill["links"]
-        # Ensure the submodule is initialized before symlinking into it.
-        if not (src / "SKILL.md").exists():
+        src, pairs = skill["source"], skill["pairs"]
+        # Ensure the submodule is initialized before symlinking into it. The
+        # source root may or may not have a SKILL.md (anysearch does,
+        # mattpocock doesn't — its skills live in subdirs), so just check the
+        # dir is non-empty.
+        if not src.is_dir() or not any(src.iterdir()):
             rel = src.relative_to(REPO_ROOT)
             if dry_run:
                 log(f"[DRY-RUN] git submodule update --init {rel}")
@@ -960,13 +993,10 @@ def install_manual_skills(name: str | None, dry_run: bool = False) -> None:
                 if result.returncode != 0:
                     log(f"ERROR: submodule init failed: {result.stderr.strip()}")
                     continue
-                if not (src / "SKILL.md").exists():
-                    log(f"ERROR: SKILL.md still missing at {src}")
-                    continue
 
-        target = src.resolve()
-        for link in links:
-            create_symlink(target, link, dry_run)
+        log(f"[{skill['name']}] {len(pairs)} symlink(s)")
+        for link, target in pairs:
+            create_symlink(target.resolve(), link, dry_run)
 
     if dry_run:
         return

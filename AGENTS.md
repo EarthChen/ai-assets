@@ -90,14 +90,14 @@ Both links point at the same submodule, so a submodule update flows to all platf
 
 ## mattpocock/skills (hybrid management)
 
-Engineering skills from [mattpocock/skills](https://github.com/mattpocock/skills), aligned to the 21 skills declared in upstream `vendor/mattpocock-skills/.claude-plugin/plugin.json`. **Hybrid management** because mattpocock ships only a Claude native plugin (no Codex/Cursor plugin):
+Engineering skills from [mattpocock/skills](https://github.com/mattpocock/skills), aligned to the 22 skills declared in upstream `vendor/mattpocock-skills/.claude-plugin/plugin.json`. **Hybrid management** because mattpocock ships only a Claude native plugin (no Codex/Cursor plugin):
 
-- **Claude Code**: provided by the native plugin `mattpocock-skills@mattpocock`. `install.py build` excludes these vendored skills from the Claude distribution so they aren't duplicated.
-- **Codex / Cursor**: vendored as a git submodule at `vendor/mattpocock-skills/`, symlinked into `skills/`. Both deep-copy the resolved skill directories into `_dist/<platform>/skills/` at build (Codex → `_dist/codex/skills/`, Cursor → `_dist/cursor/skills/`). `_dist/` is committed, so both platforms work on clone without initializing the submodule.
+- **Claude Code**: provided by the native plugin `mattpocock-skills@mattpocock`. NOT distributed by this repo's build (excluded from `_dist/claude/skills/`).
+- **Codex / Cursor**: NOT build-distributed either. Installed manually via `install.py manual mattpocock-skills`, which reads the upstream `vendor/mattpocock-skills/.claude-plugin/plugin.json` skill list and symlinks each into `~/.agents/skills/` (the standard user-level path both Codex and Cursor scan). The submodule stays at `vendor/mattpocock-skills/` but is deliberately excluded from `_dist/` — build runs `_clean_mattpocock_skill_symlinks` to remove any stale `skills/<name>` links so `_deep_copy_skills` doesn't follow them and pollute `_dist`.
 
-After cloning, run `git submodule update --init` only if you need to rebuild `_dist/` (the committed `_dist/` already works without it).
+Trade-off vs the old build-deep-copy: submodule updates now flow to Codex/Cursor immediately (`git submodule update --remote` → symlinks point at new content, no rebuild/republish needed), but Codex/Cursor users must run `install.py manual` once after cloning (no longer zero-dependency on fresh clone). See Cursor caveat below.
 
-### Included Skills (21, aligned to upstream plugin.json)
+### Included Skills (22, aligned to upstream plugin.json)
 
 User-invoked (workflow chain):
 - `grill-with-docs` → Grilling session + domain model / CONTEXT.md / ADRs
@@ -128,22 +128,19 @@ Productivity:
 
 ### Managing Vendored Skills (Codex/Cursor only)
 
-Claude gets mattpocock skills from its native plugin — no symlink maintenance needed there. The commands below only adjust the Codex/Cursor distribution. Keep the symlink set in sync with upstream `vendor/mattpocock-skills/.claude-plugin/plugin.json`.
+Claude gets mattpocock skills from its native plugin — nothing to do there. Codex/Cursor install via the manual subcommand, which is **generate-driven**: it reads the upstream `vendor/mattpocock-skills/.claude-plugin/plugin.json` `skills` list and symlinks each into `~/.agents/skills/`. Adding/removing a skill upstream needs no code change here — re-running the subcommand picks up the new list.
 
 ```bash
-# Add a new mattpocock skill (match upstream plugin.json list)
-ln -s ../vendor/mattpocock-skills/skills/engineering/<name> skills/<name>
-ln -s ../vendor/mattpocock-skills/skills/productivity/<name> skills/<name>
+# Install all 22 mattpocock skills into ~/.agents/skills/ (Codex + Cursor)
+uv run install.py manual mattpocock-skills
 
-# Remove a vendored skill
-rm skills/<name>
-
-# Update to upstream latest
+# Update to upstream latest (symlinks point at the submodule, so content
+# flows through automatically — no rebuild needed for Codex/Cursor)
 git submodule update --remote vendor/mattpocock-skills
-
-# After changes, rebuild
-uv run install.py build
+# then re-pin to a release tag in .gitmodules / git add vendor/mattpocock-skills
 ```
+
+**Cursor caveat (same as anysearch):** home-dir skill symlinks may vanish from the Skills panel after restart (known v2.5.x bug). If hit, replace the affected `~/.agents/skills/<name>` symlinks with copied folders for Cursor only; Codex follows symlinks correctly.
 
 ## Rules Deployment Strategy
 

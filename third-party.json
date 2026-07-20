@@ -15,20 +15,26 @@
     },
     {
       "name": "mattpocock-skills",
-      "description": "Engineering skills by Matt Pocock (mattpocock/skills). Hybrid management: Claude uses the native plugin; Codex/Cursor use the vendored submodule.",
+      "description": "Engineering skills by Matt Pocock (mattpocock/skills). Hybrid management: Claude uses the native plugin; Codex/Cursor use manual symlinks into ~/.agents/skills/.",
+      "install": {
+        "source": "vendor/mattpocock-skills",
+        "generate": {
+          "from": ".claude-plugin/plugin.json",
+          "field": "skills",
+          "link_dir": "~/.agents/skills"
+        }
+      },
       "platforms": {
         "claude": {
           "marketplace_ref": "mattpocock/skills",
           "plugin_id": "mattpocock-skills@mattpocock",
-          "note": "Native plugin is the sole source of mattpocock skills on Claude; this repo's build excludes them from its Claude distribution."
+          "note": "Native plugin is the sole source of mattpocock skills on Claude; this repo's build excludes them from its Claude distribution. NOT installed by `install.py manual` on Claude."
         },
         "codex": {
-          "install_cmd": "Managed via vendor/mattpocock-skills submodule (deep-copied into _dist/codex/skills by install.py build)",
-          "note": "No upstream Codex plugin; skills distributed by this repo's build."
+          "note": "Installed by `install.py manual mattpocock-skills` — generates 22 symlinks into ~/.agents/skills/ (Codex standard user path) from the upstream plugin.json skill list. Codex follows symlinks per loader.rs (User scope = Follow)."
         },
         "cursor": {
-          "install_cmd": "Managed via vendor/mattpocock-skills submodule (symlinked from skills/)",
-          "note": "No upstream Cursor plugin; skills distributed by this repo's plugin."
+          "note": "Same as codex: `install.py manual mattpocock-skills` → ~/.agents/skills/. Cursor scans ~/.agents/skills/ by default. Known bug: home-dir skill symlinks may vanish after restart (v2.5.x); if hit, copy the folders instead of symlinking."
         }
       }
     },
