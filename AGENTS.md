@@ -34,21 +34,36 @@ repo root by all three platforms — no per-platform copy.
 
 | Platform | Method | Trigger |
 |----------|--------|---------|
-| Cursor | Marketplace (URL install) | Push to main → Cursor re-pulls on session |
+| Cursor | `install.py install` (rsync real-dir copy) | After repo edits + restart/reload |
 | Codex | Local symlink (instant) | After `build` |
 | Claude Code | ref-tracked auto-pull | Each session start (fetches main branch HEAD) |
 
 Claude Code's `marketplace.json` uses `ref: "main"` without SHA pinning.
 No manual `claude plugin update` needed; push to main → next session picks it up.
 
-Cursor: `install.py install` no longer creates a `~/.cursor/plugins/local/`
-symlink — Cursor's plugin registry only recognizes plugins installed via the
-marketplace (each gets a numeric id in `state.vscdb`'s
-`cursor.plugins.installedIds.*` keys; a local symlink is never counted, so it
-silently failed to surface the plugin). Install via Settings → Customize →
-add `https://github.com/EarthChen/ai-assets`. For dev preview only, manually
-symlink this repo to `~/.cursor/plugins/local/` + Reload Window (not counted
-in installedIds; marketplace install is the source of truth).
+Cursor: `install.py install` copies the repo as a **real directory** to
+`~/.cursor/plugins/local/earthchen-ai-assets` (rsync-style: rebuilds each run
+with `--delete` semantics, excluding `.git/.venv/vendor` etc). **Not a
+symlink** — Cursor's local-plugin scanner skips symlinks in
+`~/.cursor/plugins/local/` (verified on Cursor 2.5.x: a symlinked plugin dir
+is never indexed, its skills never load, only `user:skill` shows; a real-dir
+copy loads as `plugin:skill`). Per `cursor.com/docs/plugins#test-plugins-locally`
+the docs mention a symlink as a "faster iteration" option, but that does not
+work in practice — the real-dir copy is what actually loads. Codex keeps a
+symlink (`install_codex`), since its scanner follows symlinks fine. Restart
+Cursor or Developer: Reload Window after `install.py install` to pick it up.
+
+The marketplace is a **parallel alternative, but has a stale-cache problem**:
+Cursor resolves a marketplace to a commit SHA on first import and caches it —
+it does NOT re-resolve on reinstall or session start (verified: reinstalling
+keeps pulling the first-imported commit even after push). So marketplace
+installs get stuck on whatever version was first imported (ecc/superpowers
+hit this too). For reliable updates use `install.py install` (local real-dir)
+and re-run after each repo change. `install.py` can't drive marketplace
+install itself — `cursor` CLI has no `plugin` subcommand, so marketplace
+install is UI-only (Settings → Customize → add `https://github.com/EarthChen/ai-assets`).
+Local + marketplace under the same plugin name would double-load (duplicate
+skills); pick one — prefer local for the update-reliability reason above.
 
 **Cursor "Include third-party Plugins, Skills, and other configs" (Settings →
 Rules, Skills, Subagents): keep this OFF.** When on, Cursor recursively scans
@@ -56,8 +71,9 @@ Rules, Skills, Subagents): keep this OFF.** When on, Cursor recursively scans
 with a full `skills/`), `~/.codex/skills/`, `~/.agents/skills/`, etc. with no
 de-duplication, so every skill (e.g. `tdd`) loads ~11×. This is a known Cursor
 bug (no ETA). Off is safe here because this repo's own `~/.claude/skills`,
-`~/.codex/skills`, `~/.agents/skills` are essentially empty — the marketplace
-install is the sole source.
+`~/.codex/skills`, `~/.agents/skills` are essentially empty — the repo-root
+`skills/` (scanned directly by the plugin, local or marketplace) is the sole
+source.
 
 ## Single Source of Truth
 
