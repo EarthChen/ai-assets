@@ -4,7 +4,7 @@ alwaysApply: false
 ---
 # React Patterns
 
-> This file extends [typescript/patterns.md](../typescript/patterns.md) and [common/patterns.md](../common/patterns.md) with React specific content. For hook-specific rules see [hooks.md](./hooks.md).
+> For hook-specific rules see [react-hooks.md](./react-hooks.md).
 
 ## Container / Presentational Split
 
@@ -183,7 +183,3 @@ Older codebases on React 18 still need `forwardRef`.
 - Platform-specific imports (`Platform.OS`, `.ios.tsx` / `.android.tsx`), `StyleSheet`, navigation libraries (React Navigation, Expo Router)
 - Treated as a separate track — `rules/react-native/` is not yet present
 - React core hooks/patterns from this file still apply
-
-## Skill Reference
-
-For React-specific deep dives see `skills/react-patterns/SKILL.md`. For cross-framework frontend concerns see `skills/frontend-patterns/SKILL.md`. For accessibility see `skills/accessibility/SKILL.md`.

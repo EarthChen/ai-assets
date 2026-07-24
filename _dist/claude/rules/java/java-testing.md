@@ -4,7 +4,7 @@ alwaysApply: false
 ---
 # Java Testing
 
-> This file extends [common/testing.md](../common/testing.md) with Java-specific content.
+> This file extends [common-testing.md](../common/common-testing.md) with Java-specific content.
 
 ## Test Framework
 
@@ -112,7 +112,6 @@ class OrderRepositoryIT {
 ```
 
 For Spring Boot integration tests, see skill: `springboot-tdd`.
-For Quarkus integration tests, see skill: `quarkus-tdd`.
 
 ## Test Naming
 
@@ -129,5 +128,4 @@ Use descriptive names with `@DisplayName`:
 ## References
 
 See skill: `springboot-tdd` for Spring Boot TDD patterns with MockMvc and Testcontainers.
-See skill: `quarkus-tdd` for Quarkus TDD patterns with REST Assured and Dev Services.
 See skill: `java-coding-standards` for testing expectations.

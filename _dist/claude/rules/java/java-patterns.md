@@ -4,8 +4,6 @@ alwaysApply: false
 ---
 # Java Patterns
 
-> This file extends [common/patterns.md](../common/patterns.md) with Java-specific content.
-
 ## Repository Pattern
 
 Encapsulate data access behind an interface:
@@ -143,5 +141,3 @@ public record ApiResponse<T>(boolean success, T data, String error) {
 ## References
 
 See skill: `springboot-patterns` for Spring Boot architecture patterns.
-See skill: `quarkus-patterns` for Quarkus architecture patterns with REST, Panache, and messaging.
-See skill: `jpa-patterns` for entity design and query optimization.
