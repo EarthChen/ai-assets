@@ -33,7 +33,7 @@
 
 
 # 4. 搜索与信息检索策略
-- **首选 `anysearch` skill**：本机已标配（`~/.claude/skills/anysearch`），需联网检索时优先调用，无需判断是否安装。四类能力按场景择用：
+- **首选 `anysearch` skill**：本机已标配，需联网检索时优先调用，无需判断是否安装。四类能力按场景择用：
   - `search`：通用 web 搜索。
   - 垂直域搜索：涉及 finance / academic / travel / health / code / legal / security 等 16 个域时，**先 `get_sub_domains` 发现 `sub_domain` 与必填参数，再带参搜索**——结果显著优于通用搜索。`(required)` 参数即使无值也传空串。
   - `batch_search`：多意图并行检索。
