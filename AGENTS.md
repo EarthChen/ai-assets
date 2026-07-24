@@ -138,6 +138,7 @@ Claude's manifest schema differs from Cursor/Codex in two fields that `install.p
 - `rules/{java,python,react}/*.md` - Language-specific rules with paths/globs
 - `agents/*.md` - Subagent definitions (YAML frontmatter: name, description, model, tools)
 - `skills/<name>/SKILL.md` - Agent skill definitions (scanned directly by all 3 platforms, NOT copied into `_dist/`)
+- 16 self-owned skills (e.g. `skill-creator`, `project-docs-init`, `e2e-testing`, `springboot-tdd`, `llm-wiki`) — full list under `skills/`; mattpocock + anysearch are NOT here (manual install, see below)
 - `vendor/mattpocock-skills/` - Git submodule of mattpocock/skills
 - `vendor/anysearch-skill/` - Git submodule of anysearch-ai/anysearch-skill (manual install only, excluded from `_dist`)
 - `mcp.json` - `_platforms` field for per-platform MCP server filtering
