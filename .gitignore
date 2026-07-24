@@ -52,3 +52,6 @@ skills/to-tickets
 skills/triage
 skills/wayfinder
 skills/writing-great-skills
+
+# Playwright MCP runtime artifacts
+.playwright-mcp/

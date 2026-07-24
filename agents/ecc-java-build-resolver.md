@@ -272,4 +272,3 @@ Final: `Framework: X | Build Status: SUCCESS/FAILED | Errors Fixed: N | Files Mo
 
 For detailed patterns and examples:
 - **[SPRING]**: See `skill: springboot-patterns`
-- **[QUARKUS]**: See `skill: quarkus-patterns`

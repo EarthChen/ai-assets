@@ -4,7 +4,7 @@ paths:
 ---
 # Java Security
 
-> This file extends [common/security.md](../common/security.md) with Java-specific content.
+> This file extends [common-security.md](../common/common-security.md) with Java-specific content.
 
 ## Secrets Management
 
@@ -93,9 +93,3 @@ try {
     return ApiResponse.error("Internal server error");  // never expose ex.getMessage()
 }
 ```
-
-## References
-
-See skill: `springboot-security` for Spring Security authentication and authorization patterns.
-See skill: `quarkus-security` for Quarkus security with JWT/OIDC, RBAC, and CDI.
-See skill: `security-review` for general security checklists.

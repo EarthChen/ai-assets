@@ -8,7 +8,7 @@ paths:
 ---
 # React Security
 
-> This file extends [typescript/security.md](../typescript/security.md) and [common/security.md](../common/security.md) with React specific content.
+> This file extends [common-security.md](../common/common-security.md) with React specific content.
 
 ## XSS via `dangerouslySetInnerHTML`
 
@@ -177,4 +177,4 @@ Production builds should ship without source maps, or with sourcemaps uploaded t
 ## Agent Support
 
 - Use `security-reviewer` agent for comprehensive security audits across the codebase
-- Use `react-reviewer` agent for React-specific patterns and the above rules in active code review
+- Use `typescript-reviewer` agent for React/TypeScript specific patterns and the above rules in active code review

@@ -4,7 +4,7 @@ paths:
 ---
 # Java Coding Style
 
-> This file extends [common/coding-style.md](../common/coding-style.md) with Java-specific content.
+> This file extends [common-coding-style.md](../common/common-coding-style.md) with Java-specific content.
 
 ## Formatting
 
@@ -111,4 +111,3 @@ public class OrderNotFoundException extends RuntimeException {
 ## References
 
 See skill: `java-coding-standards` for full coding standards with examples.
-See skill: `jpa-patterns` for JPA/Hibernate entity design patterns.

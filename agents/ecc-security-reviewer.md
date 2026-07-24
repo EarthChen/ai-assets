@@ -110,7 +110,7 @@ If you find a CRITICAL vulnerability:
 
 ## Reference
 
-For detailed vulnerability patterns, code examples, report templates, and PR review templates, see skill: `security-review`.
+For the security checklist and mandatory pre-commit checks, see rule: `common-security.md`.
 
 ---
 

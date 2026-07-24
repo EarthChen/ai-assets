@@ -1,3 +1,7 @@
+---
+description: "Code review standards: when to review, checklist, severity levels"
+alwaysApply: true
+---
 # Code Review Standards
 
 ## Purpose
@@ -67,8 +71,6 @@ Use these agents for code review:
 | **security-reviewer** | Security vulnerabilities, OWASP Top 10 |
 | **typescript-reviewer** | TypeScript/JavaScript specific issues |
 | **python-reviewer** | Python specific issues |
-| **go-reviewer** | Go specific issues |
-| **rust-reviewer** | Rust specific issues |
 
 ## Review Workflow
 
@@ -113,12 +115,3 @@ Use these agents for code review:
 - **Approve**: No CRITICAL or HIGH issues
 - **Warning**: Only HIGH issues (merge with caution)
 - **Block**: CRITICAL issues found
-
-## Integration with Other Rules
-
-This rule works with:
-
-- [testing.md](testing.md) - Test coverage requirements
-- [security.md](security.md) - Security checklist
-- [git-workflow.md](git-workflow.md) - Commit standards
-- [agents.md](agents.md) - Agent delegation

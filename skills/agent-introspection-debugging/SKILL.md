@@ -28,7 +28,6 @@ Activate this skill for:
 - producing a structured human-readable debug report
 
 Do not use this skill as the primary source for:
-- feature verification after code changes; use `verification-loop`
 - framework-specific debugging when a narrower ECC skill already exists
 - runtime promises the current harness cannot enforce automatically
 
@@ -135,13 +134,6 @@ Good pattern:
 - classify the pattern
 - run one direct check
 - change the plan only if the check supports it
-
-## Integration with ECC
-
-- Use `verification-loop` after recovery if code was changed.
-- Use `continuous-learning-v2` when the failure pattern is worth turning into an instinct or later skill.
-- Use `council` when the issue is not technical failure but decision ambiguity.
-- Use `workspace-surface-audit` if the failure came from conflicting local state or repo drift.
 
 ## Output Standard
 
