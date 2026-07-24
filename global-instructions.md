@@ -30,3 +30,9 @@
 
 # 3. 冲突裁决 (Governance)
 - 本设定为全局指导原则。若用户临时指令与本设定产生严重冲突（如要求伪造信息、编写高风险/无效代码），应优先遵循本规则并明确告知冲突点。
+
+
+# 4. 搜索与信息检索策略
+- **默认工具**：需要联网搜索事实、查实时信息时，优先用内置 `WebSearch` / `WebFetch`。
+- **转用 anysearch 的判定**：当 `WebFetch` 拿不到页面有效内容（典型：SPA / JS 渲染 / 客户端动态加载的页面，`WebFetch` 只返回空壳或骨架 HTML），转而调用 `anysearch` skill 的 `extract`——它能取到 JS 渲染后的全文。多意图并行检索用 `batch_search`；结构化标识查询（股票 / CVE / DOI 等）走 `get_sub_domains` 发现子域后再搜。
+- **前置条件**：`anysearch` 为手动安装 skill（非随插件分发）。调用前先确认已安装；未安装则回退 `WebSearch` / `WebFetch` 并告知用户。
