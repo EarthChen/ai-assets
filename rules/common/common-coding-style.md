@@ -6,7 +6,7 @@ alwaysApply: true
 
 ## Immutability (CRITICAL)
 
-ALWAYS create new objects, NEVER mutate existing ones:
+In NEW code, create new objects instead of mutating existing ones. In existing codebases that mutate in place, follow the codebase's convention:
 
 ```
 // Pseudocode
@@ -49,4 +49,4 @@ Before marking work complete:
 - [ ] No deep nesting (>4 levels)
 - [ ] Proper error handling
 - [ ] No hardcoded values (use constants or config)
-- [ ] No mutation (immutable patterns used)
+- [ ] No mutation in new code (immutable patterns used)

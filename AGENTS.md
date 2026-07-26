@@ -27,6 +27,15 @@ vendor/anysearch-skill/    (manual install only → ~/.claude+~/.agents/skills/,
 
 `_dist/` holds only what genuinely differs per platform: `mcp.json` (`_platforms` filter), `rules/` (`.mdc` vs `.md`), and the global-instructions deploy (`CLAUDE.md` / `AGENTS.md`). Skills and agents are read directly from the repo root by all three platforms — no per-platform copy.
 
+## pi support (script-only deploy)
+
+[pi](https://github.com/badlogic/pi-mono) has no plugin system compatible with this repo, so `install.py install --platform pi` deploys directly to `~/.pi/agent/`:
+
+- **AGENTS.md**: `_dist/pi/AGENTS.md` (global-instructions + common rules, same embed as Codex; pi loads it from `~/.pi/agent/` at startup — no 32KB limit) → merged as a **managed block** (marker-delimited, idempotently replaced) into `~/.pi/agent/AGENTS.md`, because that directory is itself the user's my-pi-agent config repo whose AGENTS.md carries its own project docs — never overwritten
+- **Skills**: repo-root `skills/` registered in `~/.pi/agent/settings.json` `skills` array (idempotent merge); pi implements the Agent Skills standard and discovers `SKILL.md` dirs recursively. mattpocock/anysearch need NO extra work — pi natively scans `~/.agents/skills/`, where `install.py manual` already links them
+- **MCP**: `_dist/pi/mcp.json` merged into `~/.pi/agent/mcp.json` (user servers and adapter `settings` keys preserved). pi has no native MCP — requires the `pi-mcp-adapter` extension (`pi install npm:pi-mcp-adapter`)
+- **NOT deployed**: `agents/*.md` (pi has no subagents), separate rules files (embedded in AGENTS.md; language rules via skills on demand)
+
 ## Update Mechanism
 
 | Platform | Method | Trigger |
@@ -34,6 +43,7 @@ vendor/anysearch-skill/    (manual install only → ~/.claude+~/.agents/skills/,
 | Cursor | `install.py install` (rsync real-dir, `--delete`) | After repo edits + restart/reload |
 | Codex | Local symlink (instant, tracks repo) | After `build` |
 | Claude Code | `claude plugin update` (pulls marketplace `ref: main`) | **Version-gated — see below** |
+| pi | `install.py install --platform pi` (direct deploy to `~/.pi/agent/`) | After `build` + install |
 
 **Claude Code is version-gated.** `marketplace.json`'s `version` field is the ONLY signal Claude uses to decide whether to pull new content. Pushing to `main` without bumping version → `claude plugin update` sees the same version in cache and skips → cache stays at the old content (verified: pushed agent deletions + global rewrite at 1.1.0, but cache remained old 1.1.0 with the deleted agents still present). So the release flow is **bump version → build → commit → push → install**; skip the bump and Claude does not update. Codex (symlink tracks repo) and Cursor (rsync `--delete` re-copies) are NOT version-gated — push + install and they pick up new content.
 
@@ -129,17 +139,3 @@ Claude's manifest schema differs from Cursor/Codex in two fields that `install.p
 
 - **`agents`** accepts only **file paths** (string|array), NOT a directory (unlike `skills` which accepts a directory). A directory value fails `claude plugin validate` with `agents: Invalid input` and the whole plugin fails to load. So `_sync_claude_manifest_agents()` enumerates the root `agents/*.md` into the `./agents/<name>` array after build. The committed value is `[]` (placeholder); build fills it.
 - **`skills`** is deliberately **omitted**. Per schema it *adds to* the default `skills/` scan, so setting it would duplicate. Claude scans the plugin-root `skills/` instead, which holds only the self-owned skills (mattpocock/anysearch are manual-installed elsewhere, not symlinked into root `skills/`).
-
-## Key Files
-
-- `install.py` - Build + deploy script (subcommands: `build`, `install`, `version`, `manual`)
-- `global-instructions.md` - Deployed as `~/.claude/CLAUDE.md` and embedded in `~/.codex/AGENTS.md`
-- `rules/common/*.md` - Always-on rules for all platforms
-- `rules/{java,python,react}/*.md` - Language-specific rules with paths/globs
-- `agents/*.md` - Subagent definitions (YAML frontmatter: name, description, model, tools)
-- `skills/<name>/SKILL.md` - Agent skill definitions (scanned directly by all 3 platforms, NOT copied into `_dist/`)
-- 16 self-owned skills (e.g. `skill-creator`, `project-docs-init`, `e2e-testing`, `springboot-tdd`, `llm-wiki`) — full list under `skills/`; mattpocock + anysearch are NOT here (manual install, see below)
-- `vendor/mattpocock-skills/` - Git submodule of mattpocock/skills
-- `vendor/anysearch-skill/` - Git submodule of anysearch-ai/anysearch-skill (manual install only, excluded from `_dist`)
-- `mcp.json` - `_platforms` field for per-platform MCP server filtering
-- `third-party.json` - Third-party plugin references (not bundled)

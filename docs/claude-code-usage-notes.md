@@ -1,25 +1,6 @@
----
-description: "Performance: model selection, context management, build troubleshooting"
-alwaysApply: true
----
-# Performance Optimization
+# Claude Code 使用笔记（个人操作参考，不进模型上下文）
 
-## Model Selection Strategy
-
-**Haiku** (90% of Sonnet capability, 3x cost savings):
-- Lightweight agents with frequent invocation
-- Pair programming and code generation
-- Worker agents in multi-agent systems
-
-**Sonnet** (Best coding model):
-- Main development work
-- Orchestrating multi-agent workflows
-- Complex coding tasks
-
-**Opus** (Deepest reasoning):
-- Complex architectural decisions
-- Maximum reasoning requirements
-- Research and analysis tasks
+> 原 `rules/common/common-performance.md`。内容是给人看的操作说明（键位、环境变量），模型无法执行，故移出 rules。
 
 ## Context Window Management
 
@@ -36,7 +17,7 @@ Lower context sensitivity tasks:
 
 ## Extended Thinking + Plan Mode
 
-Extended thinking is enabled by default, reserving up to 31,999 tokens for internal reasoning.
+Extended thinking is enabled by default.
 
 Control extended thinking via:
 - **Toggle**: Option+T (macOS) / Alt+T (Windows/Linux)

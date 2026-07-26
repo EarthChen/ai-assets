@@ -7,6 +7,7 @@
 - **绝对诚实与主动暴露**：
   - 不确定时直接在首行声明“我不确定”或“我不清楚”，严禁编造信息或隐藏模糊点。
   - 严禁谄媚（Anti-Sycophancy）：发现用户的方案、逻辑或假设存在漏洞时，**必须主动反驳并优先给出反例/对抗性论点**，绝不盲目顺从。
+  - 对**方案、决策、架构判断**表态同意前，先给出至少一个最强反例或失效条件；确实找不到就明说。事实性问答与纯执行步骤不适用。反例必须真实，牵强的反例比没有更糟。
 - **无废话原则**：
   - 禁用任何形式的客套、赞美、免责声明（如“作为一个AI…”）或情绪化填料。直接给出核心结论与论据。
 - **语言与规范**：
@@ -34,12 +35,9 @@
 
 
 # 4. 搜索与信息检索策略
-- **首选 `anysearch` skill**：本机已标配，需联网检索时优先调用，无需判断是否安装。四类能力按场景择用：
-  - `search`：通用 web 搜索。
-  - 垂直域搜索：涉及 finance / academic / travel / health / code / legal / security 等 16 个域时，**先 `get_sub_domains` 发现 `sub_domain` 与必填参数，再带参搜索**——结果显著优于通用搜索。`(required)` 参数即使无值也传空串。
-  - `batch_search`：多意图并行检索。
-  - `extract`：取页面全文（含 SPA / JS 渲染 / 客户端动态加载页，`WebFetch` 只能拿静态 HTML 拿不到的内容）。
-- **回退内置工具**：仅当 anysearch 配额耗尽或调用失败时，退回 `WebSearch`（仅 US）/ `WebFetch`，并告知用户。
+- **首选 `anysearch` skill**（本机已标配）：`search` 通用搜索、垂直域搜索、`batch_search` 多意图并行、`extract` 页面全文提取（含 SPA/JS 渲染页）。
+- **垂直域查询**（finance / academic / code / security 等 16 域）：**先 `get_sub_domains` 发现 `sub_domain` 与必填参数再带参搜索**——结果显著优于通用搜索。其余用法细节见 skill 文档。
+- **回退**：仅当 anysearch 不可用（配额耗尽/调用失败）时退回 `WebSearch` / `WebFetch`，并告知用户。
 
 # --- Rules ---
 
@@ -151,20 +149,10 @@ Default to surfacing uncertainty, not hiding it.
 
 # Agent Orchestration
 
-## Available Agents
-
-| Agent | Purpose | When to Use |
-|-------|---------|-------------|
-| architect | System design | Architectural decisions |
-| security-reviewer | Security analysis | Before commits |
-| build-error-resolver | Fix build errors | When build fails |
-| e2e-runner | E2E testing | Critical user flows |
-| refactor-cleaner | Dead code cleanup | Code maintenance |
-
 > Planning, TDD, and code review are handled by the mattpocock/skills workflow
 > (provided on Claude Code by the `mattpocock-skills@mattpocock` native plugin;
 > vendored on Codex/Cursor), not by sub-agents:
-> - **Planning** → `/grill-with-docs` → `/to-spec` → `/to-tickets` workflow chain
+> - **Planning → implementation** → `/grill-with-docs` → `/to-spec` → `/to-tickets` → `/implement` workflow chain
 > - **TDD** → `/tdd` skill (red-green-refactor loop)
 > - **Code review** → `/code-review` skill (dual-axis Standards + Spec review)
 
@@ -185,23 +173,11 @@ No user prompt needed:
 1. Architectural decision - Use **architect** agent
 2. Security-sensitive code - Use **security-reviewer** agent
 3. Build failure - Use **build-error-resolver** agent
+4. Multiple independent exploration / review / analysis tasks - proactively split them across subagents and launch them in ONE message (parallel), instead of doing them sequentially yourself
+
+Do NOT delegate single lookups or small edits — subagent overhead outweighs the gain.
 
 For planning / TDD / code review, invoke the mattpocock skills above instead.
-
-## Parallel Task Execution
-
-ALWAYS use parallel Task execution for independent operations:
-
-```markdown
-# GOOD: Parallel execution
-Launch 3 agents in parallel:
-1. Agent 1: Security analysis of auth module
-2. Agent 2: Performance review of cache system
-3. Agent 3: Type checking of utilities
-
-# BAD: Sequential when unnecessary
-First agent 1, then agent 2, then agent 3
-```
 
 ## Multi-Perspective Analysis
 
@@ -229,27 +205,7 @@ Code review ensures quality, security, and maintainability before code is merged
 - When architectural changes are made
 - Before merging pull requests
 
-**Pre-Review Requirements:**
-
-Before requesting review, ensure:
-
-- All automated checks (CI/CD) are passing
-- Merge conflicts are resolved
-- Branch is up to date with target branch
-
-## Review Checklist
-
-Before marking code complete:
-
-- [ ] Code is readable and well-named
-- [ ] Functions are focused (<50 lines)
-- [ ] Files are cohesive (<800 lines)
-- [ ] No deep nesting (>4 levels)
-- [ ] Errors are handled explicitly
-- [ ] No hardcoded secrets or credentials
-- [ ] No console.log or debug statements
-- [ ] Tests exist for new functionality
-- [ ] Test coverage meets 80% minimum
+> Quality/security checklists live in the coding-style, security, and testing rules; the `/code-review` skill carries the detailed review workflow.
 
 ## Security Review Triggers
 
@@ -283,44 +239,6 @@ Use these agents for code review:
 | **typescript-reviewer** | TypeScript/JavaScript specific issues |
 | **python-reviewer** | Python specific issues |
 
-## Review Workflow
-
-```
-1. Run git diff to understand changes
-2. Check security checklist first
-3. Review code quality checklist
-4. Run relevant tests
-5. Verify coverage >= 80%
-6. Use appropriate agent for detailed review
-```
-
-## Common Issues to Catch
-
-### Security
-
-- Hardcoded credentials (API keys, passwords, tokens)
-- SQL injection (string concatenation in queries)
-- XSS vulnerabilities (unescaped user input)
-- Path traversal (unsanitized file paths)
-- CSRF protection missing
-- Authentication bypasses
-
-### Code Quality
-
-- Large functions (>50 lines) - split into smaller
-- Large files (>800 lines) - extract modules
-- Deep nesting (>4 levels) - use early returns
-- Missing error handling - handle explicitly
-- Mutation patterns - prefer immutable operations
-- Missing tests - add test coverage
-
-### Performance
-
-- N+1 queries - use JOINs or batching
-- Missing pagination - add LIMIT to queries
-- Unbounded queries - add constraints
-- Missing caching - cache expensive operations
-
 ## Approval Criteria
 
 - **Approve**: No CRITICAL or HIGH issues
@@ -332,7 +250,7 @@ Use these agents for code review:
 
 ## Immutability (CRITICAL)
 
-ALWAYS create new objects, NEVER mutate existing ones:
+In NEW code, create new objects instead of mutating existing ones. In existing codebases that mutate in place, follow the codebase's convention:
 
 ```
 // Pseudocode
@@ -375,7 +293,7 @@ Before marking work complete:
 - [ ] No deep nesting (>4 levels)
 - [ ] Proper error handling
 - [ ] No hardcoded values (use constants or config)
-- [ ] No mutation (immutable patterns used)
+- [ ] No mutation in new code (immutable patterns used)
 
 
 # Development Workflow
@@ -434,65 +352,21 @@ When creating PRs:
 4. Include test plan with TODOs
 5. Push with `-u` flag if new branch
 
+## Worktrees
+
+Use `git worktree` instead of stash + branch-switching when work must proceed in parallel:
+- Parallel independent tasks on the same repo (especially multiple agents working simultaneously — one worktree per agent avoids write conflicts)
+- Hotfix while a feature branch has work in progress
+- Risky experiments that should not touch the main working tree
+
+Conventions:
+- Place worktrees OUTSIDE the repo directory (e.g. sibling `../<repo>-<branch>`), never inside it — nested worktrees pollute file search and tooling scans
+- One branch = one worktree; a branch cannot be checked out in two worktrees
+- Dependencies and env files (`node_modules/`, `.venv/`, `.env`) are NOT shared — reinstall/copy per worktree before running anything
+- Clean up after merge: `git worktree remove <path>`, then `git worktree prune`; do not leave stale worktrees behind
+
 > For the full development process (planning, TDD, code review) before git operations,
 > see the development workflow rule.
-
-
-# Performance Optimization
-
-## Model Selection Strategy
-
-**Haiku** (90% of Sonnet capability, 3x cost savings):
-- Lightweight agents with frequent invocation
-- Pair programming and code generation
-- Worker agents in multi-agent systems
-
-**Sonnet** (Best coding model):
-- Main development work
-- Orchestrating multi-agent workflows
-- Complex coding tasks
-
-**Opus** (Deepest reasoning):
-- Complex architectural decisions
-- Maximum reasoning requirements
-- Research and analysis tasks
-
-## Context Window Management
-
-Avoid last 20% of context window for:
-- Large-scale refactoring
-- Feature implementation spanning multiple files
-- Debugging complex interactions
-
-Lower context sensitivity tasks:
-- Single-file edits
-- Independent utility creation
-- Documentation updates
-- Simple bug fixes
-
-## Extended Thinking + Plan Mode
-
-Extended thinking is enabled by default, reserving up to 31,999 tokens for internal reasoning.
-
-Control extended thinking via:
-- **Toggle**: Option+T (macOS) / Alt+T (Windows/Linux)
-- **Config**: Platform settings (e.g. `alwaysThinkingEnabled`)
-- **Budget cap**: `export MAX_THINKING_TOKENS=10000` (bash) or `$env:MAX_THINKING_TOKENS = "10000"` (PowerShell)
-- **Verbose mode**: Ctrl+O to see thinking output
-
-For complex tasks requiring deep reasoning:
-1. Ensure extended thinking is enabled (on by default)
-2. Enable **Plan Mode** for structured approach
-3. Use multiple critique rounds for thorough analysis
-4. Use split role sub-agents for diverse perspectives
-
-## Build Troubleshooting
-
-If build fails:
-1. Use **build-error-resolver** agent
-2. Analyze error messages
-3. Fix incrementally
-4. Verify after each fix
 
 
 # Security Guidelines
@@ -532,10 +406,10 @@ If security issue found:
 ## Python 环境管理
 - **唯一工具**：必须且仅能使用 `uv`。
 - **严禁使用**：禁止使用 `pip`、`conda` 或 `poetry`。
-- **标准工作流**：
-  - 初始化：`uv venv`
-  - 依赖安装：`uv pip install <package>`
-  - 脚本执行：`uv run <script>.py`
+- **标准工作流**（项目依赖必须进 `pyproject.toml`）：
+  - 初始化：`uv init`（临时环境可用 `uv venv`）
+  - 依赖安装：`uv add <package>`（同步用 `uv sync`；`uv pip install` 不写入 `pyproject.toml`，仅限一次性脚本/临时环境）
+  - 脚本执行：`uv run <script>.py`（一次性依赖用 `uv run --with <pkg>`）
 
 ## Node.js 生态
 - **唯一工具**：必须且仅能使用 `pnpm`。
@@ -545,27 +419,21 @@ If security issue found:
 ## 代码与架构标准
 - **默认脚本**：自动化脚本首选 Python。
 - **设计原则**：严格遵守单一职责原则 (SRP)，函数应短小精悍，逻辑原子化。
-- **可视化**：复杂逻辑、系统架构或调用链路必须使用 `Mermaid` 或 `PlantUML` 提供可视化图表。
+- **可视化**：复杂逻辑、系统架构或调用链路优先使用 `Mermaid` 或 `PlantUML` 提供可视化图表。
 
 
 # Testing Requirements
 
 ## Minimum Test Coverage: 80%
 
-Test Types (ALL required):
+Test Types (required where the project has the corresponding test surface):
 1. **Unit Tests** - Individual functions, utilities, components
 2. **Integration Tests** - API endpoints, database operations
 3. **E2E Tests** - Critical user flows (framework chosen per language)
 
 ## Test-Driven Development
 
-MANDATORY workflow:
-1. Write test first (RED)
-2. Run test - it should FAIL
-3. Write minimal implementation (GREEN)
-4. Run test - it should PASS
-5. Refactor (IMPROVE)
-6. Verify coverage (80%+)
+TDD is mandatory for new features and bug fixes — the red-green-refactor loop is carried by the `/tdd` skill (see the development workflow rule).
 
 ## Troubleshooting Test Failures
 

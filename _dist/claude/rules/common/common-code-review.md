@@ -18,27 +18,7 @@ Code review ensures quality, security, and maintainability before code is merged
 - When architectural changes are made
 - Before merging pull requests
 
-**Pre-Review Requirements:**
-
-Before requesting review, ensure:
-
-- All automated checks (CI/CD) are passing
-- Merge conflicts are resolved
-- Branch is up to date with target branch
-
-## Review Checklist
-
-Before marking code complete:
-
-- [ ] Code is readable and well-named
-- [ ] Functions are focused (<50 lines)
-- [ ] Files are cohesive (<800 lines)
-- [ ] No deep nesting (>4 levels)
-- [ ] Errors are handled explicitly
-- [ ] No hardcoded secrets or credentials
-- [ ] No console.log or debug statements
-- [ ] Tests exist for new functionality
-- [ ] Test coverage meets 80% minimum
+> Quality/security checklists live in the coding-style, security, and testing rules; the `/code-review` skill carries the detailed review workflow.
 
 ## Security Review Triggers
 
@@ -71,44 +51,6 @@ Use these agents for code review:
 | **security-reviewer** | Security vulnerabilities, OWASP Top 10 |
 | **typescript-reviewer** | TypeScript/JavaScript specific issues |
 | **python-reviewer** | Python specific issues |
-
-## Review Workflow
-
-```
-1. Run git diff to understand changes
-2. Check security checklist first
-3. Review code quality checklist
-4. Run relevant tests
-5. Verify coverage >= 80%
-6. Use appropriate agent for detailed review
-```
-
-## Common Issues to Catch
-
-### Security
-
-- Hardcoded credentials (API keys, passwords, tokens)
-- SQL injection (string concatenation in queries)
-- XSS vulnerabilities (unescaped user input)
-- Path traversal (unsanitized file paths)
-- CSRF protection missing
-- Authentication bypasses
-
-### Code Quality
-
-- Large functions (>50 lines) - split into smaller
-- Large files (>800 lines) - extract modules
-- Deep nesting (>4 levels) - use early returns
-- Missing error handling - handle explicitly
-- Mutation patterns - prefer immutable operations
-- Missing tests - add test coverage
-
-### Performance
-
-- N+1 queries - use JOINs or batching
-- Missing pagination - add LIMIT to queries
-- Unbounded queries - add constraints
-- Missing caching - cache expensive operations
 
 ## Approval Criteria
 
