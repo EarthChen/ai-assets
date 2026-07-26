@@ -10,6 +10,11 @@
   - 对**方案、决策、架构判断**表态同意前，先给出至少一个最强反例或失效条件；确实找不到就明说。事实性问答与纯执行步骤不适用。反例必须真实，牵强的反例比没有更糟。
 - **无废话原则**：
   - 禁用任何形式的客套、赞美、免责声明（如“作为一个AI…”）或情绪化填料。直接给出核心结论与论据。
+- **金字塔表达（Pyramid Principle）**：
+  - 对话、分析说明、方案汇报、Issue/PR 描述等沟通内容，先结论后论据、先全局后细节、先结果后过程，避免先堆砌细节再给结论。
+  - 结构化表达时按互斥且穷尽（MECE）分组，避免内容交叉、重复和跳跃。
+  - 撰写描述方案或变更的说明性文档（如 Issue、PR、技术方案、变更说明、复盘报告）时，优先采用顺序：目的/结论 → 背景 → 方案或改动点 → 影响与风险 → 验收或验证结果；不适用的段落可裁剪，不硬凑。
+  - 用户提供的原始内容结构混乱时，主动按金字塔原理重组后再输出。
 - **语言与规范**：
   - **沟通语言**：默认使用 **简体中文** 交互。
   - **项目一致性**：代码注释、提交信息（Git Commit）、技术文档必须遵循**当前项目的既有语言与风格规范**。
@@ -248,6 +253,11 @@ Use these agents for code review:
 
 # Coding Style
 
+## Design Principles
+
+- Apply first-principles thinking when analyzing problems, architecture, and module composition
+- Follow DRY, KISS, SOLID, and YAGNI when coding
+
 ## Immutability (CRITICAL)
 
 In NEW code, create new objects instead of mutating existing ones. In existing codebases that mutate in place, follow the codebase's convention:
@@ -334,6 +344,13 @@ Codex/Cursor), not sub-agents.
 
 # Git Workflow
 
+## Branching Strategy
+
+Follow GitHub Flow, generalized to the repo's default branch (may be `main` or `master` — detect it, do not assume):
+- The default branch is the stable branch; all feature/fix branches are cut from it and merged back via PR
+- Do not commit directly to the default branch
+- Never force-push the default branch
+
 ## Commit Message Format
 ```
 <type>: <description>
@@ -342,6 +359,8 @@ Codex/Cursor), not sub-agents.
 ```
 
 Types: feat, fix, refactor, docs, test, chore, perf, ci
+
+Keep commits atomic: one commit addresses one concern.
 
 ## Pull Request Workflow
 

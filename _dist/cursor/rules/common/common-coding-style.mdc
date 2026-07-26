@@ -1,8 +1,13 @@
 ---
-description: "ECC coding style: immutability, file organization, error handling, validation"
+description: "ECC coding style: design principles, immutability, file organization, error handling, validation"
 alwaysApply: true
 ---
 # Coding Style
+
+## Design Principles
+
+- Apply first-principles thinking when analyzing problems, architecture, and module composition
+- Follow DRY, KISS, SOLID, and YAGNI when coding
 
 ## Immutability (CRITICAL)
 
