@@ -14,8 +14,9 @@ Plugin systems handle:
 Script handles (things plugins can't do):
   - Claude Code: CLAUDE.md, rules → ~/.claude/rules/common/
   - Codex: AGENTS.md
-  - pi: no plugin system — script deploys everything (AGENTS.md, skills
-    registration in settings.json, mcp.json for the pi-mcp-adapter extension)
+  - pi: no plugin system — script deploys AGENTS.md (full overwrite) and
+    symlinks self-owned skills into ~/.agents/skills/ (MCP not synced:
+    pi covers it via its own extensions)
   - All: plugin links (Codex symlink, Cursor real-dir copy)
 
 Usage:
@@ -474,8 +475,9 @@ def build_dist(dry_run: bool = False) -> None:
         # mcp.json (_platforms filter), rules (.mdc vs .md), and the
         # global-instructions deploy (CLAUDE.md / AGENTS.md).
 
-        # MCP: filtered per platform
-        mcp_servers = filter_mcp_for_platform(platform)
+        # MCP: filtered per platform (pi excluded — pi gets MCP-equivalent
+        # capabilities like playwright via its own extensions, not this repo)
+        mcp_servers = {} if platform == "pi" else filter_mcp_for_platform(platform)
         if mcp_servers:
             mcp_out = platform_dir / "mcp.json"
             content = json.dumps({"mcpServers": mcp_servers}, indent=2, ensure_ascii=False)
@@ -727,102 +729,43 @@ def install_pi(dry_run: bool = False) -> None:
     """Deploy to the pi coding agent (badlogic/pi-mono).
 
     pi has no plugin system compatible with this repo, so the script deploys
-    everything directly:
-    - AGENTS.md (global instructions + common rules) -> managed block inside
-      ~/.pi/agent/AGENTS.md (never overwrites user content around the markers)
-    - repo skills/ registered in ~/.pi/agent/settings.json "skills" array
-      (pi discovers directories containing SKILL.md recursively)
-    - MCP servers merged into ~/.pi/agent/mcp.json (pi has no native MCP;
-      the file is read by the pi-mcp-adapter extension, Claude Code format)
+    directly:
+    - AGENTS.md (global instructions + common rules) -> ~/.pi/agent/AGENTS.md
+      (full overwrite, same as the Codex deploy)
+    - self-owned skills symlinked into ~/.agents/skills/ — pi scans that
+      standard directory natively; same mechanism as the mattpocock/anysearch
+      manual installs, so those need no extra work here
 
-    NOT deployed: agents/*.md (pi has no subagents) and separate rules files
-    (embedded in AGENTS.md; language rules available via skills on demand).
-    mattpocock/anysearch manual skills need no work here: pi natively scans
-    ~/.agents/skills/, where `install.py manual` already links them.
+    NOT deployed: MCP (pi covers playwright etc. via its own extensions),
+    agents/*.md (pi has no subagents), separate rules files (embedded in
+    AGENTS.md; language rules available via skills on demand).
     """
     log_section("Deploying pi")
 
-    # 1. AGENTS.md — ~/.pi/agent/ can itself be a user-managed config repo
-    # with its own AGENTS.md (e.g. EarthChen/my-pi-agent project docs), so
-    # never overwrite: maintain a marker-delimited managed block instead,
-    # replaced idempotently on every re-deploy.
-    begin = "<!-- BEGIN earthchen/ai-assets (managed by install.py, do not edit) -->"
-    end = "<!-- END earthchen/ai-assets -->"
+    # 1. AGENTS.md (full overwrite — repo is the single source of truth)
     dist_agents = DIST / "pi" / "AGENTS.md"
     dst_agents = PI_AGENT_HOME / "AGENTS.md"
     if dist_agents.exists():
         if dry_run:
-            log(f"[DRY-RUN] merge managed block into {dst_agents}")
+            log(f"[DRY-RUN] write {dst_agents}")
         else:
             ensure_dir(PI_AGENT_HOME)
-            block = f"{begin}\n\n{dist_agents.read_text(encoding='utf-8').strip()}\n\n{end}"
-            if dst_agents.exists():
-                existing = dst_agents.read_text(encoding="utf-8")
-                if begin in existing and end in existing:
-                    content = existing.split(begin)[0] + block + existing.split(end, 1)[1]
-                else:
-                    content = existing.rstrip() + "\n\n" + block + "\n"
-            else:
-                content = block + "\n"
-            dst_agents.write_text(content, encoding="utf-8")
-            log(f"_dist/pi/AGENTS.md -> {dst_agents} (managed block, user content preserved)")
+            shutil.copy2(dist_agents, dst_agents)
+            log(f"_dist/pi/AGENTS.md -> {dst_agents}")
 
-    # 2. Skills: register repo skills/ in settings.json (idempotent merge)
-    skills_path = str(REPO_ROOT / "skills")
-    settings_path = PI_AGENT_HOME / "settings.json"
-    if dry_run:
-        log(f"[DRY-RUN] add {skills_path} to {settings_path} skills array")
-    else:
-        settings: dict = {}
-        if settings_path.exists():
-            try:
-                settings = json.loads(settings_path.read_text(encoding="utf-8"))
-            except json.JSONDecodeError as e:
-                log(f"⚠️  {settings_path} is not valid JSON ({e}); skipping skills registration")
-                settings = None
-        if settings is not None:
-            skills = settings.get("skills", [])
-            if skills_path not in skills:
-                skills.append(skills_path)
-                settings["skills"] = skills
-                ensure_dir(PI_AGENT_HOME)
-                settings_path.write_text(
-                    json.dumps(settings, indent=2, ensure_ascii=False) + "\n",
-                    encoding="utf-8",
-                )
-                log(f"Registered {skills_path} in settings.json skills array")
-            else:
-                log("skills path already registered in settings.json")
+    # 2. Skills: symlink self-owned skills into the shared standard dir that
+    # pi scans natively (same mechanism as mattpocock/anysearch manual installs)
+    shared_skills = AGENTS_HOME / "skills"
+    count = 0
+    for skill_dir in sorted((REPO_ROOT / "skills").iterdir()):
+        if not skill_dir.is_dir() or not (skill_dir / "SKILL.md").exists():
+            continue
+        create_symlink(skill_dir, shared_skills / skill_dir.name, dry_run)
+        count += 1
+    log(f"{count} self-owned skills -> {shared_skills}")
 
-    # 3. MCP: merge our servers into ~/.pi/agent/mcp.json, preserving any
-    # user-added servers and adapter-specific top-level keys (e.g. "settings")
-    dist_mcp = DIST / "pi" / "mcp.json"
-    dst_mcp = PI_AGENT_HOME / "mcp.json"
-    if dist_mcp.exists():
-        if dry_run:
-            log(f"[DRY-RUN] merge {dist_mcp} -> {dst_mcp}")
-        else:
-            ours = json.loads(dist_mcp.read_text(encoding="utf-8"))
-            existing: dict = {}
-            if dst_mcp.exists():
-                try:
-                    existing = json.loads(dst_mcp.read_text(encoding="utf-8"))
-                except json.JSONDecodeError as e:
-                    log(f"⚠️  {dst_mcp} is not valid JSON ({e}); skipping MCP deploy")
-                    existing = None
-            if existing is not None:
-                merged = {**existing.get("mcpServers", {}), **ours.get("mcpServers", {})}
-                existing["mcpServers"] = merged
-                ensure_dir(PI_AGENT_HOME)
-                dst_mcp.write_text(
-                    json.dumps(existing, indent=2, ensure_ascii=False) + "\n",
-                    encoding="utf-8",
-                )
-                log(f"_dist/pi/mcp.json -> {dst_mcp} ({len(merged)} servers)")
-                log("  Requires the pi-mcp-adapter extension (pi install npm:pi-mcp-adapter)")
-
+    log("Note: MCP not deployed (pi provides playwright etc. via its own extensions)")
     log("Note: agents/*.md not deployed (pi has no subagents)")
-    log("Note: mattpocock/anysearch skills auto-discovered via ~/.agents/skills/")
 
 
 def install_cursor(dry_run: bool = False) -> None:

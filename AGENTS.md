@@ -31,10 +31,9 @@ vendor/anysearch-skill/    (manual install only → ~/.claude+~/.agents/skills/,
 
 [pi](https://github.com/badlogic/pi-mono) has no plugin system compatible with this repo, so `install.py install --platform pi` deploys directly to `~/.pi/agent/`:
 
-- **AGENTS.md**: `_dist/pi/AGENTS.md` (global-instructions + common rules, same embed as Codex; pi loads it from `~/.pi/agent/` at startup — no 32KB limit) → merged as a **managed block** (marker-delimited, idempotently replaced) into `~/.pi/agent/AGENTS.md`, because that directory is itself the user's my-pi-agent config repo whose AGENTS.md carries its own project docs — never overwritten
-- **Skills**: repo-root `skills/` registered in `~/.pi/agent/settings.json` `skills` array (idempotent merge); pi implements the Agent Skills standard and discovers `SKILL.md` dirs recursively. mattpocock/anysearch need NO extra work — pi natively scans `~/.agents/skills/`, where `install.py manual` already links them
-- **MCP**: `_dist/pi/mcp.json` merged into `~/.pi/agent/mcp.json` (user servers and adapter `settings` keys preserved). pi has no native MCP — requires the `pi-mcp-adapter` extension (`pi install npm:pi-mcp-adapter`)
-- **NOT deployed**: `agents/*.md` (pi has no subagents), separate rules files (embedded in AGENTS.md; language rules via skills on demand)
+- **AGENTS.md**: `_dist/pi/AGENTS.md` (global-instructions + common rules, same embed as Codex; pi loads it from `~/.pi/agent/` at startup — no 32KB limit) → `~/.pi/agent/AGENTS.md`, **full overwrite** (repo is the single source of truth; my-pi-agent's own project docs live in that repo's CLAUDE.md)
+- **Skills**: self-owned skills symlinked into `~/.agents/skills/` — pi scans that standard directory natively; same mechanism as the mattpocock/anysearch manual installs (which therefore need no extra work). Not registered via `settings.json`. Note: Codex also scans `~/.agents/skills/`, so it sees these links in addition to its plugin copy
+- **NOT deployed**: MCP (pi covers playwright etc. via its own extensions — no `mcp.json` sync), `agents/*.md` (pi has no subagents), separate rules files (embedded in AGENTS.md; language rules via skills on demand)
 
 ## Update Mechanism
 
