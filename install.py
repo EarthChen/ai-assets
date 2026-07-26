@@ -14,6 +14,8 @@ Plugin systems handle:
 Script handles (things plugins can't do):
   - Claude Code: CLAUDE.md, rules → ~/.claude/rules/common/
   - Codex: AGENTS.md
+  - pi: no plugin system — script deploys everything (AGENTS.md, skills
+    registration in settings.json, mcp.json for the pi-mcp-adapter extension)
   - All: plugin links (Codex symlink, Cursor real-dir copy)
 
 Usage:
@@ -40,6 +42,7 @@ CLAUDE_HOME = HOME / ".claude"
 CODEX_HOME = HOME / ".codex"
 CURSOR_HOME = HOME / ".cursor"
 AGENTS_HOME = HOME / ".agents"
+PI_AGENT_HOME = HOME / ".pi" / "agent"
 
 
 def log(msg: str) -> None:
@@ -455,7 +458,7 @@ def build_dist(dry_run: bool = False) -> None:
             shutil.rmtree(DIST)
         DIST.mkdir()
 
-    for platform in ("cursor", "claude", "codex"):
+    for platform in ("cursor", "claude", "codex", "pi"):
         platform_dir = DIST / platform
         ensure_dir(platform_dir, dry_run)
 
@@ -485,11 +488,11 @@ def build_dist(dry_run: bool = False) -> None:
         # Rules: filtered per platform
         # - Cursor: .mdc files in rules/
         # - Claude: .md files in rules/ (for script to deploy)
-        # - Codex: no separate rules dir (content embedded in AGENTS.md)
+        # - Codex/pi: no separate rules dir (content embedded in AGENTS.md)
         rules_dir = REPO_ROOT / "rules"
         rules_out = platform_dir / "rules"
         has_rules = False
-        if platform != "codex":
+        if platform not in ("codex", "pi"):
             for rule_file in sorted(rules_dir.rglob("*.md")):
                 if not rule_applies_to(rule_file, platform):
                     continue
@@ -527,31 +530,33 @@ def build_dist(dry_run: bool = False) -> None:
                     log(f"[DRY-RUN] write {dst}")
                 else:
                     dst.write_text(gi_content, encoding="utf-8")
-            elif platform == "codex":
-                # Codex AGENTS.md = global instructions + common rules only.
+            elif platform in ("codex", "pi"):
+                # Codex/pi AGENTS.md = global instructions + common rules only.
                 # Language-specific rules (java/python/react) are excluded to
                 # stay within Codex's 32KB default limit; those are available
-                # via Skills on demand.
-                codex_content = gi_content
+                # via Skills on demand. pi loads its copy from ~/.pi/agent/.
+                agents_content = gi_content
                 common_rules_dir = REPO_ROOT / "rules" / "common"
                 rule_sections = []
                 if common_rules_dir.exists():
                     for rf in sorted(common_rules_dir.rglob("*.md")):
-                        if rule_applies_to(rf, "codex"):
+                        if rule_applies_to(rf, platform):
                             rule_sections.append(strip_frontmatter(rf.read_text(encoding="utf-8")))
                 if rule_sections:
-                    codex_content += "\n\n# --- Rules ---\n\n" + "\n\n".join(rule_sections)
+                    agents_content += "\n\n# --- Rules ---\n\n" + "\n\n".join(rule_sections)
                 dst = platform_dir / "AGENTS.md"
                 if dry_run:
                     log(f"[DRY-RUN] write {dst}")
                 else:
-                    dst.write_text(codex_content, encoding="utf-8")
-                    size_kb = len(codex_content.encode("utf-8")) / 1024
-                    if size_kb > 32:
+                    dst.write_text(agents_content, encoding="utf-8")
+                    size_kb = len(agents_content.encode("utf-8")) / 1024
+                    if platform == "codex" and size_kb > 32:
                         log(f"⚠️  WARNING: Codex AGENTS.md is {size_kb:.1f}KB (exceeds 32KB default limit)")
                         log("  Consider raising project_doc_max_bytes in ~/.codex/config.toml")
-                    else:
+                    elif platform == "codex":
                         log(f"Codex AGENTS.md: {size_kb:.1f}KB / 32KB")
+                    else:
+                        log(f"pi AGENTS.md: {size_kb:.1f}KB")
 
         if has_rules and not dry_run:
             log(f"_dist/{platform}/rules/ generated")
@@ -718,6 +723,108 @@ def install_codex(dry_run: bool = False) -> None:
             log(f"_dist/codex/AGENTS.md -> {dst_agents}")
 
 
+def install_pi(dry_run: bool = False) -> None:
+    """Deploy to the pi coding agent (badlogic/pi-mono).
+
+    pi has no plugin system compatible with this repo, so the script deploys
+    everything directly:
+    - AGENTS.md (global instructions + common rules) -> managed block inside
+      ~/.pi/agent/AGENTS.md (never overwrites user content around the markers)
+    - repo skills/ registered in ~/.pi/agent/settings.json "skills" array
+      (pi discovers directories containing SKILL.md recursively)
+    - MCP servers merged into ~/.pi/agent/mcp.json (pi has no native MCP;
+      the file is read by the pi-mcp-adapter extension, Claude Code format)
+
+    NOT deployed: agents/*.md (pi has no subagents) and separate rules files
+    (embedded in AGENTS.md; language rules available via skills on demand).
+    mattpocock/anysearch manual skills need no work here: pi natively scans
+    ~/.agents/skills/, where `install.py manual` already links them.
+    """
+    log_section("Deploying pi")
+
+    # 1. AGENTS.md — ~/.pi/agent/ can itself be a user-managed config repo
+    # with its own AGENTS.md (e.g. EarthChen/my-pi-agent project docs), so
+    # never overwrite: maintain a marker-delimited managed block instead,
+    # replaced idempotently on every re-deploy.
+    begin = "<!-- BEGIN earthchen/ai-assets (managed by install.py, do not edit) -->"
+    end = "<!-- END earthchen/ai-assets -->"
+    dist_agents = DIST / "pi" / "AGENTS.md"
+    dst_agents = PI_AGENT_HOME / "AGENTS.md"
+    if dist_agents.exists():
+        if dry_run:
+            log(f"[DRY-RUN] merge managed block into {dst_agents}")
+        else:
+            ensure_dir(PI_AGENT_HOME)
+            block = f"{begin}\n\n{dist_agents.read_text(encoding='utf-8').strip()}\n\n{end}"
+            if dst_agents.exists():
+                existing = dst_agents.read_text(encoding="utf-8")
+                if begin in existing and end in existing:
+                    content = existing.split(begin)[0] + block + existing.split(end, 1)[1]
+                else:
+                    content = existing.rstrip() + "\n\n" + block + "\n"
+            else:
+                content = block + "\n"
+            dst_agents.write_text(content, encoding="utf-8")
+            log(f"_dist/pi/AGENTS.md -> {dst_agents} (managed block, user content preserved)")
+
+    # 2. Skills: register repo skills/ in settings.json (idempotent merge)
+    skills_path = str(REPO_ROOT / "skills")
+    settings_path = PI_AGENT_HOME / "settings.json"
+    if dry_run:
+        log(f"[DRY-RUN] add {skills_path} to {settings_path} skills array")
+    else:
+        settings: dict = {}
+        if settings_path.exists():
+            try:
+                settings = json.loads(settings_path.read_text(encoding="utf-8"))
+            except json.JSONDecodeError as e:
+                log(f"⚠️  {settings_path} is not valid JSON ({e}); skipping skills registration")
+                settings = None
+        if settings is not None:
+            skills = settings.get("skills", [])
+            if skills_path not in skills:
+                skills.append(skills_path)
+                settings["skills"] = skills
+                ensure_dir(PI_AGENT_HOME)
+                settings_path.write_text(
+                    json.dumps(settings, indent=2, ensure_ascii=False) + "\n",
+                    encoding="utf-8",
+                )
+                log(f"Registered {skills_path} in settings.json skills array")
+            else:
+                log("skills path already registered in settings.json")
+
+    # 3. MCP: merge our servers into ~/.pi/agent/mcp.json, preserving any
+    # user-added servers and adapter-specific top-level keys (e.g. "settings")
+    dist_mcp = DIST / "pi" / "mcp.json"
+    dst_mcp = PI_AGENT_HOME / "mcp.json"
+    if dist_mcp.exists():
+        if dry_run:
+            log(f"[DRY-RUN] merge {dist_mcp} -> {dst_mcp}")
+        else:
+            ours = json.loads(dist_mcp.read_text(encoding="utf-8"))
+            existing: dict = {}
+            if dst_mcp.exists():
+                try:
+                    existing = json.loads(dst_mcp.read_text(encoding="utf-8"))
+                except json.JSONDecodeError as e:
+                    log(f"⚠️  {dst_mcp} is not valid JSON ({e}); skipping MCP deploy")
+                    existing = None
+            if existing is not None:
+                merged = {**existing.get("mcpServers", {}), **ours.get("mcpServers", {})}
+                existing["mcpServers"] = merged
+                ensure_dir(PI_AGENT_HOME)
+                dst_mcp.write_text(
+                    json.dumps(existing, indent=2, ensure_ascii=False) + "\n",
+                    encoding="utf-8",
+                )
+                log(f"_dist/pi/mcp.json -> {dst_mcp} ({len(merged)} servers)")
+                log("  Requires the pi-mcp-adapter extension (pi install npm:pi-mcp-adapter)")
+
+    log("Note: agents/*.md not deployed (pi has no subagents)")
+    log("Note: mattpocock/anysearch skills auto-discovered via ~/.agents/skills/")
+
+
 def install_cursor(dry_run: bool = False) -> None:
     log_section("Deploying Cursor")
 
@@ -845,6 +952,7 @@ def _do_install(platform: str, dry_run: bool) -> None:
         "claude": install_claude,
         "codex": install_codex,
         "cursor": install_cursor,
+        "pi": install_pi,
     }
     if platform == "all":
         for installer in platforms.values():
@@ -1000,7 +1108,7 @@ def main() -> None:
     install_parser = sub.add_parser("install", parents=[parent], help="Only install symlinks to platforms")
     install_parser.add_argument(
         "--platform",
-        choices=["claude", "codex", "cursor", "all"],
+        choices=["claude", "codex", "cursor", "pi", "all"],
         default="all",
         help="Target platform (default: all)",
     )
@@ -1033,7 +1141,7 @@ def main() -> None:
 
     parser.add_argument(
         "--platform",
-        choices=["claude", "codex", "cursor", "all"],
+        choices=["claude", "codex", "cursor", "pi", "all"],
         default="all",
         help="Target platform (default: all, used when no subcommand given)",
     )
