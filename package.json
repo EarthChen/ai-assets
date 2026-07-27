@@ -1,0 +1,25 @@
+{
+  "name": "ai-assets",
+  "version": "1.0.0",
+  "description": "跨平台 AI Agent 资产治理中枢",
+  "license": "MIT",
+  "main": "index.js",
+  "scripts": {
+    "docs:dev": "vitepress dev docs",
+    "docs:build": "vitepress build docs",
+    "docs:preview": "vitepress preview docs"
+  },
+  "keywords": [],
+  "author": "",
+  "devEngines": {
+    "packageManager": {
+      "name": "pnpm",
+      "version": "^11.17.0",
+      "onFail": "download"
+    }
+  },
+  "type": "module",
+  "devDependencies": {
+    "vitepress": "^1.6.4"
+  }
+}

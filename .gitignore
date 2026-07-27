@@ -55,3 +55,8 @@ skills/writing-great-skills
 
 # Playwright MCP runtime artifacts
 .playwright-mcp/
+
+# VitePress
+node_modules/
+docs/.vitepress/dist/
+docs/.vitepress/cache/
