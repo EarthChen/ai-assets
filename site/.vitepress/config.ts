@@ -22,7 +22,8 @@ export default defineConfig({
       {
         text: "分享",
         items: [
-          { text: "AI Agent 资产体系", link: "/ai-capabilities-sharing" },
+          { text: "演示 HTML", link: "/ai-capabilities-sharing.html" },
+          { text: "AI Agent 资产体系", link: "/docs/ai-capabilities-sharing" },
         ],
       },
     ],
