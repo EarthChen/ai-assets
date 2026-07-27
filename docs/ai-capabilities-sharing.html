@@ -1,0 +1,1709 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AI Agent 资产体系：能力、设计依据与工作流</title>
+    <style>
+      :root {
+        --bg-primary: #1a1b26;
+        --bg-secondary: #24283b;
+        --bg-tertiary: #1f2335;
+        --text-primary: #c0caf5;
+        --text-secondary: #a9b1d6;
+        --text-muted: #565f89;
+        --accent-blue: #7aa2f7;
+        --accent-teal: #73daca;
+        --accent-purple: #bb9af7;
+        --accent-amber: #e0af68;
+        --accent-green: #9ece6a;
+        --accent-coral: #f7768e;
+        --border-color: #3b4261;
+      }
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      html {
+        scroll-behavior: smooth;
+      }
+      body {
+        background-color: var(--bg-primary);
+        color: var(--text-primary);
+        font-family:
+          -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+          "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+        line-height: 1.6;
+        font-size: 18px;
+      }
+      .deck {
+        max-width: 1080px;
+        margin: 0 auto;
+        padding: 0 24px;
+      }
+      .slide {
+        padding: 48px 0 32px;
+        position: relative;
+      }
+      .slide-num {
+        position: absolute;
+        top: 20px;
+        right: 0;
+        color: var(--text-muted);
+        font-size: 13px;
+        letter-spacing: 0.1em;
+      }
+      h1 {
+        color: var(--accent-blue);
+        font-size: 2.6em;
+        line-height: 1.2;
+        margin-bottom: 8px;
+        letter-spacing: -0.01em;
+      }
+      h2 {
+        color: var(--accent-blue);
+        font-size: 1.9em;
+        margin-bottom: 8px;
+      }
+      h3 {
+        color: var(--accent-teal);
+        font-size: 1.25em;
+        margin-top: 20px;
+        margin-bottom: 8px;
+      }
+      h4 {
+        color: var(--accent-purple);
+        font-size: 1.05em;
+        margin-top: 16px;
+        margin-bottom: 6px;
+      }
+      .subtitle {
+        color: var(--text-secondary);
+        font-size: 1.2em;
+        margin-bottom: 4px;
+      }
+      .meta {
+        color: var(--text-muted);
+        font-size: 0.95em;
+        margin-top: 14px;
+      }
+      p {
+        margin-bottom: 12px;
+        color: var(--text-secondary);
+      }
+      strong {
+        color: var(--text-primary);
+        font-weight: 600;
+      }
+      em {
+        color: var(--accent-amber);
+        font-style: normal;
+        font-weight: 500;
+      }
+      ul,
+      ol {
+        margin: 8px 0 12px 22px;
+        color: var(--text-secondary);
+      }
+      li {
+        margin-bottom: 6px;
+      }
+      code {
+        background-color: var(--bg-tertiary);
+        color: var(--accent-teal);
+        padding: 2px 6px;
+        border-radius: 4px;
+        font-family: "SF Mono", "Fira Code", Menlo, Consolas, monospace;
+        font-size: 0.88em;
+      }
+      pre {
+        background-color: var(--bg-tertiary);
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        padding: 16px;
+        overflow-x: auto;
+        margin: 12px 0;
+      }
+      pre code {
+        background: none;
+        color: var(--text-primary);
+        padding: 0;
+        font-size: 0.86em;
+      }
+      .lead {
+        font-size: 1.15em;
+        color: var(--text-primary);
+      }
+      .tag {
+        display: inline-block;
+        padding: 2px 10px;
+        border-radius: 12px;
+        font-size: 0.8em;
+        font-weight: 600;
+        margin-right: 6px;
+      }
+      .tag-blue {
+        background: rgba(122, 162, 247, 0.15);
+        color: var(--accent-blue);
+        border: 1px solid rgba(122, 162, 247, 0.4);
+      }
+      .tag-teal {
+        background: rgba(115, 218, 202, 0.15);
+        color: var(--accent-teal);
+        border: 1px solid rgba(115, 218, 202, 0.4);
+      }
+      .tag-purple {
+        background: rgba(187, 154, 247, 0.15);
+        color: var(--accent-purple);
+        border: 1px solid rgba(187, 154, 247, 0.4);
+      }
+      .tag-amber {
+        background: rgba(224, 175, 104, 0.15);
+        color: var(--accent-amber);
+        border: 1px solid rgba(224, 175, 104, 0.4);
+      }
+      .tag-green {
+        background: rgba(158, 206, 106, 0.15);
+        color: var(--accent-green);
+        border: 1px solid rgba(158, 206, 106, 0.4);
+      }
+      .tag-coral {
+        background: rgba(247, 118, 142, 0.15);
+        color: var(--accent-coral);
+        border: 1px solid rgba(247, 118, 142, 0.4);
+      }
+      .note {
+        border-left: 3px solid var(--accent-amber);
+        background: rgba(224, 175, 104, 0.07);
+        padding: 12px 16px;
+        border-radius: 0 8px 8px 0;
+        margin: 12px 0;
+        color: var(--text-secondary);
+      }
+      .callout {
+        border-left: 3px solid var(--accent-blue);
+        background: rgba(122, 162, 247, 0.07);
+        padding: 12px 16px;
+        border-radius: 0 8px 8px 0;
+        margin: 12px 0;
+        color: var(--text-secondary);
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 12px 0;
+        font-size: 0.9em;
+      }
+      th,
+      td {
+        padding: 10px 12px;
+        border: 1px solid var(--border-color);
+        text-align: left;
+        vertical-align: top;
+      }
+      th {
+        background: var(--bg-secondary);
+        color: var(--accent-blue);
+        font-weight: 600;
+      }
+      td {
+        color: var(--text-secondary);
+      }
+      .flow {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        flex-wrap: wrap;
+        padding: 16px 0;
+      }
+      .flow-node {
+        padding: 10px 16px;
+        border-radius: 8px;
+        font-weight: 600;
+        text-align: center;
+        font-size: 0.92em;
+      }
+      .flow-arrow {
+        color: var(--accent-teal);
+        font-size: 1.4em;
+        font-weight: 700;
+      }
+      .box-group {
+        display: flex;
+        gap: 16px;
+        justify-content: center;
+        flex-wrap: wrap;
+        margin: 14px 0;
+      }
+      .box {
+        border: 2px solid var(--border-color);
+        border-radius: 10px;
+        padding: 16px;
+        min-width: 200px;
+        max-width: 280px;
+        background: var(--bg-tertiary);
+      }
+      .box h4 {
+        margin-top: 0;
+      }
+      .box ul {
+        margin-top: 8px;
+      }
+      details {
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        background: var(--bg-tertiary);
+        margin: 12px 0;
+        overflow: hidden;
+      }
+      details summary {
+        padding: 12px 16px;
+        cursor: pointer;
+        color: var(--accent-blue);
+        font-weight: 600;
+        list-style: none;
+        user-select: none;
+      }
+      details summary::-webkit-details-marker {
+        display: none;
+      }
+      details summary::before {
+        content: "▸ ";
+        color: var(--accent-teal);
+      }
+      details[open] summary::before {
+        content: "▾ ";
+      }
+      details[open] summary {
+        border-bottom: 1px solid var(--border-color);
+      }
+      details .inner {
+        padding: 12px 16px;
+      }
+      .agenda-list {
+        list-style: none;
+        margin-left: 0;
+        counter-reset: agenda;
+      }
+      .agenda-list li {
+        counter-increment: agenda;
+        padding: 14px 0 14px 56px;
+        border-bottom: 1px solid var(--border-color);
+        position: relative;
+        color: var(--text-primary);
+        font-size: 1.05em;
+      }
+      .agenda-list li::before {
+        content: counter(agenda);
+        position: absolute;
+        left: 0;
+        top: 12px;
+        width: 36px;
+        height: 36px;
+        background: var(--accent-blue);
+        color: var(--bg-primary);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 700;
+        font-size: 0.9em;
+      }
+      .agenda-time {
+        color: var(--text-muted);
+        font-size: 0.85em;
+        margin-left: 12px;
+      }
+      .kpi-row {
+        display: flex;
+        gap: 16px;
+        flex-wrap: wrap;
+        margin: 16px 0;
+      }
+      .kpi {
+        flex: 1;
+        min-width: 140px;
+        border: 1px solid var(--border-color);
+        border-radius: 10px;
+        padding: 18px;
+        text-align: center;
+        background: var(--bg-tertiary);
+      }
+      .kpi .num {
+        font-size: 2.2em;
+        font-weight: 700;
+        color: var(--accent-blue);
+        line-height: 1;
+      }
+      .kpi .lbl {
+        color: var(--text-muted);
+        font-size: 0.85em;
+        margin-top: 6px;
+      }
+      .lvl {
+        display: inline-block;
+        padding: 2px 8px;
+        border-radius: 4px;
+        font-size: 0.78em;
+        font-weight: 700;
+      }
+      .lvl-critical {
+        background: rgba(247, 118, 142, 0.2);
+        color: var(--accent-coral);
+      }
+      .lvl-high {
+        background: rgba(224, 175, 104, 0.2);
+        color: var(--accent-amber);
+      }
+      .lvl-medium {
+        background: rgba(122, 162, 247, 0.2);
+        color: var(--accent-blue);
+      }
+      .lvl-low {
+        background: rgba(86, 95, 137, 0.3);
+        color: var(--text-muted);
+      }
+      .cover {
+        padding: 56px 0;
+        text-align: center;
+      }
+      .cover .badge {
+        color: var(--accent-teal);
+        letter-spacing: 0.25em;
+        text-transform: uppercase;
+        font-size: 0.85em;
+        margin-bottom: 16px;
+      }
+      .cover h1 {
+        font-size: 3em;
+        margin-bottom: 12px;
+      }
+      .footer-note {
+        color: var(--text-muted);
+        font-size: 0.85em;
+        margin-top: 24px;
+      }
+      a {
+        color: var(--accent-teal);
+        text-decoration: none;
+      }
+      a:hover {
+        text-decoration: underline;
+      }
+      .mermaid {
+        display: flex;
+        justify-content: center;
+        overflow-x: auto;
+        padding: 16px;
+        background: var(--bg-tertiary);
+        border: 1px solid var(--border-color);
+        border-radius: 10px;
+        margin: 12px 0;
+      }
+      .mermaid svg {
+        max-width: 100%;
+        height: auto;
+        font-family: inherit;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="deck">
+      <!-- ============ 1. 封面 ============ -->
+      <section class="slide cover">
+        <div class="badge">Cross-Platform AI Agent Asset Governance</div>
+        <h1>AI Agent 资产体系</h1>
+        <p class="subtitle">能力、设计依据与工作流</p>
+        <p class="meta">一处维护 · 四平台分发 · 职责三层正交</p>
+        <p class="meta">
+          <span class="tag tag-blue">rules</span>
+          <span class="tag tag-teal">skills</span>
+          <span class="tag tag-purple">agents</span>
+        </p>
+        <p class="footer-note">
+          Claude Code · Cursor · Codex · pi &nbsp;|&nbsp; 一套源码，<code
+            >install.py</code
+          >
+          一键部署
+        </p>
+      </section>
+
+      <!-- ============ 2. 议程 ============ -->
+      <section class="slide">
+        <span class="slide-num">02</span>
+        <h2>议程</h2>
+        <ol class="agenda-list">
+          <li>
+            总述：单一真相源的资产治理中枢
+            <span class="agenda-time">3 min</span>
+          </li>
+          <li>三层架构总览 <span class="agenda-time">3 min</span></li>
+          <li>
+            Rules：动手之前确立规范 <span class="agenda-time">8 min</span>
+          </li>
+          <li>
+            Skills：场景触发的工作流与领域知识
+            <span class="agenda-time">8 min</span>
+          </li>
+          <li>
+            Agents：将判断力委派给专家角色
+            <span class="agenda-time">6 min</span>
+          </li>
+          <li>
+            工作流：三层资源的协作方式 <span class="agenda-time">6 min</span>
+          </li>
+          <li>小结：三个核心设计判断 <span class="agenda-time">3 min</span></li>
+          <li>Q&amp;A <span class="agenda-time">5 min</span></li>
+        </ol>
+        <p class="meta">
+          <strong>总计约 42 分钟</strong> &nbsp;·&nbsp;
+          密集细节置于可展开面板，按需深入
+        </p>
+      </section>
+
+      <!-- ============ 3. 总述 ============ -->
+      <section class="slide">
+        <span class="slide-num">03</span>
+        <h2>总述</h2>
+        <p class="lead">
+          这不是一个 AI 工具箱合集，而是一套
+          <strong>跨平台、单一真相源</strong> 的 Agent 资产治理中枢。
+        </p>
+        <p>
+          一处维护 <code>rules + skills + agents + mcp</code>，通过
+          <code>install.py</code> 一键分发至 Claude Code / Cursor / Codex / pi
+          四个平台。
+        </p>
+        <div class="kpi-row">
+          <div class="kpi">
+            <div class="num">3</div>
+            <div class="lbl">职责层级</div>
+          </div>
+          <div class="kpi">
+            <div class="num">4</div>
+            <div class="lbl">目标平台</div>
+          </div>
+          <div class="kpi">
+            <div class="num">10</div>
+            <div class="lbl">常驻规则文件</div>
+          </div>
+          <div class="kpi">
+            <div class="num">38</div>
+            <div class="lbl">skills</div>
+          </div>
+          <div class="kpi">
+            <div class="num">22</div>
+            <div class="lbl">agents</div>
+          </div>
+        </div>
+        <div class="callout">
+          <strong>核心命题：</strong
+          >所有资源按<em>职责</em>而非按"能力"分层，目的是让每类资源<strong>仅在合适的时机占用上下文</strong>。
+        </div>
+      </section>
+
+      <!-- ============ 4. 三层架构 ============ -->
+      <section class="slide">
+        <span class="slide-num">04</span>
+        <h2>三层架构：职责正交，触发模型不同</h2>
+        <div class="box-group">
+          <div
+            class="box"
+            style="
+              border-color: var(--accent-blue);
+              background: rgba(122, 162, 247, 0.08);
+            "
+          >
+            <h4 style="color: var(--accent-blue)">① Rules · 规范与约束</h4>
+            <p style="font-size: 0.92em">
+              在 agent
+              动手之前，确立<strong>"该怎么做"</strong>与<strong>"不能怎么做"</strong>。
+            </p>
+            <p style="font-size: 0.85em; color: var(--text-muted)">
+              触发：常驻 / 按文件类型
+            </p>
+          </div>
+          <div
+            class="box"
+            style="
+              border-color: var(--accent-teal);
+              background: rgba(115, 218, 202, 0.08);
+            "
+          >
+            <h4 style="color: var(--accent-teal)">
+              ② Skills · 工作流与领域知识
+            </h4>
+            <p style="font-size: 0.92em">
+              在特定场景下，提供<strong>"正确的做事步骤"</strong>与应遵循的模式。
+            </p>
+            <p style="font-size: 0.85em; color: var(--text-muted)">
+              触发：按场景加载
+            </p>
+          </div>
+          <div
+            class="box"
+            style="
+              border-color: var(--accent-purple);
+              background: rgba(187, 154, 247, 0.08);
+            "
+          >
+            <h4 style="color: var(--accent-purple)">③ Agents · 专家角色</h4>
+            <p style="font-size: 0.92em">
+              将需要判断力的子任务，委派给<strong>职责边界明确</strong>的子
+              agent。
+            </p>
+            <p style="font-size: 0.85em; color: var(--text-muted)">
+              触发：按需委派
+            </p>
+          </div>
+        </div>
+        <p class="lead" style="text-align: center; margin-top: 8px">
+          rules 为底座（永远生效） → skills 为场景脚本（按需触发） → agents
+          为委派目标（按需调用）
+        </p>
+      </section>
+
+      <!-- ============ 5. Rules 总览 ============ -->
+      <section class="slide">
+        <span class="slide-num">05</span>
+        <h2>① Rules：动手之前确立规范</h2>
+        <p>rules 分为两个文件 + 一个目录，共同构成 agent 的"出厂设置"：</p>
+        <div class="box-group">
+          <div class="box" style="border-color: var(--accent-blue)">
+            <h4><code>global-instructions.md</code></h4>
+            <p style="font-size: 0.9em">
+              agent 的角色与认知底座，部署为各平台的 <code>CLAUDE.md</code> /
+              <code>AGENTS.md</code>。
+            </p>
+          </div>
+          <div class="box" style="border-color: var(--accent-teal)">
+            <h4><code>rules/common/</code></h4>
+            <p style="font-size: 0.9em">
+              按正交关注点拆分的常驻规则集合，10 个文件约 465 行。
+            </p>
+          </div>
+          <div class="box" style="border-color: var(--accent-purple)">
+            <h4><code>rules/{java,python,react}/</code></h4>
+            <p style="font-size: 0.9em">
+              条件规则，仅在打开对应类型文件时触发。
+            </p>
+          </div>
+        </div>
+        <div class="note">
+          <strong>设计原则：</strong
+          >按关注点<em>正交拆分</em>而非合并——单个文件管一个关注点，模型在"安全检查"时只需加载
+          <code>common-security.md</code>
+          而非扫读全量；合并为大文件会同步上升检索成本与遗漏风险。
+        </div>
+      </section>
+
+      <!-- ============ 6. global-instructions 四小节 ============ -->
+      <section class="slide">
+        <span class="slide-num">06</span>
+        <h2><code>global-instructions.md</code>：agent 的角色与认知底座</h2>
+        <p>
+          解决核心问题：<em
+            >LLM 默认的讨好型人格与模糊表达，在工程场景中会放大风险。</em
+          >
+        </p>
+        <table>
+          <thead>
+            <tr>
+              <th>小节</th>
+              <th>针对的失败模式</th>
+              <th>设计动机</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>通用认知原则</strong></td>
+              <td>幻觉、顺从、低信噪比、堆细节叙事、混合语言污染</td>
+              <td>
+                绝对诚实 / 反谄媚先给反例 / 无废话 / 金字塔表达 /
+                沟通中文代码英文
+              </td>
+            </tr>
+            <tr>
+              <td><strong>分析与决策准则</strong></td>
+              <td>猜测伪装为事实、确认偏误、理论套现实</td>
+              <td>
+                认知标记 <code>[事实]/[推论]/[假说]</code> / 逆向思维优先 /
+                框架与现实剥离
+              </td>
+            </tr>
+            <tr>
+              <td><strong>冲突裁决</strong></td>
+              <td>临时指令与全局规则冲突时无依据拒绝</td>
+              <td>规则优先并告知冲突点，给 agent "拒绝"的合法依据</td>
+            </tr>
+            <tr>
+              <td><strong>搜索与信息检索策略</strong></td>
+              <td>agent 图省事退回内置 WebSearch</td>
+              <td>anysearch 首选、内置回退，固化为规则而非每次判断</td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+
+      <!-- ============ 7. rules/common 细节 ============ -->
+      <section class="slide">
+        <span class="slide-num">07</span>
+        <h2><code>rules/common/</code>：按正交关注点拆分（节选）</h2>
+        <div class="box-group">
+          <div class="box" style="border-color: var(--accent-teal)">
+            <h4 style="color: var(--accent-teal)">认知与行为底座</h4>
+            <ul>
+              <li><code>KarpathyGuide.md</code> · 108 行 · 12 条准则</li>
+              <li><code>common-coding-style.md</code> · 不可变性 CRITICAL</li>
+            </ul>
+          </div>
+          <div class="box" style="border-color: var(--accent-amber)">
+            <h4 style="color: var(--accent-amber)">工程规范</h4>
+            <ul>
+              <li><code>common-development-workflow.md</code></li>
+              <li><code>common-git-workflow.md</code> · GitHub Flow</li>
+              <li><code>common-testing.md</code> · 80% 覆盖</li>
+              <li><code>common-security.md</code></li>
+            </ul>
+          </div>
+          <div class="box" style="border-color: var(--accent-purple)">
+            <h4 style="color: var(--accent-purple)">协作与治理</h4>
+            <ul>
+              <li><code>common-code-review.md</code> · 严重程度分级</li>
+              <li><code>common-agents.md</code> · 编排边界</li>
+              <li><code>common-tech-stack.md</code> · uv / pnpm 硬约束</li>
+            </ul>
+          </div>
+        </div>
+        <details open>
+          <summary><b>🔍 展开：几条关键准则的设计动机</b></summary>
+          <div class="inner">
+            <ul>
+              <li>
+                <strong>Think Before Coding</strong>：针对 LLM
+                "先写再说"倾向——错误假设导致的返工远大于开口问一句。
+              </li>
+              <li>
+                <strong>Simplicity First</strong>：针对过度工程——200 行能写 50
+                行即重写，不为单次使用加抽象。
+              </li>
+              <li>
+                <strong>Surgical Changes</strong
+                >：针对"顺手改"——仅动该动之处，让 review 能聚焦。
+              </li>
+              <li>
+                <strong>Fail loud</strong>：针对静默失败——无法确定成功则明说，与
+                <code>silent-failure-hunter</code> agent 互为表里。
+              </li>
+              <li>
+                <strong>不可变性 CRITICAL</strong
+                >：原地修改产生隐藏副作用，要求创建新对象而非原地改。
+              </li>
+              <li>
+                <strong>uv / pnpm 硬约束</strong>：防 agent 混用
+                pip/conda/npm/yarn 导致 lockfile 不一致、环境不可复现。
+              </li>
+            </ul>
+          </div>
+        </details>
+      </section>
+
+      <!-- ============ 8. 两类规则部署 ============ -->
+      <section class="slide">
+        <span class="slide-num">08</span>
+        <h2>两类规则，两种部署模型</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>类别</th>
+              <th>加载方式</th>
+              <th>适用范围</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>
+                <strong><code>rules/common/</code></strong>
+              </td>
+              <td>常驻加载</td>
+              <td>所有平台、所有项目、所有时刻 —— agent 出厂设置</td>
+            </tr>
+            <tr>
+              <td>
+                <strong><code>rules/{java,python,react}/</code></strong>
+              </td>
+              <td>条件加载</td>
+              <td>
+                仅打开对应类型文件时触发（Java <code>*.java</code>、Python
+                <code>*.py</code>、React <code>*.tsx</code>）
+              </td>
+            </tr>
+          </tbody>
+        </table>
+        <div class="callout">
+          <strong>上下文带宽优化：</strong>agent
+          上下文窗口有限，常驻规则越多，留给实际任务的有效上下文越少。<em
+            >仅在用得上的时刻将规则灌入上下文。</em
+          >
+        </div>
+        <div class="note">
+          <strong>平台差异：</strong>Codex 设有 32KB
+          <code>AGENTS.md</code> 上限且不支持条件规则（无 frontmatter），故
+          <code>global-instructions.md</code> 实际是 common rules
+          的精编嵌入版——为不支持条件加载的平台提供兜底全量包，为支持的平台提供细粒度版本。映射转换由
+          <code>install.py build</code> 完成。
+        </div>
+      </section>
+
+      <!-- ============ 9. Skills 总览 ============ -->
+      <section class="slide">
+        <span class="slide-num">09</span>
+        <h2>② Skills：场景触发的工作流与领域知识</h2>
+        <p>skills 是数量最多的一层，共 <strong>38 个</strong>，按主题分组：</p>
+        <div class="box-group">
+          <div class="box" style="border-color: var(--accent-blue)">
+            <h4 style="color: var(--accent-blue)">2.1 工程工作流链</h4>
+            <p style="font-size: 0.9em">
+              从需求到交付的完整链路，仓库中最重要的一组。
+            </p>
+          </div>
+          <div class="box" style="border-color: var(--accent-teal)">
+            <h4 style="color: var(--accent-teal)">2.2 语言编码模式</h4>
+            <p style="font-size: 0.9em">针对具体技术栈的"该怎么写"领域知识。</p>
+          </div>
+          <div class="box" style="border-color: var(--accent-purple)">
+            <h4 style="color: var(--accent-purple)">2.3 生产力与治理</h4>
+            <p style="font-size: 0.9em">搜索、写作、调研、知识管理。</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ 10. 工程工作流链 ============ -->
+      <section class="slide">
+        <span class="slide-num">10</span>
+        <h2>工程工作流链</h2>
+        <p class="lead">
+          从需求到交付的完整闭环，显式化为可执行步骤序列，避免跳步返工。
+        </p>
+        <div class="flow">
+          <span
+            class="flow-node"
+            style="background: var(--accent-blue); color: var(--bg-primary)"
+            >grill-with-docs<br /><small>对齐需求+领域模型</small></span
+          >
+          <span class="flow-arrow">→</span>
+          <span
+            class="flow-node"
+            style="background: var(--accent-blue); color: var(--bg-primary)"
+            >to-spec<br /><small>沉淀 spec</small></span
+          >
+          <span class="flow-arrow">→</span>
+          <span
+            class="flow-node"
+            style="background: var(--accent-blue); color: var(--bg-primary)"
+            >to-tickets<br /><small>拆 tracer-bullet 票</small></span
+          >
+          <span class="flow-arrow">→</span>
+          <span
+            class="flow-node"
+            style="background: var(--accent-blue); color: var(--bg-primary)"
+            >implement<br /><small>按票实现</small></span
+          >
+          <span class="flow-arrow">→</span>
+          <span
+            class="flow-node"
+            style="background: var(--accent-blue); color: var(--bg-primary)"
+            >code-review<br /><small>双轴评审</small></span
+          >
+        </div>
+        <details open>
+          <summary>
+            <b>🔍 展开：链路前端的两个配套 skill（需求尚未成型阶段）</b>
+          </summary>
+          <div class="inner">
+            <h4>wayfinder · 规划超大块工作</h4>
+            <p>
+              当目标模糊且路径不可见时，不直接冲向终点，而是把目标画成 issue
+              tracker
+              上的<strong>"决策票地图"</strong>——每张票解决一个决策而非切片构建，逐个解决直到路径清晰。
+            </p>
+            <ul>
+              <li>
+                <strong>设计核心：规划而非执行</strong
+                >——地图是索引不是存储，决策只活在它自己的票里；有 fog of war
+                机制（刻意不画看不清的部分）。
+              </li>
+              <li>
+                调用分两模式：<code>chart the map</code>（建图）与
+                <code>work through the map</code>（推进）。每 session
+                至多解决一张票（research 票除外）。
+              </li>
+              <li>
+                定位：对 <code>to-spec</code>/<code>to-tickets</code>
+                的前置补充——后者处理"需求清晰、可拆票"的场景，wayfinder
+                处理"需求太大太糊、连怎么走都不确定"的场景。
+              </li>
+            </ul>
+            <h4>research · 后台调研子代理</h4>
+            <p>
+              对<strong>一手信源</strong>（官方文档、源码、spec、一方
+              API）做调查，写成 markdown
+              存入仓库，每条结论标信源。设计核心是<strong
+                >后台运行、主 agent 继续干活</strong
+              >——调研是耗时 I/O，阻塞主 agent 不值得。
+            </p>
+          </div>
+        </details>
+      </section>
+
+      <!-- ============ 11. grilling 根节点 ============ -->
+      <section class="slide">
+        <span class="slide-num">11</span>
+        <h2>grilling：整个工作流的根节点</h2>
+        <p class="lead">
+          在动手之前，通过 relentless 追问达成共识。<code>grill-me</code>、<code
+            >grill-with-docs</code
+          >
+          均为它的上层包装。
+        </p>
+        <div class="box-group">
+          <div class="box" style="border-color: var(--accent-teal)">
+            <h4 style="color: var(--accent-teal)">单问单答 · 逐枝推进</h4>
+            <p style="font-size: 0.9em">
+              一次只问一个问题，等反馈再继续，禁一次抛多个。针对 LLM
+              趋于一次性产出多步方案的倾向。
+            </p>
+          </div>
+          <div class="box" style="border-color: var(--accent-blue)">
+            <h4 style="color: var(--accent-blue)">事实查环境 · 决策问用户</h4>
+            <p style="font-size: 0.9em">
+              事实（filesystem、工具可查）由 agent
+              主动探查；决策（取舍、偏好）必须逐个抛给用户。
+            </p>
+          </div>
+        </div>
+        <div class="box-group">
+          <div class="box" style="border-color: var(--accent-purple)">
+            <h4 style="color: var(--accent-purple)">为每个问题提供推荐答案</h4>
+            <p style="font-size: 0.9em">
+              把对话从"从头想"变为"判断对错"，判断成本远低于创造成本。
+            </p>
+          </div>
+          <div class="box" style="border-color: var(--accent-coral)">
+            <h4 style="color: var(--accent-coral)">未达共识不动手</h4>
+            <p style="font-size: 0.9em">
+              针对"边问边做"倾向——未达共识的实现建立在未对齐的假设上，返工成本高。
+            </p>
+          </div>
+        </div>
+        <div class="note">
+          <strong>为何是根节点：</strong
+          >工作流链的后续环节（to-spec、to-tickets、implement、code-review）均建立在"需求已对齐"的前提下；而"需求对齐"这个前提，正是由
+          grilling 达成。跳过 grilling 直接进 to-spec，会把未澄清的假设带入
+          spec，<em>返工成本随环节推进指数增长</em>。
+        </div>
+      </section>
+
+      <!-- ============ 12. TDD 三套对比 ============ -->
+      <section class="slide">
+        <span class="slide-num">12</span>
+        <h2>三套 skill 的 TDD 哲学对比</h2>
+        <p>
+          本地另一套 <strong>superpowers</strong> 与开源项目
+          <strong>gsd</strong>（Get Shit Done）也含 TDD 与
+          code-review，但设计哲学差异显著：
+        </p>
+        <table>
+          <thead>
+            <tr>
+              <th>维度</th>
+              <th>mattpocock <code>tdd</code></th>
+              <th>superpowers</th>
+              <th>gsd <code>tdd</code></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>基调</strong></td>
+              <td>方法论约束，定义循环纪律</td>
+              <td>铁律执行，反驳合理化借口</td>
+              <td>流水线化，gate 强制</td>
+            </tr>
+            <tr>
+              <td><strong>核心机制</strong></td>
+              <td><em>seam</em>（公共边界）+ vertical slice + 反模式清单</td>
+              <td>"NO PRODUCTION CODE WITHOUT A FAILING TEST FIRST"</td>
+              <td>gate 强制 RED/GREEN/REFACTOR commit</td>
+            </tr>
+            <tr>
+              <td><strong>Refactor 归属</strong></td>
+              <td>
+                <span style="color: var(--accent-amber)"
+                  >不在循环内，归 code-review</span
+                >
+              </td>
+              <td>在循环内</td>
+              <td>在循环内（可选 gate）</td>
+            </tr>
+            <tr>
+              <td><strong>质量保障</strong></td>
+              <td>反模式清单可诊断失败模式</td>
+              <td>"红旗清单"指向删除重来</td>
+              <td>gate validation 检查 commit 存在</td>
+            </tr>
+          </tbody>
+        </table>
+        <details open>
+          <summary>
+            <b>🔍 展开：seam 的本质——只测公共边界、不测实现细节</b>
+          </summary>
+          <div class="inner">
+            <p>
+              测试在公共接口上观察行为，而非深入内部或 mock
+              内部协作者。依据：<strong
+                >代码可整体重构而行为不变，测试不应随实现变动而断。</strong
+              >
+            </p>
+            <ul>
+              <li>
+                <strong>seam</strong>
+                作为"观察行为而不深入内部"的公共边界，测试只在 seam 上写。
+              </li>
+              <li>
+                要求<strong>先与用户确认 seam</strong> 再写测试，把"测什么"从
+                agent 自行判断提升为显式契约。
+              </li>
+              <li>
+                将 implementation-coupled（mock
+                内部协作者、测私有方法、通过旁路验证）列为反模式——诊断特征是"重构时测试会断但行为没变"。
+              </li>
+            </ul>
+            <p>
+              差异：superpowers、gsd
+              均强调"先写测试"与"测试质量"，但<em>未将"测边界不测细节"作为可诊断的失败模式与契约机制显式约束</em>。
+            </p>
+          </div>
+        </details>
+      </section>
+
+      <!-- ============ 13. code-review 三套对比 ============ -->
+      <section class="slide">
+        <span class="slide-num">13</span>
+        <h2>三套 skill 的 code-review 对比</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>维度</th>
+              <th>mattpocock <code>code-review</code></th>
+              <th>superpowers</th>
+              <th>gsd</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>结构</strong></td>
+              <td>单 skill，双轴并行</td>
+              <td>两 skill 拆分：请求 + 接收</td>
+              <td>独立 agent，命令 spawn</td>
+            </tr>
+            <tr>
+              <td><strong>评审轴</strong></td>
+              <td>
+                <span style="color: var(--accent-teal)"
+                  >双轴（Standards + Spec）并行，不合并</span
+                >
+              </td>
+              <td>单轴 checklist</td>
+              <td>单轴对抗式</td>
+            </tr>
+            <tr>
+              <td><strong>严重程度</strong></td>
+              <td>四级（CRITICAL/HIGH/MEDIUM/LOW）</td>
+              <td>三级</td>
+              <td>两级（BLOCKER/WARNING）</td>
+            </tr>
+            <tr>
+              <td><strong>反馈接收</strong></td>
+              <td>未单独规定</td>
+              <td>禁表演式同意、先验证再实现、YAGNI 检查</td>
+              <td>不负责接收，专注对抗式找问题</td>
+            </tr>
+          </tbody>
+        </table>
+        <div class="callout">
+          <strong>三者的根本差异在设计哲学：</strong>mattpocock
+          防"评审遗漏或轴间污染"；superpowers
+          防"反馈被表演式接受或盲目实现"；gsd
+          防"评审流于表面或漏掉跨文件问题"。<em>三者并存的价值</em>——个人/小团队可用
+          mattpocock 的轻量纪律，团队协作可用 superpowers
+          的请求/接收拆分，大型项目可用 gsd 的流水线化 gate 强制。
+        </div>
+      </section>
+
+      <!-- ============ 14. anysearch vs 内置 ============ -->
+      <section class="slide">
+        <span class="slide-num">14</span>
+        <h2>
+          anysearch vs 内置 <code>web_search</code> / <code>fetch_content</code>
+        </h2>
+        <p class="lead">
+          二者并非替代关系，而是<em>能力分层互补</em>，差异源于定位不同。
+        </p>
+        <table>
+          <thead>
+            <tr>
+              <th>维度</th>
+              <th>anysearch</th>
+              <th>内置 web_search / fetch_content</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>架构形态</td>
+              <td>外部 CLI skill，调用第三方 API</td>
+              <td>平台原生工具</td>
+            </tr>
+            <tr>
+              <td>搜索能力</td>
+              <td>
+                <span style="color: var(--accent-teal)"
+                  >通用 + 16 个垂直域（带 sub_domain 结构化参数）</span
+                >
+              </td>
+              <td>仅通用搜索</td>
+            </tr>
+            <tr>
+              <td>并行能力</td>
+              <td><code>batch_search</code> 多意图并行</td>
+              <td>单次单查询</td>
+            </tr>
+            <tr>
+              <td>内容提取</td>
+              <td><code>extract</code> 返回 Markdown，覆盖 SPA/JS 渲染页</td>
+              <td>支持 YouTube/视频帧/GitHub，对 SPA 有 Gemini 回退</td>
+            </tr>
+            <tr>
+              <td>隐私边界</td>
+              <td>查询发往第三方，标注"不得用于含敏感信息的查询"</td>
+              <td>查询走平台自身，无第三方泄露面</td>
+            </tr>
+          </tbody>
+        </table>
+        <div class="callout">
+          <strong>分工依据：</strong
+          >内置工具的优势在于<em>零依赖、零配置、始终可用</em>（快速事实查询、富媒体提取）；anysearch
+          的优势在于<em>专业领域的召回质量与多意图并行</em>（垂直域能返回结构化数据如股票代码、CVE、DOI）。<code
+            >global-instructions.md</code
+          >
+          规定"anysearch
+          首选、内置回退"——按<em>查询性质分流</em>而非按偏好绑定。
+        </div>
+      </section>
+
+      <!-- ============ 15. skills 与 rules 分离 ============ -->
+      <section class="slide">
+        <span class="slide-num">15</span>
+        <h2>skills 与 rules 分离的原因</h2>
+        <p class="lead">
+          常见困惑：<code>python-patterns</code>（skill）与
+          <code>rules/python/</code>（rule）均在处理 Python，为何不合并？
+        </p>
+        <div class="box-group">
+          <div class="box" style="border-color: var(--accent-blue)">
+            <h4 style="color: var(--accent-blue)">rules = 约束</h4>
+            <p style="font-size: 0.9em">
+              永远生效或按文件类型生效，<strong>agent 必须遵守</strong
+              >。约束不宜写入 skill（可能根本不触发）。
+            </p>
+          </div>
+          <div class="box" style="border-color: var(--accent-teal)">
+            <h4 style="color: var(--accent-teal)">skills = 脚本</h4>
+            <p style="font-size: 0.9em">
+              按场景触发，提供<strong>做事步骤</strong>。步骤不宜写入
+              rule（会无差别占用上下文）。
+            </p>
+          </div>
+        </div>
+        <div class="callout">
+          <strong>两者职责正交，合并将模糊边界。</strong>此即
+          <code>common-testing.md</code> 中以"Skill Support"引用 TDD 而非将 TDD
+          步骤内联的原因。
+        </div>
+      </section>
+
+      <!-- ============ 16. 项目文档管理 ============ -->
+      <section class="slide">
+        <span class="slide-num">16</span>
+        <h2>项目文档管理：为何不用记忆系统</h2>
+        <p>
+          grilling、domain-modeling、to-spec、to-tickets
+          共同产出一套<strong>仓库内可见的文档体系</strong>——针对 agent
+          记忆系统失败模式的设计选择。
+        </p>
+        <div class="box-group">
+          <div class="box" style="border-color: var(--accent-teal)">
+            <h4><code>CONTEXT.md</code></h4>
+            <p style="font-size: 0.88em">
+              领域术语表，记定义与同义反义，不记实现。
+            </p>
+          </div>
+          <div class="box" style="border-color: var(--accent-purple)">
+            <h4><code>docs/adr/</code></h4>
+            <p style="font-size: 0.88em">架构决策记录，三条件满足才创建。</p>
+          </div>
+          <div class="box" style="border-color: var(--accent-amber)">
+            <h4><code>.scratch/&lt;feature&gt;/</code></h4>
+            <p style="font-size: 0.88em">
+              本地 issue tracker：spec.md + issues/NN-*.md 票。
+            </p>
+          </div>
+          <div class="box" style="border-color: var(--accent-coral)">
+            <h4><code>docs/agents/</code></h4>
+            <p style="font-size: 0.88em">
+              skill 运行时配置，由 setup 一次性创建。
+            </p>
+          </div>
+        </div>
+        <details open>
+          <summary>
+            <b>🔍 展开：记忆系统的三个失败模式 → 为何用仓库内文档</b>
+          </summary>
+          <div class="inner">
+            <ol>
+              <li>
+                <strong>记忆不可 review</strong>：记忆库对人类不可见，无法审查
+                agent 记了什么、记对没有。仓库内文档可读、可 review、可
+                <code>git diff</code>——决策被错误记录时人类能在 review 中发现。
+              </li>
+              <li>
+                <strong>记忆检索是概率性的，决策调用需要确定性</strong
+                >：记忆按相关性检索，可能漏检索或检索到过时条目。但术语定义、ADR
+                决策是"调用即需准确"的——用文件而非记忆，是"读文件"（确定性）取代"问记忆"（概率性）。
+              </li>
+              <li>
+                <strong>记忆跨 session 不稳定，文档跨 session 稳定</strong
+                >：记忆常按 session 隔离或随清理丢失；跨 session
+                的决策需稳定可复现。仓库内文档随 git 持久化，任何 session、任何
+                agent、任何人类读同一个文件得到同一信息。
+              </li>
+            </ol>
+            <p>
+              <strong>职责边界：</strong
+              >文档承担"长期记忆"职责（显式、可见、可审查）；会话偏好（如回答风格）不在文档职责内，随
+              session 生灭。需跨 session 持久的才落文档。
+            </p>
+          </div>
+        </details>
+      </section>
+
+      <!-- ============ 17. Agents 总览 ============ -->
+      <section class="slide">
+        <span class="slide-num">17</span>
+        <h2>③ Agents：将判断力委派给专家角色</h2>
+        <p>
+          <code>agents/</code> 下含 <strong>22 个</strong>子
+          agent，按角色功能聚类：
+        </p>
+        <div class="box-group">
+          <div class="box" style="border-color: var(--accent-blue)">
+            <h4 style="color: var(--accent-blue)">3.1 架构层</h4>
+            <p style="font-size: 0.88em">
+              architect（系统级）<br />code-architect（特性级）
+            </p>
+          </div>
+          <div class="box" style="border-color: var(--accent-teal)">
+            <h4 style="color: var(--accent-teal)">3.2 评审层</h4>
+            <p style="font-size: 0.88em">
+              typescript/python/java/fastapi-reviewer<br />database/security-reviewer
+            </p>
+          </div>
+          <div class="box" style="border-color: var(--accent-coral)">
+            <h4 style="color: var(--accent-coral)">3.3 修复层</h4>
+            <p style="font-size: 0.88em">
+              build-error-resolver<br />performance-optimizer<br />silent-failure-hunter
+            </p>
+          </div>
+        </div>
+        <div class="box-group">
+          <div class="box" style="border-color: var(--accent-purple)">
+            <h4 style="color: var(--accent-purple)">3.4 实现层</h4>
+            <p style="font-size: 0.88em">
+              code-simplifier（轻量微调）<br />refactor-cleaner（全仓重构）
+            </p>
+          </div>
+          <div class="box" style="border-color: var(--accent-green)">
+            <h4 style="color: var(--accent-green)">3.5 探索层</h4>
+            <p style="font-size: 0.88em">
+              code-explorer<br />追踪执行路径、映射依赖
+            </p>
+          </div>
+          <div class="box" style="border-color: var(--accent-amber)">
+            <h4 style="color: var(--accent-amber)">3.6 运维层</h4>
+            <p style="font-size: 0.88em">
+              harness-optimizer<br />loop-operator<br />e2e-runner
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ 18. 架构层两层分工 ============ -->
+      <section class="slide">
+        <span class="slide-num">18</span>
+        <h2>架构层：两层分工</h2>
+        <div class="box-group">
+          <div
+            class="box"
+            style="
+              border-color: var(--accent-blue);
+              background: rgba(122, 162, 247, 0.08);
+            "
+          >
+            <h4 style="color: var(--accent-blue)">architect · 系统级</h4>
+            <p style="font-size: 0.92em">整体设计、可扩展性、技术决策、ADR。</p>
+            <p style="font-size: 0.88em">
+              输出：高层架构图 + 组件职责 + 数据模型 + API 契约。
+            </p>
+            <p style="font-size: 0.85em; color: var(--text-muted)">
+              用于"做架构决策"
+            </p>
+          </div>
+          <div
+            class="box"
+            style="
+              border-color: var(--accent-teal);
+              background: rgba(115, 218, 202, 0.08);
+            "
+          >
+            <h4 style="color: var(--accent-teal)">code-architect · 特性级</h4>
+            <p style="font-size: 0.92em">
+              分析现有代码的模式与约定，给出可执行的施工图。
+            </p>
+            <p style="font-size: 0.88em">
+              输出：具体文件路径 + 接口 + 数据流 + 构建顺序。
+            </p>
+            <p style="font-size: 0.85em; color: var(--text-muted)">
+              用于"这个功能在现有代码里怎么落地"
+            </p>
+          </div>
+        </div>
+        <div class="note">
+          <strong>分两层的原因：</strong
+          >"做架构决策"与"在现有代码中落地一个特性"属于性质迥异的任务——前者抽象度高、需全局权衡；后者需读懂现有约定并产出可执行施工图。合并为单一
+          agent 将导致<em>要么能力不足、要么职责过载</em>。
+        </div>
+      </section>
+
+      <!-- ============ 19. 评审层严重程度 ============ -->
+      <section class="slide">
+        <span class="slide-num">19</span>
+        <h2>评审层：按语言与技术栈分兵 + 统一输出契约</h2>
+        <p>
+          按栈分设 reviewer 而非单一通用 reviewer，因各技术栈关注点不同：FastAPI
+          的 async 正确性、Java 的 JPA/N+1、TypeScript 的类型安全、ML
+          的训练可复现性。
+        </p>
+        <h3>严重程度分级（统一评审输出契约）</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>级别</th>
+              <th>含义</th>
+              <th>动作</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><span class="lvl lvl-critical">CRITICAL</span></td>
+              <td>安全漏洞或数据丢失风险</td>
+              <td><strong>BLOCK</strong> · 合并前必须修复</td>
+            </tr>
+            <tr>
+              <td><span class="lvl lvl-high">HIGH</span></td>
+              <td>Bug 或显著质量问题</td>
+              <td><strong>WARN</strong> · 合并前应修复</td>
+            </tr>
+            <tr>
+              <td><span class="lvl lvl-medium">MEDIUM</span></td>
+              <td>可维护性顾虑</td>
+              <td><strong>INFO</strong> · 考虑修复</td>
+            </tr>
+            <tr>
+              <td><span class="lvl lvl-low">LOW</span></td>
+              <td>风格或轻微建议</td>
+              <td><strong>NOTE</strong> · 可选</td>
+            </tr>
+          </tbody>
+        </table>
+        <div class="callout">
+          <strong>设计价值：</strong>不同 reviewer agent
+          关注点不同，若无统一分级，各自输出无法被下游（PR
+          是否可合并）机械判断。分级后，<em
+            >"无 CRITICAL/HIGH 则通过"成为可机读的合并门槛</em
+          >，agent 不需再人工权衡"这个问题严不严重"。
+        </div>
+      </section>
+
+      <!-- ============ 20. agent vs skill ============ -->
+      <section class="slide">
+        <span class="slide-num">20</span>
+        <h2>设计原理：为何用 agent 而非 skill</h2>
+        <p class="lead">核心差异在<strong>触发模型与上下文归属</strong>。</p>
+        <div class="box-group">
+          <div class="box" style="border-color: var(--accent-teal)">
+            <h4 style="color: var(--accent-teal)">skill · 加载到主上下文</h4>
+            <p style="font-size: 0.9em">
+              场景触发的脚本，被主 agent 加载到上下文、由主 agent 自己执行。
+            </p>
+            <p style="font-size: 0.88em">
+              <strong>上下文不隔离</strong>——执行后仍在同一上下文继续。
+            </p>
+          </div>
+          <div class="box" style="border-color: var(--accent-purple)">
+            <h4 style="color: var(--accent-purple)">
+              agent · 委派给独立子 agent
+            </h4>
+            <p style="font-size: 0.9em">
+              委派判断力的角色，在上下文干净的子 agent 内独立完成、结果回流。
+            </p>
+            <p style="font-size: 0.88em">
+              <strong>上下文隔离</strong>——主 agent 不深入细节，只收结果。
+            </p>
+          </div>
+        </div>
+        <details open>
+          <summary>
+            <b>🔍 展开：边界——轻量局部走 skill，全仓系统走 agent</b>
+          </summary>
+          <div class="inner">
+            <p>
+              <strong>为何用 agent 而非 skill：</strong>agent
+              适用于需上下文隔离与独立判断力边界的场景——refactor-cleaner 要跑
+              analyzer、grep 全仓、查 git 历史、逐项判
+              SAFE/CAREFUL/RISKY，这些探查的中间上下文若涌入主 agent
+              会淹没其推理，写成 agent 则隔离在子 agent 内。code-simplifier
+              同理——需独立判断"哪些简化能简化、哪些是过度设计"，需独立判断力边界以免与主
+              agent 的实现上下文串混。
+            </p>
+            <p>
+              <strong>反观 tdd（skill）内的 refactor 阶段</strong
+              >是轻量、局部、在测试保护下的一步重构，主 agent 自己加载 skill
+              即可执行，无需委派。
+            </p>
+            <p style="color: var(--accent-amber)">
+              <strong>边界：</strong>轻量局部重构走 skill，全仓系统重构走
+              agent。
+            </p>
+            <p>
+              <strong>为何子 agent 而非全塞入主 agent：</strong>子 agent
+              的价值不在于"多实例并行"，而在于<em>上下文隔离与职责边界</em>——主
+              agent
+              保留全局视角与决策权，将需要深度专注的子任务委派至上下文干净的子
+              agent，结果回流。主 agent 不被某个深任务的细节淹没，子 agent
+              也不被全局上下文干扰。
+            </p>
+          </div>
+        </details>
+      </section>
+
+      <!-- ============ 21. worktree 并发 ============ -->
+      <section class="slide">
+        <span class="slide-num">21</span>
+        <h2>并发执行：git worktree 的实际使用</h2>
+        <p class="lead">
+          用 <code>git worktree</code> 而非 stash + branch-switching——stash
+          易丢失、切换需重装依赖。worktree
+          让每个并行任务拥有独立工作目录与依赖环境。
+        </p>
+        <pre><code>~/work/&lt;org&gt;/
+├── main-repo/                  # 主仓库
+│   └── backend/                # submodule, .git 指向 modules
+│       ├── service-a/          # nested submodule, master 分支 (主工作树)
+│       ├── service-b/          # nested submodule, master 分支 (主工作树)
+│       └── service-c/          # nested submodule, master 分支 (主工作树)
+└── worktree/                   # worktree 目录, 置于主仓库外
+    └── feature-X/              # 以分支名命名, 特性的统一工作区
+        ├── service-a/          # service-a 的 worktree, feature-X 分支
+        └── service-b/          # service-b 的 worktree, feature-X 分支</code></pre>
+        <details open>
+          <summary><b>🔍 展开：四条约定 + 设计动机</b></summary>
+          <div class="inner">
+            <ul>
+              <li>
+                <strong>置于仓库外</strong>：防嵌套污染文件搜索与 IDE 目录扫描。
+              </li>
+              <li>
+                <strong>一分支一 worktree</strong>：一分支不能同时检出两个
+                worktree。
+              </li>
+              <li>
+                <strong>依赖与 env 不共享</strong
+                >：<code>node_modules/</code>/<code>.venv/</code>/<code
+                  >.env</code
+                >
+                各 worktree 重装。
+              </li>
+              <li>
+                <strong>合并后清理</strong>：<code>git worktree remove</code> +
+                <code>prune</code>，不留残留。
+              </li>
+            </ul>
+            <p>
+              <strong>为何以分支名命名顶层目录？</strong
+              >同一特性常涉及多个服务——一个 <code>feature-X</code> 可能同时改
+              service-a/b/c。以分支名为顶层，把该特性涉及的所有服务 worktree
+              放在同一目录，形成统一工作区。agent
+              操作该特性时只需进入一个目录即可访问全部相关服务，<em
+                >这对 agent 的文件搜索、跨服务重构、一致性检查都是必要的</em
+              >。
+            </p>
+            <p>
+              <strong>与子 agent 的互补：</strong>子 agent
+              隔离的是<em>推理上下文</em>，worktree
+              隔离的是<em>文件系统与依赖环境</em>，两者共同支撑并发工作流。
+            </p>
+          </div>
+        </details>
+      </section>
+
+      <!-- ============ 22. 工作流总览 ============ -->
+      <section class="slide">
+        <span class="slide-num">22</span>
+        <h2>④ 工作流：三层资源的协作方式</h2>
+        <p class="lead">
+          三层分别阐述，但并非孤立存在。下图展示三层在开发全流程的协作关系。
+        </p>
+        <pre class="mermaid">
+flowchart LR
+    subgraph 探查["探查阶段 (需求过大/模糊)"]
+        WF["wayfinder<br/>画决策票地图"]
+        RS["research (后台子代理)<br/>查一手信源"]
+        WF -.->|research 票由其解决| RS
+    end
+
+    subgraph 规划["规划阶段"]
+        A["grill-with-docs<br/>对齐需求+领域模型"] --> B["to-spec<br/>沉淀 spec"]
+        B --> C["to-tickets<br/>拆分 tracer-bullet 票"]
+    end
+
+    subgraph 实现["实现阶段 — implement 内含 tdd / code-review / commit"]
+        C --> D["implement<br/>按票实现"]
+        D --> TDD["tdd<br/>红绿重构+80%覆盖"]
+        TDD --> CS["code-simplifier<br/>轻量简化最近改动"]
+        CS --> RC{"积累死代码/<br/>复杂度?"}
+        RC -- 是 --> R["refactor-cleaner<br/>清理后重构"]
+        R --> E{"构建/测试<br/>是否通过?"}
+        RC -- 否 --> E
+        E -- 失败 --> F["build-error-resolver<br/>最小 diff 修复"]
+        F --> E
+        E -- 通过 --> H["code-review<br/>双轴 Standards+Spec"]
+        H --> I{"严重程度?"}
+        I -- CRITICAL/HIGH --> J["修复后重审"]
+        J --> H
+        I -- 通过 --> K["提交<br/>conventional commits+PR"]
+    end
+
+    探查 -->|路径清晰后进入| 规划
+    rules["rules/common<br/>全程常驻约束"] -.-> 探查
+    rules -.-> 规划
+    rules -.-> 实现
+    arch["architect<br/>系统级架构决策"] -.-> 规划
+    rev["语言 reviewer +<br/>security-reviewer"] -.-> 实现
+    sfh["silent-failure-hunter<br/>静默失败补审"] -.-> 实现
+
+    style WF fill:#1f2335,stroke:#7aa2f7,color:#c0caf5
+    style A fill:#1f2335,stroke:#7aa2f7,color:#c0caf5
+    style B fill:#1f2335,stroke:#7aa2f7,color:#c0caf5
+    style C fill:#1f2335,stroke:#7aa2f7,color:#c0caf5
+    style D fill:#1f2335,stroke:#7aa2f7,color:#c0caf5
+    style TDD fill:#1f2335,stroke:#7aa2f7,color:#c0caf5
+    style H fill:#1f2335,stroke:#7aa2f7,color:#c0caf5
+    style K fill:#1f2335,stroke:#7aa2f7,color:#c0caf5
+    style RS fill:#1f2335,stroke:#e0af68,color:#e0af68
+    style CS fill:#1f2335,stroke:#bb9af7,color:#bb9af7
+    style R fill:#1f2335,stroke:#bb9af7,color:#bb9af7
+    style F fill:#1f2335,stroke:#bb9af7,color:#bb9af7
+    style J fill:#1f2335,stroke:#bb9af7,color:#bb9af7
+    style arch fill:#1f2335,stroke:#bb9af7,color:#bb9af7
+    style rev fill:#1f2335,stroke:#bb9af7,color:#bb9af7
+    style sfh fill:#1f2335,stroke:#bb9af7,color:#bb9af7
+    style RC fill:#1f2335,stroke:#73daca,color:#73daca
+    style E fill:#1f2335,stroke:#73daca,color:#73daca
+    style I fill:#1f2335,stroke:#73daca,color:#73daca
+    style rules fill:#1f2335,stroke:#e0af68,color:#e0af68
+
+        </pre>
+        <div class="callout">
+          <strong>关键观察：</strong
+          ><span class="tag tag-blue">rules</span> 在每一步均在场（常驻）；<span
+            class="tag tag-teal"
+            >skills</span
+          >
+          在特定环节触发（工作流脚本）；<span class="tag tag-purple"
+            >agents</span
+          >
+          在需要判断力或失败时介入（委派）。三层职责正交，互不重叠。<code
+            >implement</code
+          >
+          自身即编排了 tdd → 简化 → 修复 → code-review → 提交的子链。
+        </div>
+      </section>
+
+      <!-- ============ 23. TDD 防御性闭环 ============ -->
+      <section class="slide">
+        <span class="slide-num">23</span>
+        <h2>走线二：TDD + 修复循环（防御性闭环）</h2>
+        <pre class="mermaid">
+flowchart LR
+    RED["先写测试<br/>RED: 看测试失败"] --> GREEN["实现至通过<br/>GREEN"] --> IMPROVE["重构<br/>IMPROVE"]
+    IMPROVE --> GATE{"构建/测试<br/>是否通过?"}
+    GATE -- 构建失败 --> BER["build-error-resolver<br/>最小 diff 修复<br/>(Java: java-build-resolver)"]
+    BER --> GATE
+    GATE -- 测试失败 --> FIX["修改实现而非测试<br/>Tests verify intent"]
+    FIX --> RED
+    GATE -- 通过 --> SFH["silent-failure-hunter<br/>补审静默失败"]
+    SFH --> COV{"覆盖率 >= 80%?"}
+    COV -- 否 --> RED
+    COV -- 是 --> DONE["循环结束"]
+
+    style RED fill:#1f2335,stroke:#f7768e,color:#f7768e
+    style GREEN fill:#1f2335,stroke:#9ece6a,color:#9ece6a
+    style IMPROVE fill:#1f2335,stroke:#7aa2f7,color:#c0caf5
+    style BER fill:#1f2335,stroke:#bb9af7,color:#bb9af7
+    style FIX fill:#1f2335,stroke:#bb9af7,color:#bb9af7
+    style SFH fill:#1f2335,stroke:#bb9af7,color:#bb9af7
+    style GATE fill:#1f2335,stroke:#73daca,color:#73daca
+    style COV fill:#1f2335,stroke:#73daca,color:#73daca
+    style DONE fill:#1f2335,stroke:#9ece6a,color:#9ece6a
+
+        </pre>
+        <div class="note">
+          <strong>防御性闭环：</strong>TDD
+          保证<em>编写时正确</em>，修复层保证<em>出现问题后能被接住</em>，silent-failure-hunter
+          保证<em>未显式失败的隐患亦被识别</em>。每一环均有明确责任主体，不存在无覆盖环节。
+        </div>
+      </section>
+
+      <!-- ============ 24. 小结：三个设计判断 ============ -->
+      <section class="slide">
+        <span class="slide-num">24</span>
+        <h2>小结：三个核心设计判断</h2>
+        <div class="box-group">
+          <div
+            class="box"
+            style="
+              border-color: var(--accent-blue);
+              background: rgba(122, 162, 247, 0.08);
+            "
+          >
+            <h4 style="color: var(--accent-blue)">① 职责分层而非能力堆砌</h4>
+            <p style="font-size: 0.92em">
+              rules（约束）/ skills（工作流）/
+              agents（判断力委派）三层正交，各层触发模型不同（常驻 / 场景 /
+              委派）。
+            </p>
+            <p style="font-size: 0.88em; color: var(--text-muted)">
+              不合并为单一"能力池"，目的是让每类资源仅在合适的时机占用上下文。
+            </p>
+          </div>
+          <div
+            class="box"
+            style="
+              border-color: var(--accent-teal);
+              background: rgba(115, 218, 202, 0.08);
+            "
+          >
+            <h4 style="color: var(--accent-teal)">② 单一真相源与平台适配层</h4>
+            <p style="font-size: 0.92em">
+              <code>install.py build</code>
+              将同一份源码转换为各平台所识别的格式。
+            </p>
+            <p style="font-size: 0.88em; color: var(--text-muted)">
+              Cursor 的 <code>.mdc</code> + <code>globs</code>、Claude 的
+              <code>paths</code>、Codex 的 AGENTS.md 嵌入。一处修改，四处生效。
+            </p>
+          </div>
+          <div
+            class="box"
+            style="
+              border-color: var(--accent-purple);
+              background: rgba(187, 154, 247, 0.08);
+            "
+          >
+            <h4 style="color: var(--accent-purple)">③ 防御性闭环</h4>
+            <p style="font-size: 0.92em">
+              TDD 保证编写时正确，修复层保证失败被接住，评审层保证交付前被审查。
+            </p>
+            <p style="font-size: 0.88em; color: var(--text-muted)">
+              每一环节均有明确的 skill 或 agent 负责，不存在无覆盖的环节。
+            </p>
+          </div>
+        </div>
+        <p class="footer-note" style="text-align: center; margin-top: 20px">
+          该体系本身是活的——<code>install.py</code> 负责部署，<code
+            >skills/</code
+          >
+          与 <code>agents/</code> 为实际内容，<code>rules/</code> 为约束底座。
+        </p>
+      </section>
+
+      <!-- ============ 25. Q&A ============ -->
+      <section class="slide cover">
+        <span class="slide-num">25</span>
+        <div class="badge">Questions &amp; Discussion</div>
+        <h1>Q &amp; A</h1>
+        <p class="subtitle">欢迎围绕设计权衡、落地细节、场景适配展开</p>
+        <div class="box-group" style="margin-top: 32px">
+          <div class="box" style="border-color: var(--accent-blue)">
+            <h4 style="color: var(--accent-blue)">设计权衡</h4>
+            <p style="font-size: 0.9em">
+              为何三层正交？为何不用记忆系统？为何 agent/skill 边界如此划分？
+            </p>
+          </div>
+          <div class="box" style="border-color: var(--accent-teal)">
+            <h4 style="color: var(--accent-teal)">落地细节</h4>
+            <p style="font-size: 0.9em">
+              <code>install.py</code> 分发机制 · worktree 实操 · 各 skill
+              的触发条件
+            </p>
+          </div>
+          <div class="box" style="border-color: var(--accent-purple)">
+            <h4 style="color: var(--accent-purple)">场景适配</h4>
+            <p style="font-size: 0.9em">
+              三套 skill 何时切换？个人/小团队 vs 大型项目的选型
+            </p>
+          </div>
+        </div>
+        <p class="footer-note">
+          仓库源码完全公开，具体配置路径均已在文中标注。
+        </p>
+      </section>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+    <script>
+      mermaid.initialize({
+        startOnLoad: true,
+        theme: "base",
+        themeVariables: {
+          primaryColor: "#24283b",
+          primaryTextColor: "#c0caf5",
+          primaryBorderColor: "#7aa2f7",
+          lineColor: "#73daca",
+          secondaryColor: "#1f2335",
+          tertiaryColor: "#1a1b26",
+          background: "#1a1b26",
+          mainBkg: "#24283b",
+          textCol: "#c0caf5",
+          nodeBorder: "#3b4261",
+          clusterBkg: "#1f2335",
+          clusterBorder: "#3b4261",
+          edgeLabelBackground: "#1a1b26",
+          fontFamily:
+            '-apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif',
+        },
+        flowchart: { curve: "basis", useMaxWidth: true, htmlLabels: true },
+      });
+    </script>
+  </body>
+</html>
