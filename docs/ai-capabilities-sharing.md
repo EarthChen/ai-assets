@@ -336,20 +336,17 @@ flowchart LR
         B --> C["to-tickets<br/>拆分 tracer-bullet 票"]
     end
 
-    subgraph 实现["实现阶段"]
+    subgraph 实现["实现阶段 — implement skill 内含 tdd / code-review / commit"]
         C --> D["implement<br/>按票实现"]
-        D --> CS["code-simplifier<br/>轻量简化最近改动"]
+        D --> TDD["tdd<br/>红绿重构 + 80% 覆盖"]
+        TDD --> CS["code-simplifier<br/>轻量简化最近改动"]
         CS --> RC{"积累死代码/<br/>复杂度?"}
         RC -- 是 --> R["refactor-cleaner<br/>清理后重构"]
         R --> E
         RC -- 否 --> E{"构建/测试<br/>是否通过?"}
         E -- 失败 --> F["build-error-resolver<br/>最小 diff 修复"]
         F --> E
-        E -- 通过 --> G["tdd<br/>红绿重构 + 80% 覆盖"]
-    end
-
-    subgraph 评审["评审阶段"]
-        G --> H["code-review<br/>双轴 Standards + Spec"]
+        E -- 通过 --> H["code-review<br/>双轴 Standards + Spec"]
         H --> I{"严重程度?"}
         I -- CRITICAL/HIGH --> J["修复后重审"]
         J --> H
@@ -360,15 +357,12 @@ flowchart LR
     rules["rules/common<br/>全程常驻约束"] -.-> 探查
     rules -.-> 规划
     rules -.-> 实现
-    rules -.-> 评审
-    arch["architect <br/>系统级架构决策"] -.-> 规划
-    cs["code-simplifier<br/>轻量简化最近改动"] -.-> 实现
-    rc["refactor-cleaner<br/>清理死代码 + 结构重构"] -.-> 实现
-    rev["语言 reviewer + security-reviewer"] -.-> 评审
-    sfh["silent-failure-hunter<br/>静默失败补审"] -.-> 评审
+    arch["architect<br/>系统级架构决策"] -.-> 规划
+    rev["语言 reviewer + security-reviewer"] -.-> 实现
+    sfh["silent-failure-hunter<br/>静默失败补审"] -.-> 实现
 ```
 
-该图展示了三层资源的协作关系：rules 在全流程常驻约束；skills 按阶段串联为探查→规划→实现→评审主线（需求过大过糊时从 wayfinder 起步，否则直接进规划）；agents 在需要判断力（架构决策、评审）或失败（构建失败、静默失败）或代码积累复杂度（需清理重构）时介入。实现阶段两个 agent 分工：`code-simplifier` 紧随 implement 做轻量简化（改嵌套、改名、清改动区死代码，session 范围），`refactor-cleaner` 在复杂度积累时做全仓系统清理（跨文件分析、风险分级、批量移除）。wayfinder 与 research 的位置在 grill-with-docs 之前——当需求太大太糊、连怎么走都不确定时，先画决策地图、后台查事实，路径清晰后再进规划链。
+该图展示了三层资源的协作关系：rules 在全流程常驻约束；skills 按阶段串联为探查→规划→实现主线（需求过大过糊时从 wayfinder 起步，否则直接进规划）；agents 在需要判断力（架构决策、评审）或失败（构建失败、静默失败）或代码积累复杂度（需清理重构）时介入。注意 `implement` skill 自身即内含 `tdd`（红绿重构）、`code-review`（双轴评审）与 `commit` 三步，并非独立的后续阶段——图中将它们收进实现阶段内部。实现阶段内嵌的两个 agent 分工：`code-simplifier` 紧随 tdd 做轻量简化（改嵌套、改名、清改动区死代码，session 范围），`refactor-cleaner` 在复杂度积累时做全仓系统清理（跨文件分析、风险分级、批量移除）。wayfinder 与 research 的位置在 grill-with-docs 之前——当需求太大太糊、连怎么走都不确定时，先画决策地图、后台查事实，路径清晰后再进规划链。
 
 ### 4.1 走线一：规划 → 实现 → 评审链
 
@@ -384,20 +378,21 @@ flowchart LR
 1. grill-with-docs (skill)        对齐需求 + 建立领域模型
 2. to-spec (skill)                 沉淀为 spec
 3. to-tickets (skill)              拆分为 tracer-bullet 票
-4. implement (skill)               按票实现
+4. implement (skill)               按票实现 (内含 tdd / code-review / commit)
    └─ 语言 rules 按文件类型生效 (rules/python, rules/java...)
    └─ 语言 skills 提供模式 (python-patterns, springboot-patterns)
+   └─ 内含 /tdd: 红绿重构, 80% 覆盖底线
    └─ 写完即简化 → code-simplifier (agent) 轻量微调最近改动
    └─ 构建失败 → build-error-resolver (agent) 自动介入
    └─ 积累死代码/复杂度 → refactor-cleaner (agent) 清理后重构
-5. code-review (skill)             双轴评审 (Standards + Spec, 并行子 agent)
-   └─ 语言 reviewer agent (typescript/python/java-reviewer)
-   └─ 安全敏感代码 → security-reviewer agent
-   └─ CRITICAL → 阻断; HIGH → 警告
-6. 提交 → common-git-workflow 规范 commit message + PR
+   └─ 内含 /code-review: 双轴评审 (Standards + Spec, 并行子 agent)
+      └─ 语言 reviewer agent (typescript/python/java-reviewer)
+      └─ 安全敏感代码 → security-reviewer agent
+      └─ CRITICAL → 阻断; HIGH → 警告
+   └─ 内含提交: conventional commits + PR (common-git-workflow 规范)
 ```
 
-关键观察：**rules 在每一步均在场**（常驻），**skills 在特定环节触发**（工作流脚本），**agents 在需要判断力或失败时介入**（委派）。三层职责正交，互不重叠。步骤 0 是条件性的——仅在需求过大过糊时启用 wayfinder 探查，需求清晰则直接从步骤 1 起。
+关键观察：**rules 在每一步均在场**（常驻），**skills 在特定环节触发**（工作流脚本），**agents 在需要判断力或失败时介入**（委派）。三层职责正交，互不重叠。步骤 0 是条件性的——仅在需求过大过糊时启用 wayfinder 探查，需求清晰则直接从步骤 1 起。步骤 4 的 `implement` 自身即编排了 tdd → 简化 → 修复 → code-review → 提交的子链，故图中不再出现独立的评审与提交阶段。
 
 ### 4.2 走线二：TDD + 修复循环
 
