@@ -204,6 +204,33 @@ mattpocock `tdd` 的核心机制 seam 值得单独展开。seam 的本质是**�
 - **`.scratch/<feature>/`（本地 issue tracker 与产物）**：由 `to-spec` 与 `to-tickets` 产出。`to-spec` 产出 `spec.md`（PRD）；`to-tickets` 产出 `issues/NN-<slug>.md`（tracer-bullet 票，每票一个文件，含 "Blocked by" 依赖声明）。这是本地文件的 issue tracker 模式（区别于 GitHub/GitLab 模式），适用于单人项目或无远程仓库。
 - **`docs/agents/`（skill 运行时配置）**：由 `setup-matt-pocock-skills` 一次性创建，记录 issue tracker 选型、triage label 词表、domain doc 布局（单 context 还是多 context）。其他 engineering skill 运行时读这些配置文件而非读 CLAUDE.md/AGENTS.md 全文。
 
+四类文件、其产出者与职责的关系如下：
+
+```mermaid
+flowchart LR
+    subgraph 产出["产出 skill"]
+        DM["domain-modeling"]
+        TS["to-spec"]
+        TT["to-tickets"]
+        SETUP["setup-matt-pocock-skills"]
+    end
+
+    DM -->|维护术语| CTX["CONTEXT.md<br/>领域术语表<br/>记定义与同义反义, 不记实现"]
+    DM -->|难逆转决策才记| ADR["docs/adr/<br/>架构决策记录<br/>三条件满足才创建"]
+    TS -->|产出 PRD| SPEC["scratch/&lt;feature&gt;/spec.md<br/>PRD 规格文档"]
+    TT -->|拆 tracer-bullet 票| ISSUES["scratch/&lt;feature&gt;/issues/NN-&lt;slug&gt;.md<br/>每票一文件, 含 Blocked by"]
+    SETUP -->|一次性创建| AGENTS["docs/agents/<br/>skill 运行时配置<br/>issue tracker / triage 词表 / doc 布局"]
+
+    subgraph 消费["消费方"]
+        SPEC_READ["to-spec 写 spec 用术语"]
+        IMPL["implement 遵守 ADR"]
+        SKILL_RUN["其他 engineering skill 读配置"]
+    end
+    CTX -.-> SPEC_READ
+    ADR -.-> IMPL
+    AGENTS -.-> SKILL_RUN
+```
+
 **单 context 与多 context**。多数仓库单 context——根目录一个 `CONTEXT.md` + 一个 `docs/adr/`。多 context（monorepo）才在根目录放 `CONTEXT-MAP.md` 指向各 context 的 `CONTEXT.md`，按 bounded context 划分。该判断由 `setup-matt-pocock-skills` 探测 monorepo 信号（`pnpm-workspace.yaml`、`packages/*`）后确认，默认单 context。
 
 **为何不使用记忆系统**。agent 记忆系统（memory MCP、session memory、CLAUDE.md 的 rules 区）把信息存入不可见的"记忆库"，agent 按相关性检索后注入上下文。本仓库拒绝该路径，改用仓库内可见文档，原因在三个失败模式：
@@ -270,6 +297,24 @@ mattpocock `tdd` 的核心机制 seam 值得单独展开。seam 的本质是**�
 ### 3.7 设计原理：为何用 agent 而非 skill、为何子 agent 而非主 agent
 
 agent 与 skill 的核心差异在**触发模型与上下文归属**：skill 是场景触发的脚本，被主 agent 加载到上下文、由主 agent 自己执行；agent 是委派判断力的角色，在上下文干净的子 agent 内独立完成、结果回流。skill 不隔离上下文（主 agent 加载后仍在同一上下文继续执行），agent 隔离上下文（主 agent 委派后不深入细节，只收结果）。
+
+```mermaid
+flowchart LR
+    subgraph Skill路径["skill：加载到主上下文"]
+        MA1["主 agent"]
+        MA1 -->|加载 skill 到上下文| SK["skill 脚本"]
+        SK -->|主 agent 自己执行| MA1
+        NOTE1["上下文不隔离<br/>执行后仍在同一上下文继续"] -.-> MA1
+    end
+
+    subgraph Agent路径["agent：委派给独立子 agent"]
+        MA2["主 agent"]
+        MA2 -->|委派子任务| SUB["子 agent<br/>上下文干净"]
+        SUB -->|独立完成探查与判断| SUB
+        SUB -->|只回流结果| MA2
+        NOTE2["上下文隔离<br/>主 agent 不深入细节, 只收结果"] -.-> MA2
+    end
+```
 
 **为何用 agent 而非 skill**。agent 适用于需上下文隔离与独立判断力边界的场景：refactor-cleaner 要跑 analyzer、grep 全仓、查 git 历史、逐项判 SAFE/CAREFUL/RISKY——这些探查的中间上下文若涌入主 agent 会淹没其推理，写成 agent 则隔离在子 agent 内，主 agent 只收"已清理 N 项"结果。code-simplifier 同理——其轻量简化虽动作轻，但需独立判断"哪些简化能简化、哪些是过度设计"，需独立判断力边界以免与主 agent 的实现上下文串混。反观 tdd（skill）内的 refactor 阶段是轻量、局部、在测试保护下的一步重构，主 agent 自己加载 skill 即可执行，无需委派——**轻量局部重构走 skill，全仓系统重构走 agent** 是两者的边界。
 
@@ -396,20 +441,26 @@ flowchart LR
 
 ### 4.2 走线二：TDD + 修复循环
 
-```text
-1. tdd (skill)                     红绿重构
-   └─ 先写测试 (RED) → 实现 (GREEN) → 重构 (IMPROVE)
-   └─ common-testing 规范 80% 覆盖底线
-2. 测试失败 → 修改实现而非测试 (除非测试本身有误)
-   └─ 此为 KarpathyGuide "Tests verify intent" 的体现:
-      测试须编码 WHY, 而非仅验证 WHAT
-3. 构建失败 → build-error-resolver (agent) 主动介入
-   └─ 最小 diff 修复至绿色, 不做架构改动
-   └─ Java 构建失败 → java-build-resolver (自动识别 Spring Boot/Quarkus)
-4. 静默失败风险 → silent-failure-hunter (agent) review 时补充审查
-   └─ 识别被吞掉的异常、错误的 fallback、缺失的错误传播
-5. 回到 tdd 循环, 直到测试通过且覆盖率达标
+```mermaid
+flowchart LR
+    RED["先写测试<br/>RED: 看测试失败"] --> GREEN["实现至通过<br/>GREEN"] --> IMPROVE["重构<br/>IMPROVE"]
+    IMPROVE --> GATE{"构建/测试<br/>是否通过?"}
+    GATE -- 构建失败 --> BER["build-error-resolver<br/>最小 diff 修复"]
+    BER --> GATE
+    GATE -- 测试失败 --> FIX["修改实现而非测试<br/>Tests verify intent"]
+    FIX --> RED
+    GATE -- 通过 --> SFH["silent-failure-hunter<br/>补审静默失败"]
+    SFH --> COV{"覆盖率 ≥ 80%?"}
+    COV -- 否 --> RED
+    COV -- 是 --> DONE["循环结束"]
+    style RED fill:#fdd,stroke:#c33
+    style GREEN fill:#dfd,stroke:#3c3
+    style BER fill:#fde,stroke:#c3c
+    style FIX fill:#fde,stroke:#c3c
+    style SFH fill:#fde,stroke:#c3c
 ```
+
+Java 构建失败由 `java-build-resolver`（自动识别 Spring Boot/Quarkus）接管；`silent-failure-hunter` 识别被吞掉的异常、错误的 fallback、缺失的错误传播。`common-testing` 规范确立 80% 覆盖底线。
 
 此走线体现的是**防御性闭环**：TDD 保证"编写时正确"，修复层保证"出现问题后能被接住"，silent-failure-hunter 保证"未显式失败的隐患亦被识别"。每一环均有明确的责任主体，不存在无覆盖环节。
 
