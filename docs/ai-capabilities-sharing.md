@@ -405,6 +405,30 @@ flowchart LR
     arch["architect<br/>系统级架构决策"] -.-> 规划
     rev["语言 reviewer + security-reviewer"] -.-> 实现
     sfh["silent-failure-hunter<br/>静默失败补审"] -.-> 实现
+
+    style WF fill:#dfd,stroke:#3c3
+    style A fill:#dfd,stroke:#3c3
+    style B fill:#dfd,stroke:#3c3
+    style C fill:#dfd,stroke:#3c3
+    style D fill:#dfd,stroke:#3c3
+    style TDD fill:#dfd,stroke:#3c3
+    style H fill:#dfd,stroke:#3c3
+    style K fill:#dfd,stroke:#3c3
+
+    style RS fill:#ffd,stroke:#cc3
+    style CS fill:#fde,stroke:#c3c
+    style R fill:#fde,stroke:#c3c
+    style F fill:#fde,stroke:#c3c
+    style J fill:#fde,stroke:#c3c
+    style arch fill:#fde,stroke:#c3c
+    style rev fill:#fde,stroke:#c3c
+    style sfh fill:#fde,stroke:#c3c
+
+    style RC fill:#eef,stroke:#66c
+    style E fill:#eef,stroke:#66c
+    style I fill:#eef,stroke:#66c
+
+    style rules fill:#ffd,stroke:#cc3
 ```
 
 该图展示了三层资源的协作关系：rules 在全流程常驻约束；skills 按阶段串联为探查→规划→实现主线（需求过大过糊时从 wayfinder 起步，否则直接进规划）；agents 在需要判断力（架构决策、评审）或失败（构建失败、静默失败）或代码积累复杂度（需清理重构）时介入。注意 `implement` skill 自身即内含 `tdd`（红绿重构）、`code-review`（双轴评审）与 `commit` 三步，并非独立的后续阶段——图中将它们收进实现阶段内部。实现阶段内嵌的两个 agent 分工：`code-simplifier` 紧随 tdd 做轻量简化（改嵌套、改名、清改动区死代码，session 范围），`refactor-cleaner` 在复杂度积累时做全仓系统清理（跨文件分析、风险分级、批量移除）。wayfinder 与 research 的位置在 grill-with-docs 之前——当需求太大太糊、连怎么走都不确定时，先画决策地图、后台查事实，路径清晰后再进规划链。
