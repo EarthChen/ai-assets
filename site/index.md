@@ -9,6 +9,7 @@ hero:
     - theme: brand
       text: 演示分享
       link: /ai-capabilities-sharing.html
+      target: _blank
     - theme: alt
       text: GitHub 仓库
       link: https://github.com/EarthChen/ai-assets
