@@ -73,7 +73,7 @@ rules 分为两个文件，前者是 agent 的全局角色与认知底座，后�
 
 - `common-code-review.md`——代码评审标准。严重程度分级（CRITICAL/HIGH/MEDIUM/LOW）的设计价值在于**统一评审输出契约**：不同 reviewer agent 的关注点不同，若无统一分级，各自的输出无法被下游（如 PR 是否可合并）机械判断。分级后，"无 CRITICAL/HIGH 则通过"成为可机读的合并门槛，agent 不需再人工权衡"这个问题严不严重"。安全触发器清单（鉴权、用户输入、数据库查询等）明示"何时必须调 security-reviewer"，是为防 agent 在安全敏感场景"自审"而非委派专家。
 
-- `common-agents.md`——agent 编排。该文件解决两个问题：一是两个架构 agent 的边界（`architect` opus 为系统级，`code-architect` sonnet 为特性级），其分工原因详见 3.1 节。二是多视角分析角色（Factual reviewer / Senior engineer / Security expert / Consistency reviewer / Redundancy checker）的定义——针对的是单视角评审的盲区：一个 reviewer 易陷入单一思维框架，多角色并行能覆盖"事实准确性/工程判断/安全/一致性/冗余"五个正交维度，结果合并后才得结论。
+- `common-agents.md`——agent 编排。该文件解决两个问题：一是两个架构 agent 的边界（`architect` 为系统级，`code-architect` 为特性级），其分工原因详见 3.1 节。二是多视角分析角色（Factual reviewer / Senior engineer / Security expert / Consistency reviewer / Redundancy checker）的定义——针对的是单视角评审的盲区：一个 reviewer 易陷入单一思维框架，多角色并行能覆盖"事实准确性/工程判断/安全/一致性/冗余"五个正交维度，结果合并后才得结论。
 
 - `common-tech-stack.md`——**硬约束**：Python 仅用 `uv`、Node 仅用 `pnpm`。表面为偏好选择，实为防止 agent 生成不统一的依赖管理命令——若不锁定，模型会依训练数据偏好混用 pip/conda/npm/yarn，导致 lockfile 不一致、依赖不进 `pyproject.toml`、团队协作时环境不可复现。"用户提供 npm 指令自动转换为 pnpm"的规则，是为在不拒绝用户输入的前提下保持一致性。
 
@@ -227,12 +227,12 @@ mattpocock `tdd` 的核心机制 seam 值得单独展开。seam 的本质是**�
 - `architect`——**系统级**：整体设计、可扩展性、技术决策、ADR。输出高层架构图 + 组件职责 + 数据模型 + API 契约。
 - `code-architect` ——**特性级**：分析现有代码的模式与约定，给出具体文件路径 + 接口 + 数据流 + 构建顺序。
 
-分两层的原因在于："做架构决策"与"在现有代码中落地一个特性"属于性质迥异的任务：前者需要最强推理能力（opus）、抽象度高；后者需要读懂现有约定并产出可执行的施工图（sonnet 足够且成本更低）。合并为单一 agent 将导致要么浪费算力、要么能力不足。此分工定义于 `rules/common/common-agents.md`。
+分两层的原因在于："做架构决策"与"在现有代码中落地一个特性"属于性质迥异的任务——前者抽象度高、需全局权衡；后者需读懂现有约定并产出可执行的施工图。合并为单一 agent 将导致要么能力不足、要么职责过载。此分工定义于 `rules/common/common-agents.md`。
 
 ### 3.2 评审层：按语言与技术栈分兵
 
 - `typescript-reviewer` / `python-reviewer` / `java-reviewer`（自动检测 Spring Boot 或 Quarkus）/ `fastapi-reviewer`。
-- `database-reviewer`（PostgreSQL/Supabase）/ `mle-reviewer`（生产级 ML 工程）/ `security-reviewer`（OWASP Top 10）。
+- `database-reviewer`（PostgreSQL/Supabase）/ `security-reviewer`（OWASP Top 10）。
 
 按栈分设 reviewer 而非采用单一通用 reviewer 的原因在于：**各技术栈的关注点不同**——FastAPI 的 async 正确性、Java 的 JPA/N+1、TypeScript 的类型安全、ML 的训练可复现性，均为各自领域独有的审查重点。并入单一通用 reviewer 将导致"各项均查不深"。`common-code-review.md` 定义的严重程度分级（CRITICAL 阻断 / HIGH 警告 / MEDIUM 提示 / LOW 备注）统一了该层的输出契约。
 
@@ -240,7 +240,7 @@ mattpocock `tdd` 的核心机制 seam 值得单独展开。seam 的本质是**�
 
 - `build-error-resolver`（TypeScript 构建）/ `java-build-resolver`（Maven/Gradle，自动识别 Spring Boot/Quarkus）——构建失败时主动触发，以最小 diff 修复至绿色。
 - `performance-optimizer`——性能瓶颈、内存泄漏、算法优化。
-- `silent-failure-hunter`（sonnet）——专门识别静默失败、被吞掉的异常、错误的 fallback。
+- `silent-failure-hunter`——专门识别静默失败、被吞掉的异常、错误的 fallback。
 
 该层的共同特征为：**失败或问题本身即为触发器**，无需手动调用。`build-error-resolver` 在构建失败时主动介入，`silent-failure-hunter` 在 review 时补充审查。此为防御性自动化——将"出现问题后的应对"显式化为具体角色。
 
@@ -248,17 +248,16 @@ mattpocock `tdd` 的核心机制 seam 值得单独展开。seam 的本质是**�
 
 该层两个 agent 均在实现阶段介入，但触发模型与作用域不同，构成从轻量到系统的两级质量保障：
 
-- `code-simplifier`（sonnet）——**写完即简化的轻量微调**。紧随 `implement`，对当前 session 改动过的代码做 session-scoped 简化（降嵌套、改名、清改动区死代码、合并重复逻辑），行为不变。五大原则（行为不变/遵循项目约定/清晰胜过聪明/保持平衡/限定改动范围）与工作流（Chesterton's Fence、信号表、增量提交、红旗与验证清单）详见 `agents/code-simplifier.md`。
-- `refactor-cleaner`（sonnet）——**积累复杂度后的全仓系统重构**。在死代码与复杂度积累到需系统清理时介入，跨文件/跨模块跑 analyzer、grep 全仓引用、查 git 历史，按四维度（未用导出/未用依赖/未用导入/不可达代码）识别，用 SAFE/CAREFUL/RISKY 三级风险分级与 `deps→exports→files→duplicates` 批次顺序安全移除，再在不改行为前提下做结构重构。工作流详见 `agents/refactor-cleaner.md`。
+- `code-simplifier`——**写完即简化的轻量微调**。紧随 `implement`，对当前 session 改动过的代码做 session-scoped 简化（降嵌套、改名、清改动区死代码、合并重复逻辑），行为不变。五大原则（行为不变/遵循项目约定/清晰胜过聪明/保持平衡/限定改动范围）与工作流（Chesterton's Fence、信号表、增量提交、红旗与验证清单）详见 `agents/code-simplifier.md`。
+- `refactor-cleaner`——**积累复杂度后的全仓系统重构**。在死代码与复杂度积累到需系统清理时介入，跨文件/跨模块跑 analyzer、grep 全仓引用、查 git 历史，按四维度（未用导出/未用依赖/未用导入/不可达代码）识别，用 SAFE/CAREFUL/RISKY 三级风险分级与 `deps→exports→files→duplicates` 批次顺序安全移除，再在不改行为前提下做结构重构。工作流详见 `agents/refactor-cleaner.md`。
 
 两者的边界：**轻量局部简化走 code-simplifier，全仓系统重构走 refactor-cleaner**。前者是 proactive（每次写完都跑），后者是条件触发（积累到一定量才跑）；前者不跑跨文件 analyzer，后者以跨文件分析为前提。两者为何都写成 agent 而非 skill，见 3.8 节总论与 4.3 节（以 refactor-cleaner 为例展开，code-simplifier 同理）。
 
 ### 3.5 探索层
 
-- `code-explorer`（sonnet）——追踪执行路径、映射架构层、记录依赖，为新开发提供上下文。
-- `spec-miner`（opus）——从现有代码库提取行为 spec，为 brownfield 项目引入 spec 驱动开发。
+- `code-explorer`——追踪执行路径、映射架构层、记录依赖，为新开发提供上下文。
 
-该层的共同特征为**理解现有系统**：前者面向架构与依赖、后者面向行为与 spec，均为新开发或存量治理提供上下文回收。
+该层的共同特征为**理解现有系统**：面向架构与依赖，为新开发或存量治理提供上下文回收。
 
 ### 3.6 运维层
 
@@ -268,21 +267,15 @@ mattpocock `tdd` 的核心机制 seam 值得单独展开。seam 的本质是**�
 
 该层的共同特征为**跑与管**：harness 配置优化、自治循环监控、E2E 测试执行，均为 agent 交付后的运行时治理。
 
-### 3.7 业务支持层
-
-- `marketing-agent`——营销策略与文案（落地页/邮件序列/社交/广告/视频脚本）。
-
-该层独立于工程链路，专注内容产出。与运维层的 e2e-runner（运行时治理）性质不同，故独立成层。
-
-### 3.8 设计原理：为何用 agent 而非 skill、为何子 agent 而非主 agent
+### 3.7 设计原理：为何用 agent 而非 skill、为何子 agent 而非主 agent
 
 agent 与 skill 的核心差异在**触发模型与上下文归属**：skill 是场景触发的脚本，被主 agent 加载到上下文、由主 agent 自己执行；agent 是委派判断力的角色，在上下文干净的子 agent 内独立完成、结果回流。skill 不隔离上下文（主 agent 加载后仍在同一上下文继续执行），agent 隔离上下文（主 agent 委派后不深入细节，只收结果）。
 
 **为何用 agent 而非 skill**。agent 适用于需上下文隔离与独立判断力边界的场景：refactor-cleaner 要跑 analyzer、grep 全仓、查 git 历史、逐项判 SAFE/CAREFUL/RISKY——这些探查的中间上下文若涌入主 agent 会淹没其推理，写成 agent 则隔离在子 agent 内，主 agent 只收"已清理 N 项"结果。code-simplifier 同理——其轻量简化虽动作轻，但需独立判断"哪些简化能简化、哪些是过度设计"，需独立判断力边界以免与主 agent 的实现上下文串混。反观 tdd（skill）内的 refactor 阶段是轻量、局部、在测试保护下的一步重构，主 agent 自己加载 skill 即可执行，无需委派——**轻量局部重构走 skill，全仓系统重构走 agent** 是两者的边界。
 
-**为何子 agent 而非全塞入主 agent**。子 agent 的价值不在于"多实例并行"，而在于**上下文隔离与职责边界**。主 agent 保留全局视角与决策权，将需要深度专注的子任务（逐行 review、追依赖链、查安全漏洞）委派至上下文干净的子 agent，结果回流。主 agent 不被某个深任务的细节淹没，子 agent 也不被全局上下文干扰。`architect` 用 opus、`code-architect` 用 sonnet 的分工，亦是算力与任务匹配的体现。
+**为何子 agent 而非全塞入主 agent**。子 agent 的价值不在于"多实例并行"，而在于**上下文隔离与职责边界**。主 agent 保留全局视角与决策权，将需要深度专注的子任务（逐行 review、追依赖链、查安全漏洞）委派至上下文干净的子 agent，结果回流。主 agent 不被某个深任务的细节淹没，子 agent 也不被全局上下文干扰。
 
-### 3.9 并发执行：worktree 的实际使用
+### 3.8 并发执行：worktree 的实际使用
 
 前述工作流是单任务串行，但真实场景常需并发——多个 agent 同时在不同分支推进、或热修复需在特性分支进行中插入。`common-git-workflow.md` 规定用 `git worktree` 而非 stash + branch-switching，原因在于 stash 易丢失、切换需重装依赖。worktree 让每个并行任务拥有独立工作目录与独立依赖环境，互不干扰。
 
@@ -386,7 +379,7 @@ flowchart LR
    └─ 画决策票地图, 逐个解决决策直至路径清晰
    └─ research 类决策票 → /research 子代理后台查一手信源
    └─ rules/common 随时约束 agent 诚实、不做过度假设
-   └─ 需要架构判断时 → architect agent (opus)
+   └─ 需要架构判断时 → architect agent
    └─ 路径清晰后进入主链
 1. grill-with-docs (skill)        对齐需求 + 建立领域模型
 2. to-spec (skill)                 沉淀为 spec
