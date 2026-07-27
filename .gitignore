@@ -58,5 +58,5 @@ skills/writing-great-skills
 
 # VitePress
 node_modules/
-docs/.vitepress/dist/
-docs/.vitepress/cache/
+site/.vitepress/dist/
+site/.vitepress/cache/
