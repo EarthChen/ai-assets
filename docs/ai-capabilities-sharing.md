@@ -265,7 +265,7 @@ flowchart LR
 
 ### 3.3 修复层：失败即触发
 
-- `build-error-resolver`（TypeScript 构建）/ `java-build-resolver`（Maven/Gradle，自动识别 Spring Boot/Quarkus）——构建失败时主动触发，以最小 diff 修复至绿色。
+- `build-error-resolver`（语言无关，按项目检测构建系统）/ `java-build-resolver`（Maven/Gradle，自动识别 Spring Boot/Quarkus）——构建失败时主动触发，以最小 diff 修复至绿色。
 - `performance-optimizer`——性能瓶颈、内存泄漏、算法优化。
 - `silent-failure-hunter`——专门识别静默失败、被吞掉的异常、错误的 fallback。
 
