@@ -27,12 +27,18 @@ Codex/Cursor), not sub-agents.
    - Refactor (IMPROVE)
    - Verify 80%+ coverage
 
-3. **Code Review**
+3. **Code Simplification**
+   - Run the `code-simplifier` agent on recently modified code for clarity, consistency, and maintainability
+   - Light-touch: reduce nesting, rename for clarity, remove dead code in the changed region, consolidate duplicated logic in the touched files
+   - Preserves exact behavior — all tests must still pass without modification
+   - For whole-repo dead-code removal and structural refactoring across files, use the `refactor-cleaner` agent instead
+
+4. **Code Review**
    - Use the `/code-review` skill (dual-axis: Standards + Spec) immediately after writing code
    - Address CRITICAL and HIGH issues
    - Fix MEDIUM issues when possible
 
-4. **Commit & Push**
+5. **Commit & Push**
    - Detailed commit messages
    - Follow conventional commits format
    - See the git workflow rule for commit message format and PR process
