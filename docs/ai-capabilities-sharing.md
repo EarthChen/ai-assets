@@ -90,6 +90,40 @@ rules 目录下分两类，其**加载方式**完全不同，此为第一层设�
 
 ---
 
+## 一·五、Context Mode：上下文窗口的基础设施层
+
+前三层（rules / skills / agents）解决的是"让 agent 在合适的时机用合适的资源"，但都没直接解决一个更底层的问题——**agent 的工作产物本身会淹没上下文窗口**。一次 Playwright 快照 56 KB，二十个 GitHub issue 59 KB，一份访问日志 45 KB，30 分钟后 40% 的上下文即被原始数据占满；当 agent 压缩对话以释放空间时，又会丢失"正在编辑哪些文件、哪些任务进行中、用户刚问了什么"。Context Mode（`mksglu/context-mode`）正是补这一层的外部基础设施——它不在仓库的 rules/skills/agents 三层内，而是作为 MCP 服务器横跨四平台（Claude Code / Codex / Cursor / pi），为三层资产提供一个"上下文不被淹没"的运行时底座。
+
+### 1.5.1 解决问题的四个面
+
+Context Mode 把"上下文问题"拆为四个正交的面，逐项设防：
+
+| 面 | 解决的问题 | 机制 |
+| ---- | ----------- | ------ |
+| **Context Saving** | 原始工具输出淹没上下文 | 沙箱工具（`ctx_execute` / `ctx_execute_file` / `ctx_batch_execute`）在子进程跑代码，只回传 `console.log` 的结果。315 KB 变 5.4 KB，98% 压缩。 |
+| **Session Continuity** | 压缩后丢失任务进度 | 每次文件编辑、git 操作、任务、错误、用户决策均记入 SQLite；压缩时不回灌全量，而是用 FTS5 + BM25 检索仅与当前相关的片段，模型"拾起断点继续"。 |
+| **Think in Code** | agent 把自己当数据处理器去读原始数据 | 范式强制：LLM 写脚本做分析、只 `console.log` 答案，而非把 50 个文件读进上下文再心算。1 个脚本替代 10 次工具调用，省 100 倍上下文。 |
+| **No prose enforcement** | 强制简洁文案反而损推理质量 | 只管"数据去哪"，不管"模型怎么说话"。简洁度/完整度/格式留给模型自己的 `CLAUDE.md`/`AGENTS.md`——激进简洁 prompt 已被证明会退化编码/推理基准。 |
+
+### 1.5.2 与三层资产的关系：正交互补，不重叠
+
+Context Mode 不属于 rules/skills/agents 任何一层，而是与三者正交的**运行时基础设施**：
+
+- 与 **rules** 正交：rules 管"该怎么做/不能怎么做"（约束），Context Mode 管"工作产物去哪"（数据路由）。两者均常驻，但一个作用于 agent 的判断，一个作用于 agent 的 I/O 产物。
+- 与 **skills** 正交：skills 是场景脚本（按需触发），Context Mode 是始终在场的 MCP 服务器（无需加载）。skills 产生的中间数据（如 `research` skill 的调研产物）恰好可被 Context Mode 的 FTS5 知识库收纳，但两者职责不同。
+- 与 **agents** 正交：agents 隔离的是**推理上下文**（子 agent 内独立判断），Context Mode 隔离的是**原始数据上下文**（子进程内跑代码）。两者互补：子 agent 的探查结果可经 `ctx_index` 入库供后续检索，但 Context Mode 不替代子 agent 的判断力。
+
+### 1.5.3 与"项目文档管理"节的关系：两种长期记忆的分工
+
+2.5 节阐明了为何拒绝 agent 记忆系统、改用仓库内可见文档。Context Mode 的 Session Continuity 看似也是一种"记忆"，但两者职责边界清晰，不冲突：
+
+- **仓库内文档**（`CONTEXT.md` / ADR / spec / 票）承担**长期、显式、可审查**的项目记忆——术语、决策、需求、任务，跨 session 持久、人类可 review、git 可追溯。
+- **Context Mode 的 FTS5 索引**承担**会话内、隐式、自动捕获**的运行时记忆——文件编辑、git 操作、错误、用户决策，随 session 生灭（`--continue` 才延续，否则即删），不需人类审查。
+
+两者解决不同失败模式：仓库文档防"决策被错误记录"（需显式落盘、可审查），Context Mode 防"压缩后丢失任务进度"（需自动捕获、可检索）。前者是项目资产，后者是会话状态——正如 2.5 节的结论"会话偏好随 session 生灭，需跨 session 持久的才落文档"，Context Mode 的索引恰属"会话层"，不越界承担项目层职责。
+
+---
+
 ## 二、Skills：场景触发的工作流与领域知识
 
 skills 是数量最多的一层，共 38 个。按主题分组阐述如下。
@@ -498,10 +532,11 @@ Java 构建失败由 `java-build-resolver`（自动识别 Spring Boot/Quarkus）
 
 ## 小结：三个设计判断
 
-综上所述，该资源体系有三个值得指出的设计判断：
+综上所述，该资源体系有四个值得指出的设计判断：
 
 1. **职责分层而非能力堆砌**。rules（约束）/ skills（工作流）/ agents（判断力委派）三层正交，各层触发模型不同（常驻/场景/委派）。不将其合并为单一"能力池"，目的是让每类资源仅在合适的时机占用上下文。
 2. **单一真相源与平台适配层**。`install.py build` 将同一份源码转换为各平台所识别的格式（Cursor 的 `.mdc` + `globs`、Claude 的 `paths`、Codex 的 AGENTS.md 嵌入）。一处修改，四处生效，避免平台间漂移。
 3. **防御性闭环**。TDD 保证编写时正确，修复层（build-error-resolver / silent-failure-hunter）保证失败被接住，评审层（各 reviewer）保证交付前被审查。每一环节均有明确的 skill 或 agent 负责，不存在无覆盖的环节。
+4. **上下文窗口的基础设施层**。三层资产均未直接解决"工作产物淹没上下文"——Context Mode 作为外部 MCP 服务器补这一层：沙箱化工具输出（98% 压缩）、FTS5 跨压缩会话恢复、Think in Code 范式。它与三层正交而非重叠——rules 管"怎么做"、skills 管"做什么"、agents 管"谁来做"、Context Mode 管"产物去哪"，四者共同构成 agent 的完整运行时底座。
 
-各类资源的具体配置，路径均已在文中标注。该体系本身是活的——`install.py` 负责部署至各平台，`skills/` 与 `agents/` 为实际内容，`rules/` 为约束底座。
+各类资源的具体配置，路径均已在文中标注。该体系本身是活的——`install.py` 负责部署至各平台，`skills/` 与 `agents/` 为实际内容，`rules/` 为约束底座，`mksglu/context-mode`（见 1.5 节）为上下文窗口的基础设施层。

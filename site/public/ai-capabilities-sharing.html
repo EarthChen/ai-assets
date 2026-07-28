@@ -444,6 +444,10 @@
             Rules：动手之前确立规范 <span class="agenda-time">8 min</span>
           </li>
           <li>
+            Context Mode：上下文窗口的基础设施层
+            <span class="agenda-time">4 min</span>
+          </li>
+          <li>
             Skills：场景触发的工作流与领域知识
             <span class="agenda-time">8 min</span>
           </li>
@@ -454,11 +458,11 @@
           <li>
             工作流：三层资源的协作方式 <span class="agenda-time">6 min</span>
           </li>
-          <li>小结：三个核心设计判断 <span class="agenda-time">3 min</span></li>
+          <li>小结：四个核心设计判断 <span class="agenda-time">3 min</span></li>
           <li>Q&amp;A <span class="agenda-time">5 min</span></li>
         </ol>
         <p class="meta">
-          <strong>总计约 42 分钟</strong> &nbsp;·&nbsp;
+          <strong>总计约 46 分钟</strong> &nbsp;·&nbsp;
           密集细节置于可展开面板，按需深入
         </p>
       </section>
@@ -757,9 +761,100 @@
         </div>
       </section>
 
-      <!-- ============ 9. Skills 总览 ============ -->
+      <!-- ============ 9. Context Mode ============ -->
       <section class="slide">
         <span class="slide-num">09</span>
+        <h2>Context Mode：上下文窗口的基础设施层</h2>
+        <p class="lead">
+          三层资产解决“让 agent 在合适时机用合适资源”，但都没解决
+          <em>工作产物本身会淹没上下文窗口</em>。Context Mode 补这一层。
+        </p>
+        <p>
+          <code>mksglu/context-mode</code> 作为 MCP 服务器横跨四平台 (Claude
+          Code / Codex / Cursor / pi)，是三层之外的运行时底座。
+        </p>
+        <table>
+          <thead>
+            <tr>
+              <th>面</th>
+              <th>解决的问题</th>
+              <th>机制</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>Context Saving</strong></td>
+              <td>原始工具输出淹没上下文</td>
+              <td>
+                沙箱工具 <code>ctx_execute</code> 等在子进程跑代码，只回传
+                <code>console.log</code> 结果。<em
+                  >315 KB → 5.4 KB，98% 压缩。</em
+                >
+              </td>
+            </tr>
+            <tr>
+              <td><strong>Session Continuity</strong></td>
+              <td>压缩后丢失任务进度</td>
+              <td>
+                每次编辑/git/错误/决策记入 SQLite；压缩时不回灌全量，用
+                FTS5+BM25 检索仅相关片段，模型“拾起断点继续”。
+              </td>
+            </tr>
+            <tr>
+              <td><strong>Think in Code</strong></td>
+              <td>agent 把自己当数据处理器读原始数据</td>
+              <td>
+                范式强制：LLM 写脚本做分析、只 <code>console.log</code> 答案。
+                <em>1 脚本替代 10 工具调用，省 100 倍上下文。</em>
+              </td>
+            </tr>
+            <tr>
+              <td><strong>No prose enforcement</strong></td>
+              <td>强制简洁文案反而损推理质量</td>
+              <td>
+                只管“数据去哪”，不管“模型怎么说话”——激进简洁 prompt
+                已被证明会退化编码/推理基准。
+              </td>
+            </tr>
+          </tbody>
+        </table>
+        <details open>
+          <summary>
+            <b>🔍 展开：与三层资产正交，不重叠</b>
+          </summary>
+          <div class="inner">
+            <ul>
+              <li>
+                <strong>与 rules 正交</strong>：rules
+                管“怎么做/不能怎么做”（约束），Context Mode
+                管“产物去哪”（数据路由）。两者均常驻，但一个作用于 agent
+                的判断，一个作用于 I/O 产物。
+              </li>
+              <li>
+                <strong>与 skills 正交</strong>：skills
+                是场景脚本（按需触发），Context Mode 是始终在场的 MCP
+                服务器（无需加载）。
+              </li>
+              <li>
+                <strong>与 agents 正交</strong>：agents
+                隔离的是<em>推理上下文</em>（子 agent 内独立判断），Context Mode
+                隔离的是<em>原始数据上下文</em>（子进程内跑代码）。
+              </li>
+            </ul>
+            <p>
+              <strong>与仓库内文档的分工：</strong>2.5 节拒绝 agent
+              记忆系统、改用仓库内可见文档——那是<em>长期、显式、可审查</em>的项目记忆（术语/决策/需求/任务，跨
+              session 持久）；Context Mode 的 FTS5
+              索引是<em>会话内、隐式、自动捕获</em>的运行时记忆（文件编辑/错误/决策，随
+              session 生灭）。前者是项目资产，后者是会话状态，不冲突。
+            </p>
+          </div>
+        </details>
+      </section>
+
+      <!-- ============ 10. Skills 总览 ============ -->
+      <section class="slide">
+        <span class="slide-num">10</span>
         <h2>② Skills：场景触发的工作流与领域知识</h2>
         <p>skills 是数量最多的一层，共 <strong>38 个</strong>，按主题分组：</p>
         <div class="box-group">
@@ -782,7 +877,8 @@
 
       <!-- ============ 10. 工程工作流链 ============ -->
       <section class="slide">
-        <span class="slide-num">10</span>
+        <span class="slide-num">11</span>
+
         <h2>工程工作流链</h2>
         <p class="lead">
           从需求到交付的完整闭环，显式化为可执行步骤序列，避免跳步返工。
@@ -860,7 +956,8 @@
 
       <!-- ============ 11. grilling 根节点 ============ -->
       <section class="slide">
-        <span class="slide-num">11</span>
+        <span class="slide-num">12</span>
+
         <h2>grilling：整个工作流的根节点</h2>
         <p class="lead">
           在动手之前，通过 relentless 追问达成共识。<code>grill-me</code>、<code
@@ -908,7 +1005,8 @@
 
       <!-- ============ 12. TDD 三套对比 ============ -->
       <section class="slide">
-        <span class="slide-num">12</span>
+        <span class="slide-num">13</span>
+
         <h2>三套 skill 的 TDD 哲学对比</h2>
         <p>
           本地另一套 <strong>superpowers</strong> 与开源项目
@@ -990,7 +1088,8 @@
 
       <!-- ============ 13. code-review 三套对比 ============ -->
       <section class="slide">
-        <span class="slide-num">13</span>
+        <span class="slide-num">14</span>
+
         <h2>三套 skill 的 code-review 对比</h2>
         <table>
           <thead>
@@ -1044,7 +1143,8 @@
 
       <!-- ============ 14. anysearch vs 内置 ============ -->
       <section class="slide">
-        <span class="slide-num">14</span>
+        <span class="slide-num">15</span>
+
         <h2>
           anysearch vs 内置 <code>web_search</code> / <code>fetch_content</code>
         </h2>
@@ -1104,7 +1204,8 @@
 
       <!-- ============ 15. skills 与 rules 分离 ============ -->
       <section class="slide">
-        <span class="slide-num">15</span>
+        <span class="slide-num">16</span>
+
         <h2>skills 与 rules 分离的原因</h2>
         <p class="lead">
           常见困惑：<code>python-patterns</code>（skill）与
@@ -1135,7 +1236,8 @@
 
       <!-- ============ 16. 项目文档管理 ============ -->
       <section class="slide">
-        <span class="slide-num">16</span>
+        <span class="slide-num">17</span>
+
         <h2>项目文档管理：为何不用记忆系统</h2>
         <p>
           grilling、domain-modeling、to-spec、to-tickets
@@ -1200,7 +1302,8 @@
 
       <!-- ============ 17. Agents 总览 ============ -->
       <section class="slide">
-        <span class="slide-num">17</span>
+        <span class="slide-num">18</span>
+
         <h2>③ Agents：将判断力委派给专家角色</h2>
         <p>
           <code>agents/</code> 下含 <strong>22 个</strong>子
@@ -1250,7 +1353,8 @@
 
       <!-- ============ 18. 架构层两层分工 ============ -->
       <section class="slide">
-        <span class="slide-num">18</span>
+        <span class="slide-num">19</span>
+
         <h2>架构层：两层分工</h2>
         <div class="box-group">
           <div
@@ -1297,7 +1401,8 @@
 
       <!-- ============ 19. 评审层严重程度 ============ -->
       <section class="slide">
-        <span class="slide-num">19</span>
+        <span class="slide-num">20</span>
+
         <h2>评审层：按语言与技术栈分兵 + 统一输出契约</h2>
         <p>
           按栈分设 reviewer 而非单一通用 reviewer，因各技术栈关注点不同：FastAPI
@@ -1347,7 +1452,8 @@
 
       <!-- ============ 20. agent vs skill ============ -->
       <section class="slide">
-        <span class="slide-num">20</span>
+        <span class="slide-num">21</span>
+
         <h2>设计原理：为何用 agent 而非 skill</h2>
         <p class="lead">核心差异在<strong>触发模型与上下文归属</strong>。</p>
         <div class="box-group">
@@ -1409,7 +1515,8 @@
 
       <!-- ============ 21. worktree 并发 ============ -->
       <section class="slide">
-        <span class="slide-num">21</span>
+        <span class="slide-num">22</span>
+
         <h2>并发执行：git worktree 的实际使用</h2>
         <p class="lead">
           用 <code>git worktree</code> 而非 stash + branch-switching——stash
@@ -1469,7 +1576,8 @@
 
       <!-- ============ 22. 工作流总览 ============ -->
       <section class="slide">
-        <span class="slide-num">22</span>
+        <span class="slide-num">23</span>
+
         <h2>④ 工作流：三层资源的协作方式</h2>
         <p class="lead">
           三层分别阐述，但并非孤立存在。下图展示三层在开发全流程的协作关系。
@@ -1552,7 +1660,8 @@ flowchart LR
 
       <!-- ============ 23. TDD 防御性闭环 ============ -->
       <section class="slide">
-        <span class="slide-num">23</span>
+        <span class="slide-num">24</span>
+
         <h2>走线二：TDD + 修复循环（防御性闭环）</h2>
         <pre class="mermaid">
 flowchart LR
@@ -1585,10 +1694,11 @@ flowchart LR
         </div>
       </section>
 
-      <!-- ============ 24. 小结：三个设计判断 ============ -->
+      <!-- ============ 24. 小结：四个设计判断 ============ -->
       <section class="slide">
-        <span class="slide-num">24</span>
-        <h2>小结：三个核心设计判断</h2>
+        <span class="slide-num">25</span>
+
+        <h2>小结：四个核心设计判断</h2>
         <div class="box-group">
           <div
             class="box"
@@ -1639,18 +1749,39 @@ flowchart LR
               每一环节均有明确的 skill 或 agent 负责，不存在无覆盖的环节。
             </p>
           </div>
+          <div
+            class="box"
+            style="
+              border-color: var(--accent-green);
+              background: rgba(158, 206, 106, 0.08);
+            "
+          >
+            <h4 style="color: var(--accent-green)">④ 上下文窗口的基础设施层</h4>
+            <p style="font-size: 0.92em">
+              三层均未直接解决“工作产物淹没上下文”——Context Mode 作为外部 MCP
+              服务器补这一层。
+            </p>
+            <p style="font-size: 0.88em; color: var(--text-muted)">
+              沙箱化工具输出（98% 压缩）、FTS5 跨压缩会话恢复、Think in Code
+              范式。与三层正交：rules 管“怎么做”、skills 管“做什么”、agents
+              管“谁来做”、Context Mode 管“产物去哪”。
+            </p>
+          </div>
         </div>
         <p class="footer-note" style="text-align: center; margin-top: 20px">
           该体系本身是活的——<code>install.py</code> 负责部署，<code
             >skills/</code
           >
-          与 <code>agents/</code> 为实际内容，<code>rules/</code> 为约束底座。
+          与 <code>agents/</code> 为实际内容，<code>rules/</code>
+          为约束底座，<code>mksglu/context-mode</code>
+          为上下文窗口的基础设施层。
         </p>
       </section>
 
       <!-- ============ 25. Q&A ============ -->
       <section class="slide cover">
-        <span class="slide-num">25</span>
+        <span class="slide-num">26</span>
+
         <div class="badge">Questions &amp; Discussion</div>
         <h1>Q &amp; A</h1>
         <p class="subtitle">欢迎围绕设计权衡、落地细节、场景适配展开</p>
