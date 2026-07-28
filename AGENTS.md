@@ -33,12 +33,13 @@ vendor/anysearch-skill/    (manual install only → ~/.claude+~/.agents/skills/,
 
 - **AGENTS.md**: `_dist/pi/AGENTS.md` (global-instructions + common rules, same embed as Codex; pi loads it from `~/.pi/agent/` at startup — no 32KB limit) → `~/.pi/agent/AGENTS.md`, **full overwrite** (repo is the single source of truth; my-pi-agent's own project docs live in that repo's CLAUDE.md)
 - **Skills**: self-owned skills symlinked into `~/.agents/skills/` — pi scans that standard directory natively; same mechanism as the mattpocock/anysearch manual installs (which therefore need no extra work). Not registered via `settings.json`. Note: Codex also scans `~/.agents/skills/`, so it sees these links in addition to its plugin copy
-- **NOT deployed**: MCP (pi covers playwright etc. via its own extensions — no `mcp.json` sync), `agents/*.md` (pi has no subagents), separate rules files (embedded in AGENTS.md; language rules via skills on demand)
+- **Agents**: `agents/*.md` symlinked into `~/.pi/agent/agents/` — pi-subagents' `discoverAgents()` scans that user dir (alongside its builtins scout/reviewer/worker/...) and loads `*.md` with YAML frontmatter. Repo agents keep Claude Code frontmatter (`tools: ["Read","Grep"]`, `model: opus`); pi-subagents' parser accepts array OR comma-separated tools and falls back to the current provider for bare model ids, so they load, but verify with `/subagents-doctor` + `subagent({ action: "list" })` after install — tool name case and model resolution may differ from Claude Code.
+- **NOT deployed**: MCP (pi covers playwright etc. via its own extensions — no `mcp.json` sync), separate rules files (embedded in AGENTS.md; language rules via skills on demand)
 
 ## Update Mechanism
 
 | Platform | Method | Trigger |
-|----------|--------|---------|
+| ---------- | -------- | --------- |
 | Cursor | `install.py install` (rsync real-dir, `--delete`) | After repo edits + restart/reload |
 | Codex | Local symlink (instant, tracks repo) | After `build` |
 | Claude Code | `claude plugin update` (pulls marketplace `ref: main`) | **Version-gated — see below** |
@@ -55,6 +56,7 @@ Cursor local plugin: copied as a **real directory** (not symlink) to `~/.cursor/
 ## Single Source of Truth
 
 This repo is the ONLY source for custom AI configuration:
+
 - Do NOT place skills in `~/.agents/skills/` manually
 - Do NOT install third-party plugins that overlap with this repo
 - All MCP servers managed in this repo's `mcp.json`
@@ -100,7 +102,7 @@ git submodule update --remote vendor/mattpocock-skills                  # update
 ## Rules Deployment Strategy
 
 | Platform | User-level (always loaded) | Language rules (conditional) |
-|----------|---------------------------|------------------------------|
+| ---------- | --------------------------- | ------------------------------ |
 | Cursor | `rules/common/*.mdc` (alwaysApply: true) | Auto-attached via `globs` field |
 | Claude Code | `~/.claude/rules/common/` (no frontmatter needed) | Project `.claude/rules/` (paths field) |
 | Codex | Embedded in `~/.codex/AGENTS.md` (common only, 32KB limit) | Via Skills on demand |
@@ -125,7 +127,7 @@ UI 提示 "Error loading plugin" **不写进任何文件日志**，console 也�
 ### Build Transforms
 
 | Source field | → Cursor | → Claude Code | → Codex |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | `paths: [...]` | `globs: [...]` (JSON array) | `paths: csv` (CSV string + alwaysApply: false) | stripped (plain text) |
 | `globs: [...]` | kept as JSON array | → `paths: csv` (converted + alwaysApply: false) | stripped |
 | `platforms: [...]` | removed | removed | used for filtering then stripped |

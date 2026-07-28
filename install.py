@@ -735,10 +735,17 @@ def install_pi(dry_run: bool = False) -> None:
     - self-owned skills symlinked into ~/.agents/skills/ — pi scans that
       standard directory natively; same mechanism as the mattpocock/anysearch
       manual installs, so those need no extra work here
+    - agents/*.md symlinked into ~/.pi/agent/agents/ — pi-subagents'
+      discoverAgents() scans that user dir (userDirOld = getAgentDir()/agents)
+      and loads *.md with YAML frontmatter. NOTE: repo agents use Claude
+      Code frontmatter (tools: ["Read","Grep"], model: opus); pi-subagents'
+      parser accepts comma-separated OR array tools and falls back to the
+      current provider for bare model ids, so they load, but tool name case
+      and model resolution may differ — verify with /subagents-doctor.
 
     NOT deployed: MCP (pi covers playwright etc. via its own extensions),
-    agents/*.md (pi has no subagents), separate rules files (embedded in
-    AGENTS.md; language rules available via skills on demand).
+    separate rules files (embedded in AGENTS.md; language rules available
+    via skills on demand).
     """
     log_section("Deploying pi")
 
@@ -764,8 +771,21 @@ def install_pi(dry_run: bool = False) -> None:
         count += 1
     log(f"{count} self-owned skills -> {shared_skills}")
 
+    # 3. Agents: symlink repo agents/*.md into the pi-subagents user dir
+    # (~/.pi/agent/agents/). pi-subagents' discoverAgents() scans this dir
+    # (userDirOld = getAgentDir()/agents) and loads *.md with YAML frontmatter
+    # alongside its builtins (scout/reviewer/worker/...). Repo agents keep
+    # Claude Code frontmatter; verify loading with /subagents-doctor +
+    # subagent({ action: "list" }) after install.
+    pi_agents_dir = PI_AGENT_HOME / "agents"
+    agents_src = REPO_ROOT / "agents"
+    count = 0
+    for agent_file in sorted(agents_src.glob("*.md")):
+        create_symlink(agent_file, pi_agents_dir / agent_file.name, dry_run)
+        count += 1
+    log(f"{count} agents -> {pi_agents_dir}")
+
     log("Note: MCP not deployed (pi provides playwright etc. via its own extensions)")
-    log("Note: agents/*.md not deployed (pi has no subagents)")
 
 
 def install_cursor(dry_run: bool = False) -> None:
