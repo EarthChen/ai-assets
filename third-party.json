@@ -71,6 +71,24 @@
           "note": "Cursor scans ~/.agents/skills/ by default. Known bug: home-dir skill symlinks may vanish after restart (v2.5.x); if hit, copy the folder instead of symlinking."
         }
       }
+    },
+    {
+      "name": "context-mode",
+      "description": "MCP server + session-continuity layer by mksglu/context-mode. Saves context by sandboxing tool output (ctx_execute/ctx_execute_file/ctx_batch_execute/ctx_fetch_and_index/ctx_index/ctx_search) and tracking session events in FTS5-backed SQLite for restore across compactions. NOT a skill distributed by this repo — installed per-platform via each platform's native plugin or npm path. This repo's AGENTS.md already references ctx-* tools, so this entry formalizes their provenance.",
+      "platforms": {
+        "claude": {
+          "marketplace_ref": "mksglu/context-mode",
+          "plugin_id": "context-mode@context-mode",
+          "note": "Auto-installed by install.py via `claude plugin marketplace add mksglu/context-mode` + `claude plugin install context-mode@context-mode --scope user`. Provides 11 MCP tools (6 sandbox + 5 meta) and all hooks (PreToolUse/PostToolUse/UserPromptSubmit/PreCompact/SessionStart/Stop) via the plugin's own manifest; routing is automatic via SessionStart hook. Requires Claude Code v1.0.33+. Verify with /context-mode:ctx-doctor."
+        },
+        "codex": {
+          "install_cmd": "codex plugin marketplace add mksglu/context-mode  # then enable [features] plugin_hooks=true and hooks=true in ~/.codex/config.toml",
+          "note": "Codex native plugin (.codex-plugin/mcp.json + hooks.json + skills/). Plugin hooks are gated behind the plugin_hooks feature flag until Codex enables them by default; review and trust hooks when Codex prompts. Manual fallback (builds without plugin_hooks): npm install -g context-mode + [mcp_servers.context-mode] in ~/.codex/config.toml + ~/.codex/hooks.json — see README Codex CLI section."
+        },
+        "cursor": {
+          "note": "Installed via Cursor marketplace (user-managed, not installed by this repo). Plugin auto-registers MCP + hooks (preToolUse/postToolUse/sessionStart/stop/afterAgentResponse) + rules + skills. Upstream README still lists marketplace as 'awaiting Cursor team review' (#485) with local-folder fallback, but install completed successfully via marketplace on this machine."
+        }
+      }
     }
   ]
 }
