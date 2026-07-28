@@ -5,10 +5,11 @@
 ## 支持平台
 
 | 平台 | 插件加载 | 脚本补充 |
-|------|---------|---------|
-| Cursor | rules, skills, agents, MCP | 仅 symlink |
+| ------ | --------- | --------- |
+| Cursor | rules, skills, agents, MCP | local real-dir (rsync) |
 | Claude Code | skills, agents, MCP | common rules → `~/.claude/rules/common/`, CLAUDE.md |
 | Codex | skills, MCP | AGENTS.md (global-instructions + common rules) |
+| pi | — | AGENTS.md + skills → `~/.agents/skills/` + agents → `~/.pi/agent/agents/` |
 
 ## 目录结构
 
@@ -23,15 +24,17 @@ ai-assets/
 │   ├── java/                  # Java 规则 (paths: **/*.java)
 │   ├── python/                # Python 规则 (globs: **/*.py)
 │   └── react/                 # React 规则 (globs: **/*.tsx)
-├── skills/                    # 共享技能 (自有 + symlinked from vendor)
-├── agents/                    # Subagent 定义 (Cursor + Claude)
+├── skills/                    # 共享技能 (自有实目录；vendor skills 手动安装到 ~/.agents/skills/)
+├── agents/                    # Subagent 定义 (Cursor + Claude + pi)
 ├── vendor/                    # 第三方 git submodules
-│   └── mattpocock-skills/     # mattpocock/skills 工程技能库
+│   ├── mattpocock-skills/     # mattpocock/skills 工程技能库
+│   └── anysearch-skill/       # anysearch CLI 搜索技能 (手动安装)
 ├── mcp.json                   # 统一 MCP 配置 (_platforms 过滤)
-├── _dist/                     # 自动生成的平台产物 (已提交)
-│   ├── cursor/                # rules/*.mdc + skills + agents + mcp.json
-│   ├── claude/                # rules/ + skills + agents + mcp.json + CLAUDE.md
-│   └── codex/                 # skills + mcp.json + AGENTS.md
+├── _dist/                     # 自动生成的平台产物 (已提交；skills/agents 不复制进此)
+│   ├── cursor/                # rules/*.mdc + mcp.json
+│   ├── claude/                # rules/ + mcp.json + CLAUDE.md
+│   ├── codex/                 # mcp.json + AGENTS.md
+│   └── pi/                    # AGENTS.md
 ├── .cursor-plugin/plugin.json
 ├── .claude-plugin/plugin.json
 ├── .codex-plugin/plugin.json
@@ -73,33 +76,22 @@ uv run install.py version --bump patch # 递增版本号 (major/minor/patch)
 
 ## 更新机制
 
-| 平台 | 更新方式 | 说明 |
-|------|---------|------|
-| Cursor | Marketplace（URL 安装） | 推送到 main → 下次 session Cursor 重新拉取 |
-| Codex | 符号链接（即时） | build 后即生效，无需重启 |
-| Claude Code | ref-tracked 自动拉取 | 每次 session 启动自动从 GitHub main 分支拉取最新 |
+| 平台 | 方法 | 触发 |
+| -------- | ------ | -------- |
+| Cursor | `install.py install`（rsync real-dir） | 修改后 + 重启 |
+| Codex | 符号链接（即时） | build 后生效 |
+| Claude Code | `claude plugin update`（version-gated） | **必须 bump version** |
+| pi | `install.py install --platform pi` | build + install |
 
-> Cursor 不支持脚本/CLI 安装，也不认 `~/.cursor/plugins/local/` 的 symlink（不计入
-> `state.vscdb` 的 `installedIds`）。必须通过 Settings → Customize 手动添加 marketplace
-> URL 安装一次。`install.py install --platform cursor` 仅清理残留的 local symlink 并提示。
-> `.claude-plugin/marketplace.json` 的 `source` 必须是字符串相对路径（`"./"`），
-> 不能用对象格式 `{source:"url",...}`——否则 Cursor 报 "unresolved or unsafe source path"。
-> 详见 AGENTS.md "Cursor Plugin Error loading plugin"。
-
-### Claude Code 更新说明
-
-`marketplace.json` 使用 `ref: "main"` 而非 SHA 固定：
-- 无需手动 `claude plugin update`
-- 无需管理 commit SHA（无鸡生蛋问题）
-- 推送到 main → 下次启动 Claude Code 时自动生效
-- 如需固定版本（生产环境），可在 `marketplace.json` 中添加 `sha` 字段
+> 详见 [AGENTS.md - Update Mechanism](AGENTS.md)：Claude version-gating、
+> Cursor marketplace stale-cache 等踩坑记录。
 
 ## 架构原则
 
 **优先使用各平台原生插件系统，脚本仅处理插件无法覆盖的部分。**
 
 | 平台 | 插件系统管理 | 脚本补充 |
-|------|-------------|---------|
+| ------ | ------------- | --------- |
 | Cursor | rules, skills, agents, MCP | 仅创建 symlink |
 | Claude Code | skills, agents, MCP | common rules, CLAUDE.md |
 | Codex | skills, MCP | AGENTS.md (含 common rules) |
@@ -107,6 +99,7 @@ uv run install.py version --bump patch # 递增版本号 (major/minor/patch)
 ### 单一配置源原则
 
 本仓库是所有自定义 AI 配置的唯一来源。各平台不应有额外自定义配置：
+
 - 不在 `~/.agents/skills/` 中手动放置 skill
 - 不安装与本仓库功能重叠的第三方插件
 - 第三方 skills（如 mattpocock/skills）：Claude 走原生插件安装；Codex/Cursor 通过 git submodule + vendor 分发
@@ -114,13 +107,13 @@ uv run install.py version --bump patch # 递增版本号 (major/minor/patch)
 
 ### mattpocock/skills（混合管理）
 
-来自 [mattpocock/skills](https://github.com/mattpocock/skills) 的 21 个工程技能，对齐上游 [plugin.json](https://github.com/mattpocock/skills/blob/main/.claude-plugin/plugin.json) 的 skills 清单。采用**混合模式**分发，因 mattpocock 仓库只发布了 Claude 原生插件（无 Codex/Cursor 插件）：
+来自 [mattpocock/skills](https://github.com/mattpocock/skills) 的 22 个工程技能，对齐上游 [plugin.json](https://github.com/mattpocock/skills/blob/main/.claude-plugin/plugin.json) 的 skills 清单。采用**混合模式**分发，因 mattpocock 仓库只发布了 Claude 原生插件（无 Codex/Cursor 插件）：
 
 | 平台 | 分发方式 | 说明 |
-|------|---------|------|
-| Claude Code | 原生插件 `mattpocock-skills@mattpocock` | 由上游插件提供，本仓库 build 时从 Claude 分发中排除，避免重复 |
-| Codex | vendor submodule → deep copy 到 `_dist/codex/skills/` | 无上游 Codex 插件，由本仓库 build 分发 |
-| Cursor | vendor submodule → deep copy 到 `_dist/cursor/skills/` | 无上游 Cursor 插件，由本仓库 build 分发 |
+| ------ | --------- | ------ |
+| Claude Code | 原生插件 `mattpocock-skills@mattpocock` | 由上游插件提供，不在 repo-root `skills/` |
+| Codex | `install.py manual` → symlink 进 `~/.agents/skills/` | submodule 不进 `_dist/`，更新即时生效 |
+| Cursor | 同 Codex | 同上（symlink 重启后可能消失，需 copy 文件夹） |
 
 ```bash
 # Claude Code：原生插件由 install.py install 自动安装（配置在 third-party.json）
@@ -146,10 +139,10 @@ git submodule update --remote vendor/mattpocock-skills
 /code-review      →  双轴并行 review（Standards + Spec）
 ```
 
-#### 技能清单（21 个，对齐上游 plugin.json）
+#### 技能清单（22 个，对齐上游 plugin.json）
 
 | 分类 | 技能 | 说明 |
-|------|------|------|
+| ------ | ------ | ------ |
 | **工作流** | `grill-with-docs` | Grilling + 领域建模 + CONTEXT.md / ADR |
 | | `to-spec` | 将对话综合为 spec |
 | | `to-tickets` | 拆解为 tracer-bullet 垂直切片 |
@@ -157,6 +150,7 @@ git submodule update --remote vendor/mattpocock-skills
 | | `setup-matt-pocock-skills` | 项目一次性配置（issue tracker、domain docs） |
 | | `triage` | issue 分类与优先级判断 |
 | | `wayfinder` | 在复杂代码库中定位实现路径 |
+| | `resolving-merge-conflicts` | 合并冲突解决 |
 | **核心能力** | `tdd` | Red-green-refactor + seam 测试 |
 | | `diagnosing-bugs` | 6 阶段诊断法（含 feedback loop 构建） |
 | | `code-review` | 双轴并行 subagent review |
@@ -172,29 +166,14 @@ git submodule update --remote vendor/mattpocock-skills
 | | `writing-great-skills` | skill 编写规范与最佳实践 |
 | | `ask-matt` | 向 Matt 提问的模板 |
 
-#### 管理 Vendored Skills（仅影响 Codex/Cursor）
-
-Claude 平台的 mattpocock skills 由原生插件提供，无需在此维护。下列命令仅调整 Codex/Cursor 分发的 symlink 清单：
-
-```bash
-# 添加新 skill（保持与上游 plugin.json 清单一致）
-ln -s ../vendor/mattpocock-skills/skills/engineering/<name> skills/<name>
-ln -s ../vendor/mattpocock-skills/skills/productivity/<name> skills/<name>
-
-# 移除 skill
-rm skills/<name>
-
-# 更新后重建
-uv run install.py build
-```
-
 ### 各平台安装方式
 
 | 平台 | 安装 | 更新 |
-|------|------|------|
-| Cursor | Settings → Customize 添加 `https://github.com/EarthChen/ai-assets`（marketplace URL） | 推送 main 后下次 session 自动拉取 |
-| Codex | `~/.codex/plugins/local/` symlink + config.toml | build 后即时生效 |
-| Claude Code | `claude plugin install` (GitHub URL) | 每次 session 自动拉取 main |
+| ------ | ------ | ------ |
+| Cursor | `install.py install`（local real-dir） | rsync `--delete` 重建，修改后重启 |
+| Codex | `~/.codex/plugins/local/` symlink + config.toml | symlink 即时跟踪 repo，build 后生效 |
+| Claude Code | `claude plugin install`（marketplace `ref: main`） | **version-gated：必须 bump version 才会更新** |
+| pi | `install.py install --platform pi` | build + install |
 
 ## Rules 系统详解
 
@@ -224,7 +203,7 @@ platforms: [cursor, claude]      # 平台过滤 (build-time, 不进入输出)
 ### 各平台 Frontmatter 转换
 
 | 源字段 | Cursor (.mdc) | Claude Code (.md) | Codex (AGENTS.md) |
-|--------|---------------|-------------------|--------------------|
+| -------- | --------------- | ------------------- | -------------------- |
 | `description` | 保留 (Agent 智能选择) | 保留 | 无 (纯文本) |
 | `paths` | → `globs` (JSON数组) | → `paths: CSV` (单行无引号) | N/A |
 | `globs` | 保留 (JSON数组) | → `paths: CSV` (转换字段名) | N/A |
@@ -234,7 +213,7 @@ platforms: [cursor, claude]      # 平台过滤 (build-time, 不进入输出)
 ### 各平台加载行为
 
 | 规则类型 | Cursor | Claude Code | Codex |
-|---------|--------|-------------|-------|
+| --------- | -------- | ------------- | ------- |
 | **common/** (alwaysApply: true) | 始终加载 | 用户级始终加载 | 嵌入 AGENTS.md |
 | **java/** (globs: \*\*.java) | 编辑 Java 文件时自动附加 | 项目级条件加载; 用户级不部署 | 不包含 |
 | **python/** | 同上 (Python) | 同上 | 不包含 |
@@ -269,6 +248,7 @@ platforms: [cursor]
 - `platforms: [cursor, claude]` → Cursor + Claude Code
 
 MCP 配置中使用 `_platforms` 字段：
+
 ```json
 {
   "mcp-feedback-pro": {
@@ -282,7 +262,7 @@ MCP 配置中使用 `_platforms` 字段：
 ### Plugin Manifest 声明
 
 | 插件 | 组件 | 原因 |
-|------|------|------|
+| ------ | ------ | ------ |
 | `.cursor-plugin` | rules, skills, agents, mcp | 全功能原生支持 |
 | `.claude-plugin` | skills, agents, mcp | rules 需脚本部署 |
 | `.codex-plugin` | skills, mcp | agents/rules 不支持 |
