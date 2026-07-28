@@ -11,7 +11,11 @@ export default defineConfig({
 	themeConfig: {
 		nav: [
 			{ text: "首页", link: "/" },
-			{ text: "演示分享", link: "/ai-capabilities-sharing.html", target: "_blank" },
+			{
+				text: "演示分享",
+				link: "/ai-capabilities-sharing.html",
+				target: "_blank",
+			},
 		],
 
 		sidebar: [
@@ -22,7 +26,11 @@ export default defineConfig({
 			{
 				text: "分享",
 				items: [
-					{ text: "演示 HTML", link: "/ai-capabilities-sharing.html", target: "_blank" },
+					{
+						text: "演示 HTML",
+						link: "/ai-capabilities-sharing.html",
+						target: "_blank",
+					},
 					{ text: "AI Agent 资产体系", link: "/docs/ai-capabilities-sharing" },
 				],
 			},
