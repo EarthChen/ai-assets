@@ -737,11 +737,11 @@ def install_pi(dry_run: bool = False) -> None:
       manual installs, so those need no extra work here
     - agents/*.md symlinked into ~/.pi/agent/agents/ — pi-subagents'
       discoverAgents() scans that user dir (userDirOld = getAgentDir()/agents)
-      and loads *.md with YAML frontmatter. NOTE: repo agents use Claude
-      Code frontmatter (tools: ["Read","Grep"], model: opus); pi-subagents'
-      parser accepts comma-separated OR array tools and falls back to the
-      current provider for bare model ids, so they load, but tool name case
-      and model resolution may differ — verify with /subagents-doctor.
+      and loads *.md with YAML frontmatter. Repo agent frontmatter only
+      sets name + description; model and tools are intentionally omitted so
+      pi-subagents inherits the parent session's model and grants the default
+      tool set — verify loading with /subagents-doctor +
+      subagent({ action: "list" }) after install.
 
     NOT deployed: MCP (pi covers playwright etc. via its own extensions),
     separate rules files (embedded in AGENTS.md; language rules available
@@ -774,8 +774,10 @@ def install_pi(dry_run: bool = False) -> None:
     # 3. Agents: symlink repo agents/*.md into the pi-subagents user dir
     # (~/.pi/agent/agents/). pi-subagents' discoverAgents() scans this dir
     # (userDirOld = getAgentDir()/agents) and loads *.md with YAML frontmatter
-    # alongside its builtins (scout/reviewer/worker/...). Repo agents keep
-    # Claude Code frontmatter; verify loading with /subagents-doctor +
+    # alongside its builtins (scout/reviewer/worker/...). Repo agent
+    # frontmatter only sets name + description; model/tools are omitted so
+    # pi-subagents inherits the parent session's model and grants the
+    # default tool set. Verify with /subagents-doctor +
     # subagent({ action: "list" }) after install.
     pi_agents_dir = PI_AGENT_HOME / "agents"
     agents_src = REPO_ROOT / "agents"

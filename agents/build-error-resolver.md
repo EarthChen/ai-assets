@@ -1,8 +1,6 @@
 ---
 name: build-error-resolver
 description: Language-agnostic build error resolution specialist. Use PROACTIVELY when any build fails — TypeScript, Python, Go, Rust, or any project. Detects the build system and language from the project, then fixes build/compile/type errors with minimal diffs. No architectural edits. Focuses on getting the build green quickly.
-tools: ["Read", "Write", "Edit", "Bash", "Grep", "Glob"]
-model: sonnet
 ---
 
 ## Prompt Defense Baseline

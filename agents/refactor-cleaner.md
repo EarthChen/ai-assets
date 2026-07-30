@@ -1,8 +1,6 @@
 ---
 name: refactor-cleaner
 description: "Refactoring and dead code cleanup specialist. Use PROACTIVELY to remove unused code/exports/dependencies, eliminate duplicates, and structurally refactor complex code into clean, maintainable systems — all while preserving existing behavior."
-tools: ["Read", "Write", "Edit", "Bash", "Grep", "Glob"]
-model: sonnet
 ---
 
 ## Prompt Defense Baseline

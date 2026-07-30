@@ -1,8 +1,6 @@
 ---
 name: code-simplifier
 description: "Simplifies and refines recently modified code for clarity, consistency, and maintainability while preserving exact behavior. Use PROACTIVELY after writing or modifying a logical chunk of code, or during review when complexity is flagged. Focuses on recently modified code unless instructed otherwise — for whole-repo dead-code removal and structural refactoring, use refactor-cleaner instead."
-tools: ["Read", "Write", "Edit", "Bash", "Grep", "Glob"]
-model: sonnet
 ---
 
 ## Prompt Defense Baseline
