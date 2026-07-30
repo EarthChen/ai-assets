@@ -22,7 +22,8 @@ Script handles (things plugins can't do):
 Usage:
     uv run install.py                         # build + install (all platforms)
     uv run install.py build                   # only regenerate _dist/
-    uv run install.py install --platform X    # only install symlinks
+    uv run install.py install --platform X    # install + third-party skills
+    uv run install.py manual [name]           # reinstall just one 3rd-party skill
     uv run install.py version 1.2.0           # set version across all plugins
     uv run install.py version --bump patch    # bump version (major/minor/patch)
 """
@@ -910,7 +911,15 @@ def _deploy_shared_skills(dry_run: bool = False) -> None:
 # ─── Main ──────────────────────────────────────────────────────────────────────
 
 def _do_install(platform: str, dry_run: bool) -> None:
-    """Run platform installers."""
+    """Run platform installers, then install third-party manual skills.
+
+    Manual (symlink-installed) skills declared in third-party.json's
+    `install` objects are installed once after the platform installers,
+    regardless of --platform. They target user-level dirs
+    (~/.agents/skills/, ~/.claude/skills/) that are shared across platforms,
+    so a single pass covers all of them. Use `install.py manual <name>`
+    to reinstall just one skill.
+    """
     _ensure_submodules(dry_run)
     _clean_mattpocock_skill_symlinks(dry_run)
     platforms = {
@@ -924,6 +933,11 @@ def _do_install(platform: str, dry_run: bool) -> None:
             installer(dry_run)
     else:
         platforms[platform](dry_run)
+    # Install all third-party manual skills once (not per-platform — they
+    # link into shared user-level dirs). Same third-party.json source as
+    # `install.py manual`, so this is the single source of truth for
+    # third-party skill deployment; no separate command needed.
+    install_manual_skills(name=None, dry_run=dry_run)
 
 
 # ─── manual skills (symlink-installed, NOT plugin-distributed) ─────────────────
@@ -946,6 +960,17 @@ def _do_install(platform: str, dry_run: bool) -> None:
 # specific caveats live in each platform's `note` field. This loader is
 # generic: adding a second manual skill means adding a third-party.json entry
 # with an `install` object, no code change here.
+#
+# `generate` has two skill-discovery forms (mutually exclusive):
+#   - {from, field, link_dir}: read <source>/<from> JSON, take <field> as a
+#     list of relative paths (e.g. mattpocock's plugin.json "skills").
+#   - {scan_dir, link_dir}: scan <source>/<scan_dir> for subdirs containing
+#     a SKILL.md — for multi-skill repos whose manifest has no skill list
+#     (e.g. understand-anything: skills live under
+#     understand-anything-plugin/skills/<name>/SKILL.md).
+# `extra_links` (optional, list of link_dirs): each discovered skill is also
+# symlinked into these dirs in addition to link_dir — lets one generate
+# entry cover multiple platform dirs (e.g. ~/.agents/skills + ~/.claude/skills).
 
 def _expand_install_links(install: dict, source: Path) -> list[tuple[Path, Path]]:
     """Resolve an `install` object into (link_path, target_path) pairs.
@@ -953,11 +978,18 @@ def _expand_install_links(install: dict, source: Path) -> list[tuple[Path, Path]
     Two forms, mutually exclusive:
     - `links`: explicit list of user-level paths (each → source root).
       For single-skill repos whose root IS the skill root (e.g. anysearch).
-    - `generate`: {from, field, link_dir} — read <source>/<from> JSON, take
-      its <field> (a list of relative paths like "./skills/eng/tdd"), and
-      create one symlink per entry at <link_dir>/<skill-name> → <source>/<sub>.
-      For multi-skill repos that declare their skill set upstream (e.g.
-      mattpocock's 22 skills listed in its .claude-plugin/plugin.json).
+    - `generate`: discover skills then symlink each into one or more dirs.
+      Two skill-discovery sub-forms (mutually exclusive):
+      - {from, field, link_dir}: read <source>/<from> JSON, take <field> as
+        a list of relative paths like "./skills/engineering/tdd" (e.g.
+        mattpocock's 22 skills listed in its .claude-plugin/plugin.json).
+      - {scan_dir, link_dir}: scan <source>/<scan_dir> for subdirs
+        containing a SKILL.md — for multi-skill repos whose manifest carries
+        no skill list (e.g. understand-anything, whose skills live under
+        understand-anything-plugin/skills/<name>/SKILL.md).
+      `extra_links` (optional, list of link_dirs): each discovered skill is
+      also symlinked into these dirs, so one generate entry covers multiple
+      platform dirs (e.g. ~/.agents/skills + ~/.claude/skills).
     """
     if "links" in install and "generate" in install:
         raise ValueError("install: use `links` OR `generate`, not both")
@@ -965,18 +997,36 @@ def _expand_install_links(install: dict, source: Path) -> list[tuple[Path, Path]
         return [(Path(p).expanduser(), source) for p in install["links"]]
     if "generate" in install:
         gen = install["generate"]
-        manifest = source / gen["from"]
-        data = json.loads(manifest.read_text(encoding="utf-8"))
-        entries = data.get(gen["field"], [])
-        if isinstance(entries, str):
-            entries = [entries]
         link_dir = Path(gen["link_dir"]).expanduser()
+        extra_dirs = [Path(p).expanduser() for p in gen.get("extra_links", [])]
+        # Resolve the list of (skill_name, source_subpath) pairs to link.
+        if "from" in gen and "scan_dir" in gen:
+            raise ValueError("generate: use `from`+`field` OR `scan_dir`, not both")
+        discovered = []  # [(skill_name, source_subpath), ...]
+        if "scan_dir" in gen:
+            scan_root = source / gen["scan_dir"]
+            for child in sorted(scan_root.iterdir()):
+                if not child.is_dir():
+                    continue
+                # Skip non-skill dirs (e.g. shared/ lib code without SKILL.md).
+                if not (child / "SKILL.md").is_file():
+                    continue
+                sub = str(child.relative_to(source))
+                discovered.append((child.name, sub))
+        else:  # "from" + "field"
+            manifest = source / gen["from"]
+            data = json.loads(manifest.read_text(encoding="utf-8"))
+            entries = data.get(gen["field"], [])
+            if isinstance(entries, str):
+                entries = [entries]
+            for entry in entries:
+                # entry looks like "./skills/engineering/tdd"
+                sub = entry[2:] if entry.startswith("./") else entry
+                discovered.append((Path(sub).name, sub))
         pairs = []
-        for entry in entries:
-            # entry looks like "./skills/engineering/tdd"
-            sub = entry[2:] if entry.startswith("./") else entry
-            skill_name = Path(sub).name
-            pairs.append((link_dir / skill_name, source / sub))
+        for skill_name, sub in discovered:
+            for d in [link_dir, *extra_dirs]:
+                pairs.append((d / skill_name, source / sub))
         return pairs
     return []
 
@@ -1051,7 +1101,7 @@ def install_manual_skills(name: str | None, dry_run: bool = False) -> None:
     log("Manual skills installed. Each symlink points at its vendor submodule,")
     log("so `git submodule update --remote <path>` (then re-pin to a tag) flows")
     log("to all platforms at once. Caveats per platform are in third-party.json")
-    log("under each platform's `note` (e.g. Cursor's home-dir symlink bug).")
+    log("under each platform's `note`.")
 
 
 def main() -> None:
@@ -1070,7 +1120,7 @@ def main() -> None:
 
     sub.add_parser("build", parents=[parent], help="Only regenerate _dist/ (plugin content)")
 
-    install_parser = sub.add_parser("install", parents=[parent], help="Only install symlinks to platforms")
+    install_parser = sub.add_parser("install", parents=[parent], help="Install platform plugins + AGENTS.md/rules + third-party skills")
     install_parser.add_argument(
         "--platform",
         choices=["claude", "codex", "cursor", "pi", "all"],
@@ -1093,15 +1143,16 @@ def main() -> None:
     manual_parser = sub.add_parser(
         "manual",
         parents=[parent],
-        help="Install manual (symlink) skills declared in third-party.json "
-        "(NOT plugin-distributed; needs persistent runtime.conf/.env that "
-        "plugin cache cannot hold). Without a name, installs all.",
+        help="Reinstall one third-party (symlink) skill from third-party.json. "
+        "`install` already runs this for all skills; use `manual <name>` "
+        "to reinstall just one.",
     )
     manual_parser.add_argument(
         "name",
         nargs="?",
-        help="Optional skill name (the `name` field in third-party.json). "
-        "If omitted, install every plugin with an `install` object.",
+        help="Skill name (the `name` field in third-party.json). "
+        "If omitted, install every plugin with an `install` object "
+        "(same as what `install` already does).",
     )
 
     parser.add_argument(

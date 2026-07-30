@@ -5,3 +5,6 @@
 	path = vendor/anysearch-skill
 	url = https://github.com/anysearch-ai/anysearch-skill.git
 	branch = main
+[submodule "vendor/understand-anything"]
+	path = vendor/understand-anything
+	url = https://github.com/EarthChen/Understand-Anything

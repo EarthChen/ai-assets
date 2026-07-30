@@ -25,6 +25,45 @@
           "type": "object",
           "additionalProperties": { "$ref": "#/definitions/platformConfig" },
           "description": "Keys are platform names: claude, codex, cursor."
+        },
+        "install": {
+          "$ref": "#/definitions/installConfig",
+          "description": "If present, `install.py manual` symlinks this plugin's skills into user-level dirs. Absent => managed manually per-platform (install_cmd/note)."
+        }
+      }
+    },
+    "installConfig": {
+      "type": "object",
+      "required": ["source"],
+      "additionalProperties": false,
+      "description": "Symlink-install declaration. Exactly one of `links` | `generate` (enforced by install.py). source = repo-relative submodule path.",
+      "properties": {
+        "source": { "type": "string", "description": "Repo-relative submodule path, e.g. vendor/understand-anything." },
+        "links": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Explicit user-level paths; each -> source root. For single-skill repos (e.g. anysearch). Mutually exclusive with generate."
+        },
+        "generate": {
+          "$ref": "#/definitions/generateConfig",
+          "description": "Discover skills then symlink each into link_dir + extra_links. Mutually exclusive with links."
+        }
+      }
+    },
+    "generateConfig": {
+      "type": "object",
+      "required": ["link_dir"],
+      "additionalProperties": false,
+      "description": "Skill discovery + linking. Exactly one of (from+field) | scan_dir (enforced by install.py). link_dir is the primary platform dir; extra_links adds more dirs per skill.",
+      "properties": {
+        "from": { "type": "string", "description": "Manifest path under source, e.g. .claude-plugin/plugin.json. Use with field. Mutually exclusive with scan_dir." },
+        "field": { "type": "string", "description": "JSON key in the manifest whose value is a list of relative skill paths. Use with from. Mutually exclusive with scan_dir." },
+        "scan_dir": { "type": "string", "description": "Dir under source to scan for subdirs containing a SKILL.md. For multi-skill repos whose manifest has no skill list. Mutually exclusive with from/field." },
+        "link_dir": { "type": "string", "description": "Primary user-level dir to symlink each discovered skill into, e.g. ~/.agents/skills." },
+        "extra_links": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Additional link_dirs; each discovered skill is also symlinked here, so one entry covers multiple platform dirs (e.g. ~/.claude/skills)."
         }
       }
     },

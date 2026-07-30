@@ -74,7 +74,7 @@ uv run install.py manual anysearch # install just this one
 
 The subcommand is config-driven: reads `third-party.json` entries with a top-level `install` object (`source` submodule path + `links` list of user-level paths) and symlinks each link → source. Adding a manual skill = adding an `install` object to its `third-party.json` entry, no code change in `install.py`. Both links point at the same submodule, so a submodule update flows to all platforms at once.
 
-**Cursor caveat:** home-dir skill symlinks may vanish from the Skills panel after restart (known v2.5.x bug). If hit, replace the `~/.agents/skills/anysearch` symlink with a copied folder for Cursor only (Codex follows symlinks correctly).
+All three platforms (Claude, Codex, Cursor) follow these symlinks correctly; no per-platform workaround is needed.
 
 **Upgrade:** `git submodule update --remote vendor/anysearch-skill` (re-pin to a release tag). Symlinks need no update — content flows through automatically.
 
@@ -87,7 +87,7 @@ Engineering skills from [mattpocock/skills](https://github.com/mattpocock/skills
 - **Claude Code**: provided by native plugin `mattpocock-skills@mattpocock`. NOT in repo-root `skills/`.
 - **Codex / Cursor**: installed manually via `install.py manual mattpocock-skills`, which reads the upstream `vendor/mattpocock-skills/.claude-plugin/plugin.json` skill list and symlinks each into `~/.agents/skills/`. Submodule stays at `vendor/mattpocock-skills/`, never touches repo-root `skills/`. Build runs `_clean_mattpocock_skill_symlinks` to remove stale `skills/<name>` links from older builds.
 
-Trade-off vs old build-deep-copy: submodule updates now flow to Codex/Cursor immediately (`git submodule update --remote` → symlinks point at new content, no rebuild needed), but Codex/Cursor users must run `install.py manual` once after cloning. Same Cursor symlink caveat as anysearch (may vanish after restart → copy folders for Cursor only).
+Trade-off vs old build-deep-copy: submodule updates now flow to Codex/Cursor immediately (`git submodule update --remote` → symlinks point at new content, no rebuild needed), but Codex/Cursor users must run `install.py manual` once after cloning. All platforms follow symlinks correctly — no Cursor workaround needed.
 
 **22 skills** (full list with descriptions: `vendor/mattpocock-skills/.claude-plugin/plugin.json`). User-invoked workflow chain: `grill-with-docs` → `to-spec` → `to-tickets` → `implement` → `code-review`. Model-invoked: `tdd`, `diagnosing-bugs`, `research`, `domain-modeling`, `codebase-design`, `prototype`, `grilling`. Productivity: `handoff`, `teach`, `writing-great-skills`. Routers: `ask-matt`, `wayfinder`, `triage`, `improve-codebase-architecture`, `setup-matt-pocock-skills`, `grill-me`.
 

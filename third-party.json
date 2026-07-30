@@ -34,19 +34,33 @@
           "note": "Installed by `install.py manual mattpocock-skills` — generates 22 symlinks into ~/.agents/skills/ (Codex standard user path) from the upstream plugin.json skill list. Codex follows symlinks per loader.rs (User scope = Follow)."
         },
         "cursor": {
-          "note": "Same as codex: `install.py manual mattpocock-skills` → ~/.agents/skills/. Cursor scans ~/.agents/skills/ by default. Known bug: home-dir skill symlinks may vanish after restart (v2.5.x); if hit, copy the folders instead of symlinking."
+          "note": "Same as codex: `install.py manual mattpocock-skills` → ~/.agents/skills/. Cursor scans ~/.agents/skills/ by default and follows symlinks correctly."
         }
       }
     },
     {
       "name": "understand-anything",
-      "description": "Codebase knowledge graph and analysis",
+      "description": "AI-powered codebase understanding by EarthChen/Understand-Anything — analyze, visualize, and explain any project via an interactive knowledge graph. Multi-skill repo (11 skills) under understand-anything-plugin/skills/. Its plugin.json carries no `skills` list, so `install.py manual` discovers skills by scanning scan_dir for subdirs with a SKILL.md. Submodule at vendor/understand-anything stays out of build/_dist — no skills/ symlink, no _deep_copy_skills entry.",
+      "install": {
+        "source": "vendor/understand-anything",
+        "generate": {
+          "scan_dir": "understand-anything-plugin/skills",
+          "link_dir": "~/.agents/skills",
+          "extra_links": ["~/.claude/skills"]
+        }
+      },
       "platforms": {
         "claude": {
-          "install_cmd": "Managed via ~/.agents/skills/ symlinks to ~/.understand-anything/repo/"
+          "note": "Installed by `install.py manual understand-anything` — symlinks each discovered skill into ~/.claude/skills/ (Claude scans this user-level dir; it does NOT read ~/.agents/skills/). Submodule at vendor/understand-anything; `git submodule update --remote` flows to all platforms at once."
         },
         "codex": {
-          "install_cmd": "Managed via ~/.agents/skills/ symlinks to ~/.understand-anything/repo/"
+          "note": "Installed by `install.py manual understand-anything` — symlinks into ~/.agents/skills/ (Codex standard user path; follows symlinks per loader.rs User scope = Follow)."
+        },
+        "cursor": {
+          "note": "Same as codex: `install.py manual understand-anything` → ~/.agents/skills/. Cursor scans ~/.agents/skills/ by default and follows symlinks correctly."
+        },
+        "pi": {
+          "note": "pi scans ~/.agents/skills/ natively (same mechanism as mattpocock/anysearch manual installs); no extra deploy step beyond `install.py manual understand-anything`. NOT installed via install.py install --platform pi (that path deploys AGENTS.md + repo-root skills/agents only)."
         }
       }
     },
@@ -68,7 +82,7 @@
           "note": "Codex follows symlinks per loader.rs (User scope = Follow). ~/.codex/skills is deprecated legacy; ~/.agents/skills is the standard."
         },
         "cursor": {
-          "note": "Cursor scans ~/.agents/skills/ by default. Known bug: home-dir skill symlinks may vanish after restart (v2.5.x); if hit, copy the folder instead of symlinking."
+          "note": "Cursor scans ~/.agents/skills/ by default and follows symlinks correctly."
         }
       }
     },
