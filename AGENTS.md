@@ -47,6 +47,8 @@ vendor/anysearch-skill/    (manual install only → ~/.claude+~/.agents/skills/,
 
 **Claude Code is version-gated.** `marketplace.json`'s `version` field is the ONLY signal Claude uses to decide whether to pull new content. Pushing to `main` without bumping version → `claude plugin update` sees the same version in cache and skips → cache stays at the old content (verified: pushed agent deletions + global rewrite at 1.1.0, but cache remained old 1.1.0 with the deleted agents still present). So the release flow is **bump version → build → commit → push → install**; skip the bump and Claude does not update. Codex (symlink tracks repo) and Cursor (rsync `--delete` re-copies) are NOT version-gated — push + install and they pick up new content.
 
+**When a bump is NOT needed:** version-gating only governs content that lives in the plugin cache snapshot Claude pulls on `plugin update` — i.e. repo-root `skills/`, `agents/`, `.mcp.json`, and the `CLAUDE.md`/`AGENTS.md` body embedded into `_dist/claude/`. Third-party (manual/symlink) skills — mattpocock, understand-anything, anysearch — live as symlinks in `~/.claude/skills/` (user-level), which Claude scans directly and which **never pass through the plugin cache**. So edits to `install.py`, `third-party.json`, `third-party.schema.json`, or the vendor submodules do NOT require a version bump to surface on Claude; on any machine just run `uv run install.py install` (or `install.py manual <name>`) to (re)create the symlinks. The version-gating check is: did `_dist/claude/` (the cached plugin payload) actually change? If `git status _dist/` is clean after `build`, no bump is needed for Claude.
+
 Cursor local plugin: copied as a **real directory** (not symlink) to `~/.cursor/plugins/local/earthchen-ai-assets`. Cursor's local-plugin scanner skips symlinks in that dir (verified Cursor 2.5.x: symlinked plugin dir is never indexed, skills never load). Codex keeps a symlink — its scanner follows symlinks fine. Restart Cursor or Developer: Reload Window after install.
 
 **Cursor marketplace has a stale-cache problem** (parallel alternative only): Cursor resolves a marketplace to a commit SHA on first import and caches it — does NOT re-resolve on reinstall or session start (reinstalling keeps pulling the first-imported commit). So marketplace installs get stuck on the first-imported version. For reliable updates use `install.py install` (local real-dir). `cursor` CLI has no `plugin` subcommand, so marketplace install is UI-only (Settings → Customize → add `https://github.com/EarthChen/ai-assets`). Local + marketplace same name → double-load (duplicate skills); pick one, prefer local.
@@ -61,37 +63,46 @@ This repo is the ONLY source for custom AI configuration:
 - Do NOT install third-party plugins that overlap with this repo
 - All MCP servers managed in this repo's `mcp.json`
 
-## anysearch-skill (manual install exception)
+## third-party skills (symlink-installed, bypass plugin cache)
 
-[anysearch-ai/anysearch-skill](https://github.com/anysearch-ai/anysearch-skill) is the **ONE skill that bypasses plugin distribution**, on purpose. CLI skill (calls `api.anysearch.com`, NOT an MCP server) replacing the former `exa` MCP server. Pinned at `vendor/anysearch-skill/` (submodule, tag `v2.1.0`), installed manually via `install.py manual` (symlinks into `~/.claude/skills/` + `~/.agents/skills/`), never entering repo-root `skills/`.
+Three third-party skill sets are **NOT plugin-distributed** — they install as user-level symlinks so their runtime files (`runtime.conf`, `.env`, upstream-pinned content) survive outside the plugin cache (a read-only snapshot overwritten on every version pull). All three are declared in `third-party.json` with a top-level `install` object and deployed by `install.py`'s manual-skill path, which **`install.py install` now runs automatically** (no separate `install.py manual` needed):
+
+| Skill set | submodule | discovery | links |
+| --- | --- | --- | --- |
+| **mattpocock-skills** | `vendor/mattpocock-skills` | `generate.from+field` (reads upstream `plugin.json` skills list, 22 skills) | `~/.agents/skills/` |
+| **understand-anything** | `vendor/understand-anything` | `generate.scan_dir` (scans `understand-anything-plugin/skills/` for SKILL.md subdirs, 11 skills — upstream `plugin.json` has no skills list) | `~/.agents/skills/` + `~/.claude/skills/` (via `extra_links`) |
+| **anysearch** | `vendor/anysearch-skill` | `links` (explicit list, single skill) | `~/.claude/skills/anysearch` + `~/.agents/skills/anysearch` |
+
+`install.py manual <name>` remains as a single-skill reinstall entry point. All three platforms (Claude, Codex, Cursor) follow these symlinks correctly; no per-platform workaround needed. Adding a third-party skill = adding a `third-party.json` entry with an `install` object (choose `links` for single-skill repos, `generate.from+field` if upstream declares a skill list, `generate.scan_dir` if it doesn't) — no `install.py` code change. See `third-party.schema.json` for the `install`/`installConfig`/`generateConfig` schema.
+
+### anysearch-skill
+
+[anysearch-ai/anysearch-skill](https://github.com/anysearch-ai/anysearch-skill) is a CLI skill (calls `api.anysearch.com`, NOT an MCP server) replacing the former `exa` MCP server. Pinned at `vendor/anysearch-skill/` (submodule).
 
 **Why not plugin-distributed?** The skill needs `runtime.conf` (agent-written at first use) and optional `.env` (`ANYSEARCH_API_KEY`) to persist across sessions. But plugin cache (`~/.claude/plugins/cache/.../`) is a **read-only snapshot overwritten on every version pull** — files the agent writes there are lost next session. So anysearch installs as user-level symlinks outside the plugin cache, where persistent files survive.
 
-```bash
-uv run install.py manual           # install all manual skills
-uv run install.py manual anysearch # install just this one
-```
-
-The subcommand is config-driven: reads `third-party.json` entries with a top-level `install` object (`source` submodule path + `links` list of user-level paths) and symlinks each link → source. Adding a manual skill = adding an `install` object to its `third-party.json` entry, no code change in `install.py`. Both links point at the same submodule, so a submodule update flows to all platforms at once.
-
-All three platforms (Claude, Codex, Cursor) follow these symlinks correctly; no per-platform workaround is needed.
-
 **Upgrade:** `git submodule update --remote vendor/anysearch-skill` (re-pin to a release tag). Symlinks need no update — content flows through automatically.
 
-**Sole exception to "Single Source of Truth = this repo's plugin."** Do not add more skills to `~/.claude/skills/` or `~/.agents/skills/` manually — if a skill can be plugin-distributed, it goes in `skills/` and through `install.py build`. A manual skill is appropriate only when it needs persistent runtime files the plugin cache cannot hold; declare it in `third-party.json` with an `install` object.
+### understand-anything
 
-## mattpocock/skills (hybrid management)
+[EarthChen/Understand-Anything](https://github.com/EarthChen/Understand-Anything) — AI-powered codebase understanding: analyze, visualize, and explain any project via an interactive knowledge graph. Submodule at `vendor/understand-anything`; 11 skills under `understand-anything-plugin/skills/<name>/SKILL.md` plus a `shared/` lib dir (not a skill, skipped by `scan_dir`). Upstream `plugin.json` carries no `skills` list, so discovery uses `generate.scan_dir`.
+
+Not plugin-distributed for the same reason as anysearch: runtime files (`system.json`, generated graphs under `.understand-anything/`) must survive across sessions outside the read-only plugin cache.
+
+**Upgrade:** `git submodule update --remote vendor/understand-anything` (re-pin to a tag if upstream tags one). Symlinks need no update — content flows through automatically.
+
+### mattpocock/skills
 
 Engineering skills from [mattpocock/skills](https://github.com/mattpocock/skills). **Hybrid management** because mattpocock ships only a Claude native plugin (no Codex/Cursor plugin):
 
-- **Claude Code**: provided by native plugin `mattpocock-skills@mattpocock`. NOT in repo-root `skills/`.
-- **Codex / Cursor**: installed manually via `install.py manual mattpocock-skills`, which reads the upstream `vendor/mattpocock-skills/.claude-plugin/plugin.json` skill list and symlinks each into `~/.agents/skills/`. Submodule stays at `vendor/mattpocock-skills/`, never touches repo-root `skills/`. Build runs `_clean_mattpocock_skill_symlinks` to remove stale `skills/<name>` links from older builds.
+- **Claude Code**: provided by native plugin `mattpocock-skills@mattpocock`. NOT in repo-root `skills/`, NOT in `~/.claude/skills/`.
+- **Codex / Cursor / pi**: symlinked into `~/.agents/skills/` by `install.py install` (or `install.py manual mattpocock-skills` to reinstall just this set). Reads the upstream `vendor/mattpocock-skills/.claude-plugin/plugin.json` `skills` list (22 entries). Submodule stays at `vendor/mattpocock-skills/`, never touches repo-root `skills/`. Build runs `_clean_mattpocock_skill_symlinks` to remove stale `skills/<name>` links from older builds.
 
-Trade-off vs old build-deep-copy: submodule updates now flow to Codex/Cursor immediately (`git submodule update --remote` → symlinks point at new content, no rebuild needed), but Codex/Cursor users must run `install.py manual` once after cloning. All platforms follow symlinks correctly — no Cursor workaround needed.
+Trade-off vs old build-deep-copy: submodule updates now flow to Codex/Cursor immediately (`git submodule update --remote` → symlinks point at new content, no rebuild needed), but Codex/Cursor users must run `install.py install` once after cloning to create the symlinks (the main install now covers this — no separate `manual` command needed).
 
 **22 skills** (full list with descriptions: `vendor/mattpocock-skills/.claude-plugin/plugin.json`). User-invoked workflow chain: `grill-with-docs` → `to-spec` → `to-tickets` → `implement` → `code-review`. Model-invoked: `tdd`, `diagnosing-bugs`, `research`, `domain-modeling`, `codebase-design`, `prototype`, `grilling`. Productivity: `handoff`, `teach`, `writing-great-skills`. Routers: `ask-matt`, `wayfinder`, `triage`, `improve-codebase-architecture`, `setup-matt-pocock-skills`, `grill-me`.
 
-The manual subcommand is **generate-driven**: reads the upstream `plugin.json` `skills` list and symlinks each. Adding/removing a skill upstream needs no code change here — re-running picks up the new list.
+The manual path is **generate-driven**: reads the upstream `plugin.json` `skills` list and symlinks each. Adding/removing a skill upstream needs no code change here — re-running picks up the new list.
 
 ```bash
 uv run install.py manual mattpocock-skills                              # install all 22
