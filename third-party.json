@@ -87,6 +87,32 @@
       }
     },
     {
+      "name": "herdr",
+      "description": "Herdr terminal multiplexer skill by herdrdev/herdr — control Herdr (workspaces/tabs/panes/agents) from inside a managed pane. Single-skill repo; only skills/herdr is materialized on disk via git sparse-checkout (submodule .gitmodules sets sparse=true), so the 48MB Rust tree is never checked out. Submodule at vendor/herdr-skill stays out of build/_dist.",
+      "install": {
+        "source": "vendor/herdr-skill",
+        "generate": {
+          "scan_dir": "skills",
+          "link_dir": "~/.agents/skills",
+          "extra_links": ["~/.claude/skills"]
+        }
+      },
+      "platforms": {
+        "claude": {
+          "note": "Installed by `install.py manual herdr` — symlinks the discovered skill into ~/.claude/skills/ (Claude scans this user-level dir; it does NOT read ~/.agents/skills/). Submodule at vendor/herdr-skill; `git submodule update --remote` flows to all platforms at once."
+        },
+        "codex": {
+          "note": "Installed by `install.py manual herdr` — symlinks into ~/.agents/skills/ (Codex standard user path; follows symlinks per loader.rs User scope = Follow)."
+        },
+        "cursor": {
+          "note": "Same as codex: `install.py manual herdr` → ~/.agents/skills/. Cursor scans ~/.agents/skills/ by default and follows symlinks correctly."
+        },
+        "pi": {
+          "note": "pi scans ~/.agents/skills/ natively (same mechanism as mattpocock/anysearch manual installs); no extra deploy step beyond `install.py manual herdr`. NOT installed via install.py install --platform pi (that path deploys AGENTS.md + repo-root skills/agents only)."
+        }
+      }
+    },
+    {
       "name": "context-mode",
       "description": "MCP server + session-continuity layer by mksglu/context-mode. Saves context by sandboxing tool output (ctx_execute/ctx_execute_file/ctx_batch_execute/ctx_fetch_and_index/ctx_index/ctx_search) and tracking session events in FTS5-backed SQLite for restore across compactions. NOT a skill distributed by this repo — installed per-platform via each platform's native plugin or npm path. This repo's AGENTS.md already references ctx-* tools, so this entry formalizes their provenance.",
       "platforms": {

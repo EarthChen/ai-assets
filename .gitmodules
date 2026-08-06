@@ -8,3 +8,7 @@
 [submodule "vendor/understand-anything"]
 	path = vendor/understand-anything
 	url = https://github.com/EarthChen/Understand-Anything
+[submodule "vendor/herdr-skill"]
+	path = vendor/herdr-skill
+	url = https://github.com/herdrdev/herdr.git
+	sparse = true
