@@ -152,106 +152,14 @@ If you can't be sure something worked, say so explicitly.
 "Feature works" is wrong if you didn't verify the edge case I asked about.
 Default to surfacing uncertainty, not hiding it.
 
-# Agent Orchestration
+Agent orchestration: skill routing, architect agent boundaries, immediate agent usage, and multi-perspective analysis.
 
-> Planning, TDD, and code review are handled by the mattpocock/skills workflow
-> (provided on Claude Code by the `mattpocock-skills@mattpocock` native plugin;
-> vendored on Codex/Cursor), not by sub-agents:
->
-> - **Planning → implementation** → `/grill-with-docs` → `/to-spec` → `/to-tickets` → `/implement` workflow chain
-> - **TDD** → `/tdd` skill (red-green-refactor loop)
-> - **Code review** → `/code-review` skill (dual-axis Standards + Spec review)
-
-### Architect Agents — 边界
-
-仓库有两个软件架构 agent，按层级选用：
-
-| Agent | Model | 职责边界 |
-| ------- | ------- | --------- |
-| `architect` | opus | **系统级架构**：整体系统设计、可扩展性、技术决策、权衡分析、ADR。输出高层架构图 + 组件职责 + 数据模型 + API 契约。用于"做架构决策"。 |
-| `code-architect` | sonnet | **特性级实现蓝图**：分析现有代码的模式和约定，给出具体文件路径 + 接口 + 数据流 + 构建顺序。用于"这个功能在现有代码里怎么落地"。 |
-
-> 完整 agent 列表见 `agents/*.md`（含 java-reviewer / python-reviewer / typescript-reviewer / fastapi-reviewer / database-reviewer / performance-optimizer / code-explorer / code-simplifier / silent-failure-hunter / type-design-analyzer / harness-optimizer / loop-operator 等），按需调用。
-
-## Immediate Agent Usage
-
-No user prompt needed:
-
-1. Architectural decision - Use **architect** agent
-2. Security-sensitive code - Use **security-reviewer** agent
-3. Build failure - Use **build-error-resolver** agent
-4. Multiple independent exploration / review / analysis tasks - proactively split them across subagents and launch them in ONE message (parallel), instead of doing them sequentially yourself
-
-Do NOT delegate single lookups or small edits — subagent overhead outweighs the gain.
-
-For planning / TDD / code review, invoke the mattpocock skills above instead.
-
-## Multi-Perspective Analysis
-
-For complex problems, use split role sub-agents (these are **prompt roles**, not agent files — assign them inline to Task agents, do not look for `ecc-*.md` definitions):
-
-- Factual reviewer
-- Senior engineer
-- Security expert
-- Consistency reviewer
-- Redundancy checker
+See skill: `agent-orchestration` for the full guidance.
 
 
-# Code Review Standards
+Code review standards: when to review, security triggers, severity levels, agent/skill routing, and approval criteria.
 
-## Purpose
-
-Code review ensures quality, security, and maintainability before code is merged. This rule defines when and how to conduct code reviews.
-
-## When to Review
-
-**MANDATORY review triggers:**
-
-- After writing or modifying code
-- Before any commit to shared branches
-- When security-sensitive code is changed (auth, payments, user data)
-- When architectural changes are made
-- Before merging pull requests
-
-> Quality/security checklists live in the coding-style, security, and testing rules; the `/code-review` skill carries the detailed review workflow.
-
-## Security Review Triggers
-
-**STOP and use security-reviewer agent when:**
-
-- Authentication or authorization code
-- User input handling
-- Database queries
-- File system operations
-- External API calls
-- Cryptographic operations
-- Payment or financial code
-
-## Review Severity Levels
-
-| Level | Meaning | Action |
-|-------|---------|--------|
-| CRITICAL | Security vulnerability or data loss risk | **BLOCK** - Must fix before merge |
-| HIGH | Bug or significant quality issue | **WARN** - Should fix before merge |
-| MEDIUM | Maintainability concern | **INFO** - Consider fixing |
-| LOW | Style or minor suggestion | **NOTE** - Optional |
-
-## Agent Usage
-
-Use these agents for code review:
-
-| Agent / Skill | Purpose |
-|-------|---------|
-| **/code-review** skill (mattpocock/skills) | General code quality, dual-axis Standards + Spec review |
-| **security-reviewer** | Security vulnerabilities, OWASP Top 10 |
-| **typescript-reviewer** | TypeScript/JavaScript specific issues |
-| **python-reviewer** | Python specific issues |
-
-## Approval Criteria
-
-- **Approve**: No CRITICAL or HIGH issues
-- **Warning**: Only HIGH issues (merge with caution)
-- **Block**: CRITICAL issues found
+See skill: `code-review-standards` for the full guidance.
 
 
 # Coding Style
@@ -309,46 +217,9 @@ Before marking work complete:
 - [ ] No mutation in new code (immutable patterns used)
 
 
-# Development Workflow
+Feature development pipeline: plan → TDD → simplify → review → commit, with mattpocock/skills references.
 
-> This rule extends the git workflow rule with the full feature development process that happens before git operations.
-
-The Feature Implementation Workflow describes the development pipeline: planning, TDD, code review, and then committing to git.
-
-## Feature Implementation Workflow
-
-Planning, TDD, and code review use the mattpocock/skills workflow (native
-plugin `mattpocock-skills@mattpocock` on Claude Code; vendored on
-Codex/Cursor), not sub-agents.
-
-1. **Plan First**
-   - Run `/grill-with-docs` to align requirements + build the domain model
-   - Run `/to-spec` to synthesize the conversation into a spec
-   - Run `/to-tickets` to break it into tracer-bullet tickets
-   - Identify dependencies and risks
-
-2. **TDD Approach**
-   - Use the `/tdd` skill for the red-green-refactor loop
-   - Write tests first (RED)
-   - Implement to pass tests (GREEN)
-   - Refactor (IMPROVE)
-   - Verify 80%+ coverage
-
-3. **Code Simplification**
-   - Run the `code-simplifier` agent on recently modified code for clarity, consistency, and maintainability
-   - Light-touch: reduce nesting, rename for clarity, remove dead code in the changed region, consolidate duplicated logic in the touched files
-   - Preserves exact behavior — all tests must still pass without modification
-   - For whole-repo dead-code removal and structural refactoring across files, use the `refactor-cleaner` agent instead
-
-4. **Code Review**
-   - Use the `/code-review` skill (dual-axis: Standards + Spec) immediately after writing code
-   - Address CRITICAL and HIGH issues
-   - Fix MEDIUM issues when possible
-
-5. **Commit & Push**
-   - Detailed commit messages
-   - Follow conventional commits format
-   - See the git workflow rule for commit message format and PR process
+See skill: `feature-workflow` for the full guidance.
 
 
 # Git Workflow
@@ -356,11 +227,13 @@ Codex/Cursor), not sub-agents.
 ## Branching Strategy
 
 Follow GitHub Flow, generalized to the repo's default branch (may be `main` or `master` — detect it, do not assume):
+
 - The default branch is the stable branch; all feature/fix branches are cut from it and merged back via PR
 - Do not commit directly to the default branch
 - Never force-push the default branch
 
 ## Commit Message Format
+
 ```
 <type>: <description>
 
@@ -371,30 +244,7 @@ Types: feat, fix, refactor, docs, test, chore, perf, ci
 
 Keep commits atomic: one commit addresses one concern.
 
-## Pull Request Workflow
-
-When creating PRs:
-1. Analyze full commit history (not just latest commit)
-2. Use `git diff [base-branch]...HEAD` to see all changes
-3. Draft comprehensive PR summary
-4. Include test plan with TODOs
-5. Push with `-u` flag if new branch
-
-## Worktrees
-
-Use `git worktree` instead of stash + branch-switching when work must proceed in parallel:
-- Parallel independent tasks on the same repo (especially multiple agents working simultaneously — one worktree per agent avoids write conflicts)
-- Hotfix while a feature branch has work in progress
-- Risky experiments that should not touch the main working tree
-
-Conventions:
-- Place worktrees OUTSIDE the repo directory (e.g. sibling `../<repo>-<branch>`), never inside it — nested worktrees pollute file search and tooling scans
-- One branch = one worktree; a branch cannot be checked out in two worktrees
-- Dependencies and env files (`node_modules/`, `.venv/`, `.env`) are NOT shared — reinstall/copy per worktree before running anything
-- Clean up after merge: `git worktree remove <path>`, then `git worktree prune`; do not leave stale worktrees behind
-
-> For the full development process (planning, TDD, code review) before git operations,
-> see the development workflow rule.
+See skill: `git-workflow` for the PR process and worktree conventions.
 
 
 # Security Guidelines
@@ -402,6 +252,7 @@ Conventions:
 ## Mandatory Security Checks
 
 Before ANY commit:
+
 - [ ] No hardcoded secrets (API keys, passwords, tokens)
 - [ ] All user inputs validated
 - [ ] SQL injection prevention (parameterized queries)
@@ -418,14 +269,7 @@ Before ANY commit:
 - Validate that required secrets are present at startup
 - Rotate any secrets that may have been exposed
 
-## Security Response Protocol
-
-If security issue found:
-1. STOP immediately
-2. Use **security-reviewer** agent
-3. Fix CRITICAL issues before continuing
-4. Rotate any exposed secrets
-5. Review entire codebase for similar issues
+See skill: `security-response` for the incident response protocol.
 
 
 # 技术栈约束 (Strict Tech Stack)
@@ -454,22 +298,8 @@ If security issue found:
 
 ## Minimum Test Coverage: 80%
 
-Test Types (required where the project has the corresponding test surface):
-1. **Unit Tests** - Individual functions, utilities, components
-2. **Integration Tests** - API endpoints, database operations
-3. **E2E Tests** - Critical user flows (framework chosen per language)
+See skill: `testing-standards` for test types and failure troubleshooting.
 
 ## Test-Driven Development
 
 TDD is mandatory for new features and bug fixes — the red-green-refactor loop is carried by the `/tdd` skill (see the development workflow rule).
-
-## Troubleshooting Test Failures
-
-1. Use the `/tdd` skill (mattpocock/skills workflow)
-2. Check test isolation
-3. Verify mocks are correct
-4. Fix implementation, not tests (unless tests are wrong)
-
-## Skill Support
-
-- `/tdd` (mattpocock/skills) - Red-green-refactor loop with seam-based testing; use for new features and bug fixes
