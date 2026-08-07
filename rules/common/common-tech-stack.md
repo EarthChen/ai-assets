@@ -4,7 +4,6 @@ alwaysApply: true
 ---
 # 技术栈约束 (Strict Tech Stack)
 
-
 ## Python 环境管理
 - **唯一工具**：必须且仅能使用 `uv`。
 - **严禁使用**：禁止使用 `pip`、`conda` 或 `poetry`。
