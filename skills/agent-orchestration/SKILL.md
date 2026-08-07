@@ -16,7 +16,7 @@ Route work to the right agent or skill instead of doing it all inline. Planning,
 | Security-sensitive code (auth, input, SQL, FS, crypto, payments) | `security-reviewer` |
 | Build failure (any language / toolchain) | `build-error-resolver` |
 
-Architect agents: `architect` on opus (system-level depth), `code-architect` on sonnet (feature-level speed).
+Architect agents: `architect` for system-level depth, `code-architect` for feature-level speed.
 
 Several independent explore / review / analysis tasks → launch them in one message (parallel fan-out), never sequentially.
 
