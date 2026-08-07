@@ -1,13 +1,33 @@
 ---
 name: git-workflow
-description: Use when creating pull requests (analyze history, draft PR summary, test plan) or working with git worktrees (parallel agents, hotfixes, risky experiments)
+description: "Git conventions: conventional commits `<type>: <description>` (types: feat, fix, refactor, docs, test, chore, perf, ci), GitHub Flow branching, PR process, worktrees. Use when committing code, opening a PR, or using worktrees."
 ---
 
-# Git Workflow — PR & Worktrees
+# Git Workflow — Branching, Commits, PR & Worktrees
 
 ## When to Use
 
-Use this skill when you need to open a pull request (analyze full commit history, draft the PR summary with a test plan, push a new branch with `-u`) or when parallel work requires a git worktree (multiple agents, hotfixes while a feature branch is in progress, risky experiments that must not touch the main working tree).
+Use this skill when committing code (conventional commit format), opening a pull request (analyze history, draft summary with test plan), or when parallel work requires a git worktree (multiple agents, hotfixes, risky experiments).
+
+## Branching Strategy
+
+Follow GitHub Flow, generalized to the repo's default branch (may be `main` or `master` — detect it, do not assume):
+
+- The default branch is the stable branch; all feature/fix branches are cut from it and merged back via PR
+- Do not commit directly to the default branch
+- Never force-push the default branch
+
+## Commit Message Format
+
+```
+<type>: <description>
+
+<optional body>
+```
+
+Types: feat, fix, refactor, docs, test, chore, perf, ci
+
+Keep commits atomic: one commit addresses one concern.
 
 ## Pull Request Workflow
 
