@@ -1,8 +1,6 @@
 ---
 name: mcp-feedback-protocol
 description: "Mandatory mcp-feedback-pro feedback loop for Cursor: main-agent-only invocation, subagent-disable clause, 10x timeout retry logic. Use when running Cursor's mcp-feedback-pro MCP feedback loop on any task checkpoint or final approval."
-metadata:
-  origin: ECC
 ---
 
 # MCP 增强反馈协议 (Mandatory Protocol)

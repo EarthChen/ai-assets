@@ -1,8 +1,6 @@
 ---
 name: agent-orchestration
 description: "Route agent/skill work: architect boundaries, immediate agent usage, multi-perspective analysis. Use when deciding which agent or skill to invoke for architecture decisions, security review, build failures, or parallel subagent fan-out."
-metadata:
-  origin: ECC
 ---
 
 # Agent Orchestration

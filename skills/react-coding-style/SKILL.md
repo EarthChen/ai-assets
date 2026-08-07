@@ -1,8 +1,6 @@
 ---
 name: react-coding-style
 description: React coding-style conventions — file extensions, naming, JSX, imports, state, class components, hooks discipline. Use when writing or reviewing React/TSX component or hook code.
-metadata:
-  origin: ECC
 ---
 
 # React Coding Style

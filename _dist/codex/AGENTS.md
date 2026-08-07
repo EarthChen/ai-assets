@@ -152,16 +152,6 @@ If you can't be sure something worked, say so explicitly.
 "Feature works" is wrong if you didn't verify the edge case I asked about.
 Default to surfacing uncertainty, not hiding it.
 
-Agent orchestration: skill routing, architect agent boundaries, immediate agent usage, and multi-perspective analysis.
-
-See skill: `agent-orchestration` for the full guidance.
-
-
-Code review standards: when to review, security triggers, severity levels, agent/skill routing, and approval criteria.
-
-See skill: `code-review-standards` for the full guidance.
-
-
 # Coding Style
 
 ## Design Principles
@@ -217,11 +207,6 @@ Before marking work complete:
 - [ ] No mutation in new code (immutable patterns used)
 
 
-Feature development pipeline: plan → TDD → simplify → review → commit, with mattpocock/skills references.
-
-See skill: `feature-workflow` for the full guidance.
-
-
 # Git Workflow
 
 ## Branching Strategy
@@ -243,8 +228,6 @@ Follow GitHub Flow, generalized to the repo's default branch (may be `main` or `
 Types: feat, fix, refactor, docs, test, chore, perf, ci
 
 Keep commits atomic: one commit addresses one concern.
-
-See skill: `git-workflow` for the PR process and worktree conventions.
 
 
 # Security Guidelines
@@ -268,8 +251,6 @@ Before ANY commit:
 - ALWAYS use environment variables or a secret manager
 - Validate that required secrets are present at startup
 - Rotate any secrets that may have been exposed
-
-See skill: `security-response` for the incident response protocol.
 
 
 # 技术栈约束 (Strict Tech Stack)
@@ -297,8 +278,6 @@ See skill: `security-response` for the incident response protocol.
 # Testing Requirements
 
 ## Minimum Test Coverage: 80%
-
-See skill: `testing-standards` for test types and failure troubleshooting.
 
 ## Test-Driven Development
 

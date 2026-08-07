@@ -1,8 +1,6 @@
 ---
 name: security-response
 description: Use when a security issue or sensitive-data exposure is discovered — STOP, route to security-reviewer, fix CRITICAL, rotate secrets, audit the codebase
-metadata:
-  origin: ECC
 ---
 
 # Security Response Protocol

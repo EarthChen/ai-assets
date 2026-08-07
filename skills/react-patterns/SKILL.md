@@ -1,8 +1,6 @@
 ---
 name: react-patterns
 description: React component architecture patterns — container/presentational split, state location, RSC boundary, Suspense, forms, data fetching, lists, composition, compound components, portals — plus React hooks rules. Use when designing or reviewing React component structure and hook usage.
-metadata:
-  origin: ECC
 ---
 
 # React Patterns

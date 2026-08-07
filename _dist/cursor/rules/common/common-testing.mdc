@@ -1,12 +1,10 @@
 ---
-description: "Testing requirements: 80% coverage, TDD workflow, test types"
+description: "Testing requirements: 80% coverage, TDD workflow"
 alwaysApply: true
 ---
 # Testing Requirements
 
 ## Minimum Test Coverage: 80%
-
-See skill: `testing-standards` for test types and failure troubleshooting.
 
 ## Test-Driven Development
 

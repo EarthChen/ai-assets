@@ -1,8 +1,6 @@
 ---
 name: git-workflow
 description: Use when creating pull requests (analyze history, draft PR summary, test plan) or working with git worktrees (parallel agents, hotfixes, risky experiments)
-metadata:
-  origin: ECC
 ---
 
 # Git Workflow — PR & Worktrees

@@ -1,7 +1,0 @@
----
-globs: ["**/*.tsx", "**/*.jsx", "**/hooks/**/*.ts", "**/hooks/**/*.js", "**/use-*.ts", "**/use-*.tsx"]
-alwaysApply: false
----
-# React Hooks
-
-React hooks rules: rules of hooks, useEffect discipline, dependency arrays, cleanup, memoization, custom hooks, useState/useRef patterns, useSyncExternalStore, React 19 additions. Extends common-coding-style.md. See skill: `react-patterns` for the full guidance (hooks content is merged under its `## Hooks` section).

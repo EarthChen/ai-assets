@@ -1,9 +1,0 @@
----
-description: "MCP feedback protocol: mandatory mcp-feedback-pro usage and retry logic"
-alwaysApply: true
-platforms: [cursor]
----
-
-Mandatory mcp-feedback-pro feedback loop for Cursor: main-agent-only invocation, subagent-disable clause, and 10x timeout retry logic.
-
-See skill: `mcp-feedback-protocol` for the full guidance.

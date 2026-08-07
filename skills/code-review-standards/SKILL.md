@@ -1,8 +1,6 @@
 ---
 name: code-review-standards
 description: "Code review standards: when to review, severity levels, security triggers, agent/skill routing, approval criteria. Use after writing/modifying code, before commits/merges, or for security-sensitive changes."
-metadata:
-  origin: ECC
 ---
 
 # Code Review Standards

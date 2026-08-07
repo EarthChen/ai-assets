@@ -1,5 +1,5 @@
 ---
-description: "Git workflow: branching strategy, conventional commits, PR process, worktrees"
+description: "Git workflow: branching strategy, conventional commits"
 alwaysApply: true
 ---
 # Git Workflow
@@ -23,5 +23,3 @@ Follow GitHub Flow, generalized to the repo's default branch (may be `main` or `
 Types: feat, fix, refactor, docs, test, chore, perf, ci
 
 Keep commits atomic: one commit addresses one concern.
-
-See skill: `git-workflow` for the PR process and worktree conventions.

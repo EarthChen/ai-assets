@@ -1,8 +1,6 @@
 ---
 name: testing-standards
 description: Use when deciding which test types to write (unit, integration, E2E) or troubleshooting failing test suites — isolation, mocks, fix-implementation
-metadata:
-  origin: ECC
 ---
 
 # Testing Standards — Test Types & Failure Troubleshooting

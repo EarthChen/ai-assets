@@ -1,5 +1,5 @@
 ---
-description: "Security: mandatory checks, secret management, response protocol"
+description: "Security: mandatory checks, secret management"
 alwaysApply: true
 ---
 # Security Guidelines
@@ -23,5 +23,3 @@ Before ANY commit:
 - ALWAYS use environment variables or a secret manager
 - Validate that required secrets are present at startup
 - Rotate any secrets that may have been exposed
-
-See skill: `security-response` for the incident response protocol.
