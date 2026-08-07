@@ -1,55 +1,39 @@
 ---
 name: agent-orchestration
-description: "Route agent/skill work: architect boundaries, immediate agent usage, multi-perspective analysis. Use when deciding which agent or skill to invoke for architecture decisions, security review, build failures, or parallel subagent fan-out."
+description: "Agent & skill routing: architect (system) vs code-architect (feature) boundaries, security review, build failures, parallel subagent fan-out, split-role analysis. Use when an architectural decision, security-sensitive code, a build break, or several independent explore/review tasks land on you."
 ---
 
 # Agent Orchestration
 
-## When to Use
+Route work to the right agent or skill instead of doing it all inline. Planning, TDD, and code review run through the mattpocock/skills workflow (`/grill-with-docs`, `/to-spec`, `/to-tickets`, `/implement`, `/tdd`, `/code-review`) — reach for those skills directly.
 
-- You need to decide which architect agent (`architect` vs `code-architect`) fits a task.
-- You are about to make an architectural decision, touch security-sensitive code, hit a build failure, or have multiple independent explore/review/analysis tasks.
-- You want split-role (multi-perspective) analysis: factual reviewer, senior engineer, security expert, consistency reviewer, redundancy checker.
-- Note: planning / TDD / code review are delegated to the mattpocock/skills workflow (`/grill-with-docs`, `/to-spec`, `/to-tickets`, `/implement`, `/tdd`, `/code-review`), not to sub-agents.
+## Pick the agent
 
-> Planning, TDD, and code review are handled by the mattpocock/skills workflow
-> (provided on Claude Code by the `mattpocock-skills@mattpocock` native plugin;
-> vendored on Codex/Cursor), not by sub-agents:
->
-> - **Planning → implementation** → `/grill-with-docs` → `/to-spec` → `/to-tickets` → `/implement` workflow chain
-> - **TDD** → `/tdd` skill (red-green-refactor loop)
-> - **Code review** → `/code-review` skill (dual-axis Standards + Spec review)
+| Trigger | Agent |
+| --- | --- |
+| System-level architecture: design, scalability, trade-offs, ADR | `architect` |
+| Feature-level "how this lands in existing code" blueprint | `code-architect` |
+| Security-sensitive code (auth, input, SQL, FS, crypto, payments) | `security-reviewer` |
+| Build failure (any language / toolchain) | `build-error-resolver` |
 
-### Architect Agents — 边界
+Architect agents: `architect` on opus (system-level depth), `code-architect` on sonnet (feature-level speed).
 
-仓库有两个软件架构 agent，按层级选用：
+Several independent explore / review / analysis tasks → launch them in one message (parallel fan-out), never sequentially.
 
-| Agent | Model | 职责边界 |
-| ------- | ------- | --------- |
-| `architect` | opus | **系统级架构**：整体系统设计、可扩展性、技术决策、权衡分析、ADR。输出高层架构图 + 组件职责 + 数据模型 + API 契约。用于"做架构决策"。 |
-| `code-architect` | sonnet | **特性级实现蓝图**：分析现有代码的模式和约定，给出具体文件路径 + 接口 + 数据流 + 构建顺序。用于"这个功能在现有代码里怎么落地"。 |
+## Delegate only when it pays
 
-> 完整 agent 列表见 `agents/*.md`（含 java-reviewer / python-reviewer / typescript-reviewer / fastapi-reviewer / database-reviewer / performance-optimizer / code-explorer / code-simplifier / silent-failure-hunter / type-design-analyzer / harness-optimizer / loop-operator 等），按需调用。
+Reserve sub-agents for parallelizable or context-heavy work. Handle single lookups and one-line edits inline — sub-agent overhead outweighs the gain on small tasks.
 
-## Immediate Agent Usage
+## Split-role analysis (panel)
 
-No user prompt needed:
-
-1. Architectural decision - Use **architect** agent
-2. Security-sensitive code - Use **security-reviewer** agent
-3. Build failure - Use **build-error-resolver** agent
-4. Multiple independent exploration / review / analysis tasks - proactively split them across subagents and launch them in ONE message (parallel), instead of doing them sequentially yourself
-
-Do NOT delegate single lookups or small edits — subagent overhead outweighs the gain.
-
-For planning / TDD / code review, invoke the mattpocock skills above instead.
-
-## Multi-Perspective Analysis
-
-For complex problems, use split role sub-agents (these are **prompt roles**, not agent files — assign them inline to Task agents, do not look for `ecc-*.md` definitions):
+For complex problems, assign split-role sub-agents inline — these are prompt roles, not `ecc-*.md` files:
 
 - Factual reviewer
 - Senior engineer
 - Security expert
 - Consistency reviewer
 - Redundancy checker
+
+## Full agent catalogue
+
+The complete list lives in `agents/*.md` — read it to discover java-reviewer, python-reviewer, fastapi-reviewer and the rest.
