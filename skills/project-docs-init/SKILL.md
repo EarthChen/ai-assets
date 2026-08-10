@@ -38,14 +38,14 @@ Statements in the existing docs with **no code corroboration** (team "don'ts", g
 
 ## Generate
 
-Regenerate each file whole — not a patch. Match the dominant language from the probe.
+Regenerate each file whole — not a patch. Match the dominant language from the probe. Apply `/writing-for-agents` while generating — it carries the writing levers (no-op test, single source of truth, leading words, progressive disclosure) that keep both bodies tight and agent-predictable; this skill adds only the section structure and hard constraints below.
 
 ### AGENTS.md — six sections, ≤190 lines hard
 
-Tight by design: every line loads into the agent's context on every session. Aim well under 190; 190 is the wall.
+Aim well under 190; 190 is the wall.
 
 | Section | Source |
-|---|---|
+| --- | --- |
 | `## Project` (or project-language equivalent) — one-line what-it-is | factual + `[推断]` (library/app/monorepo inferred from structure; the positioning phrase, if you can't pin it, is a grill point) |
 | `## Stack` — language, framework, DB, test runner | factual (manifests) |
 | `## Commands` — build/test/lint, in code blocks | factual (scripts/Makefile/justfile) |
@@ -55,12 +55,12 @@ Tight by design: every line loads into the agent's context on every session. Aim
 
 No `[待填]` placeholders in AGENTS.md — they cost lines and the agent reads them as incomplete. For a light intent item you can't resolve, infer it and tag `[推断]` so the user can correct in review; for a real boundary rule the code can't yield, grill.
 
-After generating, count lines. Over 190: **self-tighten** with no semantic loss first — dedupe adjacent bullets, collapse repeated phrasing, drop redundant examples. Still over: leave a `<!-- TODO: over 190 lines, trim X -->` marker and tell the user which section resists compression and what you'd cut. Do not silently truncate mid-sentence; do not silently axe content the code can't rebuild.
+After generating, count lines. Over 190: self-tighten with no semantic loss — apply the pruning levers from `/writing-for-agents`. Still over: leave a `<!-- TODO: over 190 lines, trim X -->` marker and tell the user which section resists compression and what you'd cut. Do not silently truncate mid-sentence; do not silently axe content the code can't rebuild.
 
 ### README.md — six sections, no line cap, human-facing
 
 | Section | Source |
-|---|---|
+| --- | --- |
 | `# Title` + one-line summary | factual + `[待填]` (summary phrase if you can't pin it) |
 | `## Features` / `## Purpose` | ask intent (selling points / philosophy aren't in code) |
 | `## Installation` | factual (package manager + install command) |
@@ -79,7 +79,7 @@ No `## Contributing` section unless the user asks.
 Handle CLAUDE.md per the argument (default `--symlink` on). Adaptive: whichever of AGENTS.md / CLAUDE.md already exists is the **source**, the missing one becomes a symlink to it.
 
 | AGENTS.md | CLAUDE.md | `--symlink` (default) |
-|---|---|---|
+| --- | --- | --- |
 | exists | missing | create `CLAUDE.md → AGENTS.md` |
 | missing | exists | create `AGENTS.md → CLAUDE.md` |
 | exists | symlink→AGENTS.md | no-op (correct state) |
@@ -92,7 +92,7 @@ Handle CLAUDE.md per the argument (default `--symlink` on). Adaptive: whichever 
 
 ## Grill
 
-When you hit intent the code cannot yield — a positioning phrase you can't pin, a team boundary rule, a statement with no code corroboration — stop and grill the user: **one question at a time**, each with your recommended answer, wait for the reply before the next. This is not a bulk Q&A; one-at-a-time avoids bewilderment.
+When you hit intent the code cannot yield — a positioning phrase you can't pin, a team boundary rule, a statement with no code corroboration — run a `/grilling` session for **these points only**. The grilling skill carries the interview mechanics (design tree, frontier rounds, each question with your recommended answer); reach it rather than reinventing the format. Scope the session to the unresolved intent points this run surfaced — don't rebuild the whole project as a design tree.
 
 Only grill on what the code can't resolve. Everything probed from code (structure, commands, stack, language) never becomes a question — you already have the answer. The grill fires for intent and for destructive changes (deleting or heavily rewriting existing content) — never for pure additions, dedup, or correcting obviously stale facts, which you do directly.
 
