@@ -80,7 +80,7 @@ uv run install.py version --bump patch # 递增版本号 (major/minor/patch)
 | -------- | ------ | -------- |
 | Cursor | `install.py install`（rsync real-dir） | 修改后 + 重启 |
 | Codex | 符号链接（即时） | build 后生效 |
-| Claude Code | `claude plugin update`（version-gated） | **必须 bump version** |
+| Claude Code | `install.py install` (local-directory marketplace, reinstall) | 无需 bump，reinstall 即刷新 |
 | pi | `install.py install --platform pi` | build + install |
 
 > 详见 [AGENTS.md - Update Mechanism](AGENTS.md)：Claude version-gating、
@@ -113,7 +113,7 @@ uv run install.py version --bump patch # 递增版本号 (major/minor/patch)
 | ------ | --------- | ------ |
 | Claude Code | 原生插件 `mattpocock-skills@mattpocock` | 由上游插件提供，不在 repo-root `skills/` |
 | Codex | `install.py manual` → symlink 进 `~/.agents/skills/` | submodule 不进 `_dist/`，更新即时生效 |
-| Cursor | 同 Codex | 同上（symlink 重启后可能消失，需 copy 文件夹） |
+| Cursor | 同 Codex（`install.py manual` → symlink 进 `~/.agents/skills/`） | submodule 不进 `_dist/`，更新即时生效 |
 
 ```bash
 # Claude Code：原生插件由 install.py install 自动安装（配置在 third-party.json）
@@ -172,7 +172,7 @@ git submodule update --remote vendor/mattpocock-skills
 | ------ | ------ | ------ |
 | Cursor | `install.py install`（local real-dir） | rsync `--delete` 重建，修改后重启 |
 | Codex | `~/.codex/plugins/local/` symlink + config.toml | symlink 即时跟踪 repo，build 后生效 |
-| Claude Code | `claude plugin install`（marketplace `ref: main`） | **version-gated：必须 bump version 才会更新** |
+| Claude Code | `install.py install`（`marketplace_source: "local"` → `marketplace add <REPO_ROOT>` + reinstall） | `install.py install` reinstall 即刷新；bump version 可选（诊断用） |
 | pi | `install.py install --platform pi` | build + install |
 
 ## Rules 系统详解

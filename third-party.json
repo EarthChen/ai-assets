@@ -8,8 +8,9 @@
       "platforms": {
         "claude": {
           "marketplace_ref": "https://github.com/EarthChen/ai-assets.git",
+          "marketplace_source": "local",
           "plugin_id": "earthchen-ai-assets@earthchen-ai-assets",
-          "note": "Self-plugin; provides skills, agents, MCP on Claude."
+          "note": "Self-plugin; provides skills, agents, MCP on Claude. Default local-directory marketplace (no git fetch — edit + reinstall flows immediately); marketplace_ref is the remote fallback for fresh machines that haven't cloned the repo."
         }
       }
     },

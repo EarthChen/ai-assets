@@ -73,7 +73,12 @@
       "properties": {
         "marketplace_ref": {
           "type": "string",
-          "description": "Claude marketplace source (GitHub repo or URL). Presence of this + plugin_id triggers auto-install by install.py."
+          "description": "Claude marketplace source (GitHub repo or URL). Presence of this + plugin_id triggers auto-install by install.py. When marketplace_source is 'local', this is kept as documentation of the remote fallback path (install.py uses REPO_ROOT instead)."
+        },
+        "marketplace_source": {
+          "type": "string",
+          "enum": ["local", "remote"],
+          "description": "Marketplace source type. 'local' = directory pointing at REPO_ROOT — no git fetch, edits flow immediately after reinstall (opt-in). 'remote' (default when absent) = git clone of marketplace_ref, version-gated plugin update on refresh."
         },
         "plugin_id": {
           "type": "string",

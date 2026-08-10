@@ -592,6 +592,13 @@ def _claude_plugins_to_install() -> list[dict]:
     `marketplace_ref` and `plugin_id`. Entries without these (e.g.
     understand-anything's "Managed via ~/.agents/skills/...") are skipped —
     they are managed manually and logged, not auto-installed.
+
+    `marketplace_source` (default "remote") selects the install mode:
+      - "local": directory marketplace pointing at REPO_ROOT — no git fetch,
+        edits flow immediately after reinstall. `marketplace_ref` is kept
+        as the remote-fallback doc path, not used for `marketplace add`.
+      - "remote" (default): git clone of `marketplace_ref` (GitHub repo or
+        URL); version-gated `plugin update` on refresh.
     """
     result = []
     for plugin in _load_third_party_plugins():
@@ -599,21 +606,40 @@ def _claude_plugins_to_install() -> list[dict]:
         ref = claude_cfg.get("marketplace_ref")
         pid = claude_cfg.get("plugin_id")
         if ref and pid:
-            result.append({"name": plugin.get("name", pid), "marketplace_ref": ref, "plugin_id": pid})
+            result.append({
+                "name": plugin.get("name", pid),
+                "marketplace_ref": ref,
+                "marketplace_source": claude_cfg.get("marketplace_source", "remote"),
+                "plugin_id": pid,
+            })
     return result
 
 
-def _ensure_claude_plugin(installed: str, marketplace_ref: str, plugin_id: str) -> None:
-    """Install a Claude Code plugin from a marketplace if absent, else update it.
+def _ensure_claude_plugin(
+    installed: str, marketplace_ref: str, marketplace_source: str, plugin_id: str
+) -> None:
+    """Install or refresh a Claude Code plugin from its marketplace.
+
+    `marketplace_source` picks the path passed to `marketplace add`:
+      - "local": REPO_ROOT directory — no git fetch; default for this repo.
+      - "remote": the `marketplace_ref` string (git URL).
+
+    Refresh strategy when the plugin is already installed:
+      - local: `uninstall` + `install` (reinstall). `plugin update` compares
+        the `plugin.json` version field and skips on a match, so it does NOT
+        pick up working-tree edits made without a version bump. Reinstall
+        forces a fresh snapshot. Idempotent — safe to run every install.
+      - remote: `plugin update` (pulls the marketplace ref, version-gated).
 
     Both paths check the subprocess return code — a silent `update` that logs
     "updated" on failure is the failure mode this guards against. The
     `marketplace add` return code is intentionally not checked: install is the
     real gate (a failed add surfaces as a failed install right after).
     """
+    add_source = str(REPO_ROOT) if marketplace_source == "local" else marketplace_ref
     if plugin_id not in installed:
         subprocess.run(
-            ["claude", "plugin", "marketplace", "add", marketplace_ref],
+            ["claude", "plugin", "marketplace", "add", add_source],
             capture_output=True, text=True,
         )
         result = subprocess.run(
@@ -624,8 +650,23 @@ def _ensure_claude_plugin(installed: str, marketplace_ref: str, plugin_id: str) 
             log(f"{plugin_id} installed")
         else:
             log(f"{plugin_id} install failed: {result.stderr.strip()}")
-            log(f"Try manually: claude plugin marketplace add {marketplace_ref}")
+            log(f"Try manually: claude plugin marketplace add {add_source}")
             log(f"             claude plugin install {plugin_id}")
+    elif marketplace_source == "local":
+        # Local marketplace: plugin update skips on same version, so reinstall
+        # to force a fresh snapshot of the working tree.
+        subprocess.run(
+            ["claude", "plugin", "uninstall", plugin_id],
+            capture_output=True, text=True,
+        )
+        result = subprocess.run(
+            ["claude", "plugin", "install", plugin_id, "--scope", "user"],
+            capture_output=True, text=True,
+        )
+        if result.returncode == 0:
+            log(f"{plugin_id} reinstalled (local marketplace refresh)")
+        else:
+            log(f"{plugin_id} reinstall failed: {result.stderr.strip()}")
     else:
         result = subprocess.run(
             ["claude", "plugin", "update", plugin_id],
@@ -641,11 +682,15 @@ def install_claude(dry_run: bool = False) -> None:
     log_section("Deploying Claude Code")
 
     # 1. Plugins: install those declared in third-party.json (claude platform
-    # entries with marketplace_ref + plugin_id). `claude plugin install` does a
-    # full clone from GitHub, so skills/, agents/, .mcp.json all work.
+    # entries with marketplace_ref + plugin_id). `marketplace_source` picks the
+    # add path: "local" (default) = directory at REPO_ROOT, no git fetch;
+    # "remote" = git clone of marketplace_ref.
     plugins = _claude_plugins_to_install()
     if dry_run:
         for p in plugins:
+            mode = p["marketplace_source"]
+            src = str(REPO_ROOT) if mode == "local" else p["marketplace_ref"]
+            log(f"[DRY-RUN] claude plugin marketplace add {src} ({mode})")
             log(f"[DRY-RUN] claude plugin install {p['plugin_id']}")
     else:
         # One list call covers all plugins in the config
@@ -655,7 +700,9 @@ def install_claude(dry_run: bool = False) -> None:
         )
         installed = list_result.stdout
         for p in plugins:
-            _ensure_claude_plugin(installed, p["marketplace_ref"], p["plugin_id"])
+            _ensure_claude_plugin(
+                installed, p["marketplace_ref"], p["marketplace_source"], p["plugin_id"]
+            )
 
     # 2. CLAUDE.md (plugin can't handle)
     dist_claude_md = DIST / "claude" / "CLAUDE.md"
