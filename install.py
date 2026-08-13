@@ -834,6 +834,15 @@ def install_pi(dry_run: bool = False) -> None:
         create_symlink(agent_file, pi_agents_dir / agent_file.name, dry_run)
         count += 1
     log(f"{count} agents -> {pi_agents_dir}")
+    # 3b. pi-only agents: symlink agents-pi/*.md into the same dir. NOT enumerated
+    # by _sync_claude_manifest_agents (which scans only agents/), so these load
+    # exclusively on pi and never on Claude/Codex/Cursor.
+    agents_pi_src = REPO_ROOT / "agents-pi"
+    count = 0
+    for agent_file in sorted(agents_pi_src.glob("*.md")):
+        create_symlink(agent_file, pi_agents_dir / agent_file.name, dry_run)
+        count += 1
+    log(f"{count} pi-only agents -> {pi_agents_dir}")
 
     log("Note: MCP not deployed (pi provides playwright etc. via its own extensions)")
 
