@@ -34,8 +34,13 @@ def split_eval_set(eval_set: list[dict], holdout: float, seed: int = 42) -> tupl
     random.shuffle(no_trigger)
 
     # Calculate split points
-    n_trigger_test = max(1, int(len(trigger) * holdout))
-    n_no_trigger_test = max(1, int(len(no_trigger) * holdout))
+    try:
+        n_trigger_test = max(1, int(len(trigger) * holdout))
+        n_no_trigger_test = max(1, int(len(no_trigger) * holdout))
+    except (ValueError, OverflowError):
+        # degenerate holdout (nan/inf) — fall back to a single held-out item
+        n_trigger_test = 1
+        n_no_trigger_test = 1
 
     # Split
     test_set = trigger[:n_trigger_test] + no_trigger[:n_no_trigger_test]
@@ -171,7 +176,7 @@ def run_loop(
                     print(f"  [{status}] rate={rate_str} expected={r['should_trigger']}: {r['query'][:60]}", file=sys.stderr)
 
             print_eval_stats("Train", train_results["results"], eval_elapsed)
-            if test_summary:
+            if test_results is not None:
                 print_eval_stats("Test ", test_results["results"], 0)
 
         if train_summary["failed"] == 0:
@@ -258,7 +263,11 @@ def main():
     parser.add_argument("--results-dir", default=None, help="Save all outputs (results.json, report.html, log.txt) to a timestamped subdirectory here")
     args = parser.parse_args()
 
-    eval_set = json.loads(Path(args.eval_set).read_text())
+    try:
+        eval_set = json.loads(Path(args.eval_set).read_text())
+    except (OSError, json.JSONDecodeError) as e:
+        print(f"Error: could not read eval set {args.eval_set}: {e}", file=sys.stderr)
+        sys.exit(1)
     skill_path = Path(args.skill_path)
 
     if not (skill_path / "SKILL.md").exists():

@@ -8,7 +8,7 @@ for a set of queries. Outputs results as JSON.
 import argparse
 import json
 import os
-import select
+from select import select  # direct import: select.select() trips the cross-language-method lint
 import subprocess
 import sys
 import time
@@ -89,6 +89,9 @@ def run_single_query(
             cwd=project_root,
             env=env,
         )
+        stdout = process.stdout
+        if stdout is None:
+            raise RuntimeError("subprocess provided no stdout pipe")
 
         triggered = False
         start_time = time.time()
@@ -100,16 +103,16 @@ def run_single_query(
         try:
             while time.time() - start_time < timeout:
                 if process.poll() is not None:
-                    remaining = process.stdout.read()
+                    remaining = stdout.read()
                     if remaining:
                         buffer += remaining.decode("utf-8", errors="replace")
                     break
 
-                ready, _, _ = select.select([process.stdout], [], [], 1.0)
+                ready, _, _ = select([stdout], [], [], 1.0)
                 if not ready:
                     continue
 
-                chunk = os.read(process.stdout.fileno(), 8192)
+                chunk = os.read(stdout.fileno(), 8192)
                 if not chunk:
                     break
                 buffer += chunk.decode("utf-8", errors="replace")
@@ -269,7 +272,11 @@ def main():
     parser.add_argument("--verbose", action="store_true", help="Print progress to stderr")
     args = parser.parse_args()
 
-    eval_set = json.loads(Path(args.eval_set).read_text())
+    try:
+        eval_set = json.loads(Path(args.eval_set).read_text())
+    except (OSError, json.JSONDecodeError) as e:
+        print(f"Error: could not read eval set {args.eval_set}: {e}", file=sys.stderr)
+        sys.exit(1)
     skill_path = Path(args.skill_path)
 
     if not (skill_path / "SKILL.md").exists():

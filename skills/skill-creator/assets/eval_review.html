@@ -65,8 +65,8 @@
     let evalItems = [...EVAL_DATA];
 
     function render() {
-      const tbody = document.getElementById('eval-body');
-      tbody.innerHTML = '';
+      const tbody = document.querySelector('#eval-body');
+      tbody.replaceChildren();
 
       // Sort: should-trigger first, then should-not-trigger
       const sorted = evalItems
@@ -79,33 +79,49 @@
         if (group !== lastGroup) {
           const headerRow = document.createElement('tr');
           headerRow.className = 'section-header';
-          headerRow.innerHTML = `<td colspan="3">${item.should_trigger ? 'Should Trigger' : 'Should NOT Trigger'}</td>`;
-          tbody.appendChild(headerRow);
+          const headerCell = document.createElement('td');
+          headerCell.colSpan = 3;
+          headerCell.textContent = item.should_trigger ? 'Should Trigger' : 'Should NOT Trigger';
+          headerRow.append(headerCell);
+          tbody.append(headerRow);
           lastGroup = group;
         }
 
         const idx = item.origIdx;
         const tr = document.createElement('tr');
-        tr.innerHTML = `
-          <td><textarea class="query-input" onchange="updateQuery(${idx}, this.value)">${escapeHtml(item.query)}</textarea></td>
-          <td>
-            <label class="toggle">
-              <input type="checkbox" ${item.should_trigger ? 'checked' : ''} onchange="updateTrigger(${idx}, this.checked)">
-              <span class="slider"></span>
-            </label>
-            <span style="margin-left:8px;font-size:0.8rem;color:#b0aea5">${item.should_trigger ? 'Yes' : 'No'}</span>
-          </td>
-          <td><button class="btn-delete" onclick="deleteRow(${idx})">Delete</button></td>
-        `;
-        tbody.appendChild(tr);
+        const queryCell = document.createElement('td');
+        const queryInput = document.createElement('textarea');
+        queryInput.className = 'query-input';
+        queryInput.value = item.query;
+        queryInput.onchange = () => updateQuery(idx, queryInput.value);
+        queryCell.append(queryInput);
+
+        const toggleCell = document.createElement('td');
+        const toggleLabel = document.createElement('label');
+        toggleLabel.className = 'toggle';
+        const toggleInput = document.createElement('input');
+        toggleInput.type = 'checkbox';
+        toggleInput.checked = item.should_trigger;
+        toggleInput.onchange = () => updateTrigger(idx, toggleInput.checked);
+        const slider = document.createElement('span');
+        slider.className = 'slider';
+        toggleLabel.append(toggleInput, slider);
+        const toggleText = document.createElement('span');
+        toggleText.style.cssText = 'margin-left:8px;font-size:0.8rem;color:#b0aea5';
+        toggleText.textContent = item.should_trigger ? 'Yes' : 'No';
+        toggleCell.append(toggleLabel, toggleText);
+
+        const deleteCell = document.createElement('td');
+        const deleteBtn = document.createElement('button');
+        deleteBtn.className = 'btn-delete';
+        deleteBtn.onclick = () => deleteRow(idx);
+        deleteBtn.textContent = 'Delete';
+        deleteCell.append(deleteBtn);
+
+        tr.append(queryCell, toggleCell, deleteCell);
+        tbody.append(tr);
       });
       updateSummary();
-    }
-
-    function escapeHtml(text) {
-      const div = document.createElement('div');
-      div.textContent = text;
-      return div.innerHTML;
     }
 
     function updateQuery(idx, value) { evalItems[idx].query = value; updateSummary(); }
@@ -116,13 +132,13 @@
       evalItems.push({ query: '', should_trigger: true });
       render();
       const inputs = document.querySelectorAll('.query-input');
-      inputs[inputs.length - 1].focus();
+      inputs.at(-1).focus();
     }
 
     function updateSummary() {
       const trigger = evalItems.filter(i => i.should_trigger).length;
       const noTrigger = evalItems.filter(i => !i.should_trigger).length;
-      document.getElementById('summary').textContent =
+      document.querySelector('#summary').textContent =
         `${evalItems.length} queries total: ${trigger} should trigger, ${noTrigger} should not trigger`;
     }
 
@@ -134,7 +150,7 @@
       const a = document.createElement('a');
       a.href = url;
       a.download = 'eval_set.json';
-      document.body.appendChild(a);
+      document.body.append(a);
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);

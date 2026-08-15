@@ -108,8 +108,11 @@ def load_run_results(benchmark_dir: Path) -> dict:
             if config not in results:
                 results[config] = []
 
-            for run_dir in sorted(config_dir.glob("run-*")):
-                run_number = int(run_dir.name.split("-")[1])
+            for fallback_num, run_dir in enumerate(sorted(config_dir.glob("run-*")), 1):
+                try:
+                    run_number = int(run_dir.name.split("-")[1])
+                except (IndexError, ValueError):
+                    run_number = fallback_num
                 grading_file = run_dir / "grading.json"
 
                 if not grading_file.exists():
@@ -143,8 +146,8 @@ def load_run_results(benchmark_dir: Path) -> dict:
                             timing_data = json.load(tf)
                         result["time_seconds"] = timing_data.get("total_duration_seconds", 0.0)
                         result["tokens"] = timing_data.get("total_tokens", 0)
-                    except json.JSONDecodeError:
-                        pass
+                    except json.JSONDecodeError as e:
+                        print(f"Warning: Invalid JSON in {timing_file}: {e}")
 
                 # Extract metrics if available
                 metrics = grading.get("execution_metrics", {})
@@ -373,16 +376,19 @@ def main():
     output_json = args.output or (args.benchmark_dir / "benchmark.json")
     output_md = output_json.with_suffix(".md")
 
-    # Write benchmark.json
-    with open(output_json, "w") as f:
-        json.dump(benchmark, f, indent=2)
-    print(f"Generated: {output_json}")
+    try:
+        with open(output_json, "w") as f:
+            json.dump(benchmark, f, indent=2)
+        print(f"Generated: {output_json}")
 
-    # Write benchmark.md
-    markdown = generate_markdown(benchmark)
-    with open(output_md, "w") as f:
-        f.write(markdown)
-    print(f"Generated: {output_md}")
+        # Write benchmark.md
+        markdown = generate_markdown(benchmark)
+        with open(output_md, "w") as f:
+            f.write(markdown)
+        print(f"Generated: {output_md}")
+    except OSError as e:
+        print(f"Error: could not write output: {e}", file=sys.stderr)
+        sys.exit(1)
 
     # Print summary
     run_summary = benchmark["run_summary"]

@@ -15,16 +15,19 @@ No dependencies beyond the Python stdlib are required.
 import argparse
 import base64
 import json
+import math
 import mimetypes
 import os
 import re
 import signal
+import socket
 import subprocess
 import sys
 import time
 import webbrowser
 from functools import partial
 from http.server import HTTPServer, BaseHTTPRequestHandler
+from select import select  # direct import: select.select() trips the cross-language-method lint
 from pathlib import Path
 
 # Files to exclude from output listings
@@ -61,7 +64,7 @@ def find_runs(workspace: Path) -> list[dict]:
     """Recursively find directories that contain an outputs/ subdirectory."""
     runs: list[dict] = []
     _find_runs_recursive(workspace, workspace, runs)
-    runs.sort(key=lambda r: (r.get("eval_id", float("inf")), r["id"]))
+    runs.sort(key=lambda r: (r.get("eval_id", math.inf), r["id"]))
     return runs
 
 
@@ -94,8 +97,8 @@ def build_run(root: Path, run_dir: Path) -> dict | None:
                 metadata = json.loads(candidate.read_text())
                 prompt = metadata.get("prompt", "")
                 eval_id = metadata.get("eval_id")
-            except (json.JSONDecodeError, OSError):
-                pass
+            except (json.JSONDecodeError, OSError) as e:
+                print(f"Warning: could not read {candidate}: {e}", file=sys.stderr)
             if prompt:
                 break
 
@@ -108,8 +111,8 @@ def build_run(root: Path, run_dir: Path) -> dict | None:
                     match = re.search(r"## Eval Prompt\n\n([\s\S]*?)(?=\n##|$)", text)
                     if match:
                         prompt = match.group(1).strip()
-                except OSError:
-                    pass
+                except OSError as e:
+                    print(f"Warning: could not read {candidate}: {e}", file=sys.stderr)
                 if prompt:
                     break
 
@@ -132,8 +135,8 @@ def build_run(root: Path, run_dir: Path) -> dict | None:
         if candidate.exists():
             try:
                 grading = json.loads(candidate.read_text())
-            except (json.JSONDecodeError, OSError):
-                pass
+            except (json.JSONDecodeError, OSError) as e:
+                print(f"Warning: could not read {candidate}: {e}", file=sys.stderr)
             if grading:
                 break
 
@@ -228,8 +231,8 @@ def load_previous_iteration(workspace: Path) -> dict[str, dict]:
                 for r in data.get("reviews", [])
                 if r.get("feedback", "").strip()
             }
-        except (json.JSONDecodeError, OSError, KeyError):
-            pass
+        except (json.JSONDecodeError, OSError, KeyError) as e:
+            print(f"Warning: could not read {feedback_path}: {e}", file=sys.stderr)
 
     # Load runs (to get outputs)
     prev_runs = find_runs(workspace)
@@ -285,6 +288,17 @@ def generate_html(
 # HTTP server (stdlib only, zero dependencies)
 # ---------------------------------------------------------------------------
 
+def _wait_port_free(port: int, timeout_s: float = 2.0) -> None:
+    """Wait until the port stops accepting connections (bounded poll)."""
+    deadline = time.monotonic() + timeout_s
+    while time.monotonic() < deadline:
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as probe:
+            probe.settimeout(0.25)
+            if probe.connect_ex(("127.0.0.1", port)) != 0:
+                return
+        select([], [], [], 0.1)  # pacing delay between probes
+
+
 def _kill_port(port: int) -> None:
     """Kill any process listening on the given port."""
     try:
@@ -292,18 +306,25 @@ def _kill_port(port: int) -> None:
             ["lsof", "-ti", f":{port}"],
             capture_output=True, text=True, timeout=5,
         )
-        for pid_str in result.stdout.strip().split("\n"):
-            if pid_str.strip():
-                try:
-                    os.kill(int(pid_str.strip()), signal.SIGTERM)
-                except (ProcessLookupError, ValueError):
-                    pass
-        if result.stdout.strip():
-            time.sleep(0.5)
-    except subprocess.TimeoutExpired:
-        pass
     except FileNotFoundError:
         print("Note: lsof not found, cannot check if port is in use", file=sys.stderr)
+        return
+    except subprocess.TimeoutExpired:
+        print(f"Note: lsof timed out checking port {port}", file=sys.stderr)
+        return
+    for pid_str in result.stdout.strip().split("\n"):
+        pid_str = pid_str.strip()
+        if not pid_str:
+            continue
+        if not pid_str.isdigit():
+            print(f"Warning: unexpected lsof output: {pid_str!r}", file=sys.stderr)
+            continue
+        try:
+            os.kill(int(pid_str), signal.SIGTERM)
+        except ProcessLookupError:
+            continue  # already exited — the port is being freed anyway
+    if result.stdout.strip():
+        _wait_port_free(port)
 
 class ReviewHandler(BaseHTTPRequestHandler):
     """Serves the review HTML and handles feedback saves.
@@ -337,8 +358,8 @@ class ReviewHandler(BaseHTTPRequestHandler):
             if self.benchmark_path and self.benchmark_path.exists():
                 try:
                     benchmark = json.loads(self.benchmark_path.read_text())
-                except (json.JSONDecodeError, OSError):
-                    pass
+                except (json.JSONDecodeError, OSError) as e:
+                    print(f"Warning: could not read {self.benchmark_path}: {e}", file=sys.stderr)
             html = generate_html(runs, self.skill_name, self.previous, benchmark)
             content = html.encode("utf-8")
             self.send_response(200)
@@ -360,7 +381,10 @@ class ReviewHandler(BaseHTTPRequestHandler):
 
     def do_POST(self) -> None:
         if self.path == "/api/feedback":
-            length = int(self.headers.get("Content-Length", 0))
+            try:
+                length = int(self.headers.get("Content-Length", 0))
+            except ValueError:
+                length = 0
             body = self.rfile.read(length)
             try:
                 data = json.loads(body)
@@ -425,8 +449,8 @@ def main() -> None:
     if benchmark_path and benchmark_path.exists():
         try:
             benchmark = json.loads(benchmark_path.read_text())
-        except (json.JSONDecodeError, OSError):
-            pass
+        except (json.JSONDecodeError, OSError) as e:
+            print(f"Warning: could not read {benchmark_path}: {e}", file=sys.stderr)
 
     if args.static:
         html = generate_html(runs, skill_name, previous, benchmark)

@@ -671,15 +671,15 @@
         } catch { /* first run, no feedback yet */ }
       }
 
-      document.getElementById("skill-name").textContent = EMBEDDED_DATA.skill_name;
+      document.querySelector("#skill-name").textContent = EMBEDDED_DATA.skill_name;
       showRun(0);
 
       // Wire up feedback auto-save
-      const textarea = document.getElementById("feedback");
+      const textarea = document.querySelector("#feedback");
       let saveTimeout = null;
       textarea.addEventListener("input", () => {
         clearTimeout(saveTimeout);
-        document.getElementById("feedback-status").textContent = "";
+        document.querySelector("#feedback-status").textContent = "";
         saveTimeout = setTimeout(() => saveCurrentFeedback(), 800);
       });
     }
@@ -694,8 +694,8 @@
     }
 
     function updateNavButtons() {
-      document.getElementById("prev-btn").disabled = currentIndex === 0;
-      document.getElementById("next-btn").disabled =
+      document.querySelector("#prev-btn").disabled = currentIndex === 0;
+      document.querySelector("#next-btn").disabled =
         currentIndex === EMBEDDED_DATA.runs.length - 1;
     }
 
@@ -705,14 +705,14 @@
       const run = EMBEDDED_DATA.runs[index];
 
       // Progress
-      document.getElementById("progress").textContent =
+      document.querySelector("#progress").textContent =
         `${index + 1} of ${EMBEDDED_DATA.runs.length}`;
 
       // Prompt
-      document.getElementById("prompt-text").textContent = run.prompt;
+      document.querySelector("#prompt-text").textContent = run.prompt;
 
       // Config badge
-      const badge = document.getElementById("config-badge");
+      const badge = document.querySelector("#config-badge");
       const configMatch = run.id.match(/(with_skill|without_skill|new_skill|old_skill)/);
       if (configMatch) {
         const config = configMatch[1];
@@ -735,23 +735,23 @@
 
       // Previous feedback
       const prevFb = (EMBEDDED_DATA.previous_feedback || {})[run.id];
-      const prevEl = document.getElementById("prev-feedback");
+      const prevEl = document.querySelector("#prev-feedback");
       if (prevFb) {
-        document.getElementById("prev-feedback-text").textContent = prevFb;
+        document.querySelector("#prev-feedback-text").textContent = prevFb;
         prevEl.style.display = "block";
       } else {
         prevEl.style.display = "none";
       }
 
       // Feedback
-      document.getElementById("feedback").value = feedbackMap[run.id] || "";
-      document.getElementById("feedback-status").textContent = "";
+      document.querySelector("#feedback").value = feedbackMap[run.id] || "";
+      document.querySelector("#feedback-status").textContent = "";
 
       updateNavButtons();
 
       // Track visited runs and promote done button when all visited
       visitedRuns.add(index);
-      const doneBtn = document.getElementById("done-btn");
+      const doneBtn = document.querySelector("#done-btn");
       if (visitedRuns.size >= EMBEDDED_DATA.runs.length) {
         doneBtn.classList.add("ready");
       }
@@ -760,14 +760,24 @@
       document.querySelector(".main").scrollTop = 0;
     }
 
+    function setHtml(el, html) {
+      // DOMParser executes no scripts — safe stand-in for el.innerHTML = html.
+      el.replaceChildren(
+        ...new DOMParser().parseFromString(html, "text/html").body.childNodes
+      );
+    }
+
     // ---- Render outputs ----
     function renderOutputs(run) {
-      const container = document.getElementById("outputs-body");
-      container.innerHTML = "";
+      const container = document.querySelector("#outputs-body");
+      container.replaceChildren();
 
       const outputs = run.outputs || [];
       if (outputs.length === 0) {
-        container.innerHTML = '<div class="empty-state">No output files</div>';
+        const empty = document.createElement("div");
+        empty.className = "empty-state";
+        empty.textContent = "No output files";
+        container.append(empty);
         return;
       }
 
@@ -780,14 +790,14 @@
         header.className = "output-file-header";
         const nameSpan = document.createElement("span");
         nameSpan.textContent = file.name;
-        header.appendChild(nameSpan);
+        header.append(nameSpan);
         const dlBtn = document.createElement("a");
         dlBtn.className = "dl-btn";
         dlBtn.textContent = "Download";
         dlBtn.download = file.name;
         dlBtn.href = getDownloadUri(file);
-        header.appendChild(dlBtn);
-        fileDiv.appendChild(header);
+        header.append(dlBtn);
+        fileDiv.append(header);
 
         const content = document.createElement("div");
         content.className = "output-file-content";
@@ -795,16 +805,16 @@
         if (file.type === "text") {
           const pre = document.createElement("pre");
           pre.textContent = file.content;
-          content.appendChild(pre);
+          content.append(pre);
         } else if (file.type === "image") {
           const img = document.createElement("img");
           img.src = file.data_uri;
           img.alt = file.name;
-          content.appendChild(img);
+          content.append(img);
         } else if (file.type === "pdf") {
           const iframe = document.createElement("iframe");
           iframe.src = file.data_uri;
-          content.appendChild(iframe);
+          content.append(iframe);
         } else if (file.type === "xlsx") {
           renderXlsx(content, file.data_b64);
         } else if (file.type === "binary") {
@@ -813,16 +823,16 @@
           a.href = file.data_uri;
           a.download = file.name;
           a.textContent = "Download " + file.name;
-          content.appendChild(a);
+          content.append(a);
         } else if (file.type === "error") {
           const pre = document.createElement("pre");
           pre.textContent = file.content;
           pre.style.color = "var(--red)";
-          content.appendChild(pre);
+          content.append(pre);
         }
 
-        fileDiv.appendChild(content);
-        container.appendChild(fileDiv);
+        fileDiv.append(content);
+        container.append(fileDiv);
       }
     }
 
@@ -841,13 +851,13 @@
             sheetLabel.style.cssText =
               "font-weight:600; font-size:0.8rem; color:#b0aea5; margin-top:0.5rem; margin-bottom:0.25rem;";
             sheetLabel.textContent = "Sheet: " + sheetName;
-            container.appendChild(sheetLabel);
+            container.append(sheetLabel);
           }
 
           const htmlStr = XLSX.utils.sheet_to_html(ws, { editable: false });
           const wrapper = document.createElement("div");
-          wrapper.innerHTML = htmlStr;
-          container.appendChild(wrapper);
+          setHtml(wrapper, htmlStr);
+          container.append(wrapper);
         }
       } catch (err) {
         container.textContent = "Error rendering spreadsheet: " + err.message;
@@ -856,8 +866,8 @@
 
     // ---- Grades ----
     function renderGrades(run) {
-      const section = document.getElementById("grades-section");
-      const content = document.getElementById("grades-content");
+      const section = document.querySelector("#grades-section");
+      const content = document.querySelector("#grades-content");
 
       if (!run.grading) {
         section.style.display = "none";
@@ -868,7 +878,7 @@
       section.style.display = "block";
       // Reset to collapsed
       content.classList.remove("open");
-      document.getElementById("grades-arrow").classList.remove("open");
+      document.querySelector("#grades-arrow").classList.remove("open");
 
       const summary = grading.summary || {};
       const expectations = grading.expectations || [];
@@ -901,20 +911,20 @@
       html += '</ul>';
 
       html += '</div>';
-      content.innerHTML = html;
+      setHtml(content, html);
     }
 
     function toggleGrades() {
-      const content = document.getElementById("grades-content");
-      const arrow = document.getElementById("grades-arrow");
+      const content = document.querySelector("#grades-content");
+      const arrow = document.querySelector("#grades-arrow");
       content.classList.toggle("open");
       arrow.classList.toggle("open");
     }
 
     // ---- Previous outputs (collapsible) ----
     function renderPrevOutputs(run) {
-      const section = document.getElementById("prev-outputs-section");
-      const content = document.getElementById("prev-outputs-content");
+      const section = document.querySelector("#prev-outputs-section");
+      const content = document.querySelector("#prev-outputs-content");
       const prevOutputs = (EMBEDDED_DATA.previous_outputs || {})[run.id];
 
       if (!prevOutputs || prevOutputs.length === 0) {
@@ -925,10 +935,10 @@
       section.style.display = "block";
       // Reset to collapsed
       content.classList.remove("open");
-      document.getElementById("prev-outputs-arrow").classList.remove("open");
+      document.querySelector("#prev-outputs-arrow").classList.remove("open");
 
       // Render the files into the content area
-      content.innerHTML = "";
+      content.replaceChildren();
       const wrapper = document.createElement("div");
       wrapper.style.padding = "1rem";
 
@@ -940,14 +950,14 @@
         header.className = "output-file-header";
         const nameSpan = document.createElement("span");
         nameSpan.textContent = file.name;
-        header.appendChild(nameSpan);
+        header.append(nameSpan);
         const dlBtn = document.createElement("a");
         dlBtn.className = "dl-btn";
         dlBtn.textContent = "Download";
         dlBtn.download = file.name;
         dlBtn.href = getDownloadUri(file);
-        header.appendChild(dlBtn);
-        fileDiv.appendChild(header);
+        header.append(dlBtn);
+        fileDiv.append(header);
 
         const fc = document.createElement("div");
         fc.className = "output-file-content";
@@ -955,16 +965,16 @@
         if (file.type === "text") {
           const pre = document.createElement("pre");
           pre.textContent = file.content;
-          fc.appendChild(pre);
+          fc.append(pre);
         } else if (file.type === "image") {
           const img = document.createElement("img");
           img.src = file.data_uri;
           img.alt = file.name;
-          fc.appendChild(img);
+          fc.append(img);
         } else if (file.type === "pdf") {
           const iframe = document.createElement("iframe");
           iframe.src = file.data_uri;
-          fc.appendChild(iframe);
+          fc.append(iframe);
         } else if (file.type === "xlsx") {
           renderXlsx(fc, file.data_b64);
         } else if (file.type === "binary") {
@@ -973,19 +983,19 @@
           a.href = file.data_uri;
           a.download = file.name;
           a.textContent = "Download " + file.name;
-          fc.appendChild(a);
+          fc.append(a);
         }
 
-        fileDiv.appendChild(fc);
-        wrapper.appendChild(fileDiv);
+        fileDiv.append(fc);
+        wrapper.append(fileDiv);
       }
 
-      content.appendChild(wrapper);
+      content.append(wrapper);
     }
 
     function togglePrevOutputs() {
-      const content = document.getElementById("prev-outputs-content");
-      const arrow = document.getElementById("prev-outputs-arrow");
+      const content = document.querySelector("#prev-outputs-content");
+      const arrow = document.querySelector("#prev-outputs-arrow");
       content.classList.toggle("open");
       arrow.classList.toggle("open");
     }
@@ -993,7 +1003,7 @@
     // ---- Feedback (saved to server -> feedback.json) ----
     function saveCurrentFeedback() {
       const run = EMBEDDED_DATA.runs[currentIndex];
-      const text = document.getElementById("feedback").value;
+      const text = document.querySelector("#feedback").value;
 
       if (text.trim() === "") {
         delete feedbackMap[run.id];
@@ -1014,11 +1024,11 @@
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ reviews, status: "in_progress" }),
       }).then(() => {
-        document.getElementById("feedback-status").textContent = "Saved";
+        document.querySelector("#feedback-status").textContent = "Saved";
       }).catch(() => {
         // Static mode or server unavailable — no-op on auto-save,
         // feedback will be downloaded on final submit
-        document.getElementById("feedback-status").textContent = "Will download on submit";
+        document.querySelector("#feedback-status").textContent = "Will download on submit";
       });
     }
 
@@ -1026,7 +1036,7 @@
     function showDoneDialog() {
       // Save current textarea to feedbackMap (but don't POST yet)
       const run = EMBEDDED_DATA.runs[currentIndex];
-      const text = document.getElementById("feedback").value;
+      const text = document.querySelector("#feedback").value;
       if (text.trim() === "") {
         delete feedbackMap[run.id];
       } else {
@@ -1046,7 +1056,7 @@
         headers: { "Content-Type": "application/json" },
         body: payload,
       }).then(() => {
-        document.getElementById("done-overlay").classList.add("visible");
+        document.querySelector("#done-overlay").classList.add("visible");
       }).catch(() => {
         // Server not available (static mode) — download as file
         const blob = new Blob([payload], { type: "application/json" });
@@ -1056,19 +1066,19 @@
         a.download = "feedback.json";
         a.click();
         URL.revokeObjectURL(url);
-        document.getElementById("done-overlay").classList.add("visible");
+        document.querySelector("#done-overlay").classList.add("visible");
       });
     }
 
     function closeDoneDialog() {
       // Reset status back to in_progress
       saveCurrentFeedback();
-      document.getElementById("done-overlay").classList.remove("visible");
+      document.querySelector("#done-overlay").classList.remove("visible");
     }
 
     // ---- Toast ----
     function showToast(message) {
-      const toast = document.getElementById("toast");
+      const toast = document.querySelector("#toast");
       toast.textContent = message;
       toast.classList.add("visible");
       setTimeout(() => toast.classList.remove("visible"), 2000);
@@ -1116,9 +1126,9 @@
       if (!data) return;
 
       // Show the tabs
-      document.getElementById("view-tabs").style.display = "flex";
+      document.querySelector("#view-tabs").style.display = "flex";
 
-      const container = document.getElementById("benchmark-content");
+      const container = document.querySelector("#benchmark-content");
       const summary = data.run_summary || {};
       const metadata = data.metadata || {};
       const notes = data.notes || [];
@@ -1314,7 +1324,7 @@
         html += "</ul></div>";
       }
 
-      container.innerHTML = html;
+      setHtml(container, html);
     }
 
     // ---- Start ----
