@@ -9,11 +9,11 @@
 | Cursor | rules, skills, agents, MCP | local real-dir (rsync) |
 | Claude Code | skills, agents, MCP | common rules → `~/.claude/rules/common/`, CLAUDE.md |
 | Codex | skills, MCP | AGENTS.md (global-instructions + common rules) |
-| pi | — | AGENTS.md + skills → `~/.agents/skills/` + agents → `~/.pi/agent/agents/` |
+| pi | — | AGENTS.md + skills → `~/.agents/skills/` + pi/{skills,agents} → `~/.pi/agent/{skills,agents}/` (pi 专属) + agents → `~/.pi/agent/agents/` |
 
 ## 目录结构
 
-```
+```text
 ai-assets/
 ├── global-instructions.md     # 全局基础指令 (部署为 CLAUDE.md / AGENTS.md)
 ├── rules/                     # 共享规则 (按子目录分类)
@@ -22,13 +22,15 @@ ai-assets/
 │   │   ├── KarpathyGuide.md
 │   │   └── ...
 │   ├── java/                  # Java 规则 (paths: **/*.java)
-│   ├── python/                # Python 规则 (globs: **/*.py)
-│   └── react/                 # React 规则 (globs: **/*.tsx)
-├── skills/                    # 共享技能 (自有实目录；vendor skills 手动安装到 ~/.agents/skills/)
-├── agents/                    # Subagent 定义 (Cursor + Claude + pi)
+│   └── python/                # Python 规则 (globs: **/*.py)
+├── skills/                    # 共享技能 (28 个自有实目录；vendor skills 由 install.py symlink 安装)
+├── agents/                    # Subagent 定义 (Cursor + Claude + pi，20 个)
+├── pi/                        # pi 专属资源: skills/ + agents/ → ~/.pi/agent/ (仅 pi 加载)
 ├── vendor/                    # 第三方 git submodules
-│   ├── mattpocock-skills/     # mattpocock/skills 工程技能库
-│   └── anysearch-skill/       # anysearch CLI 搜索技能 (手动安装)
+│   ├── mattpocock-skills/     # mattpocock/skills 工程技能库 (25 skills)
+│   ├── anysearch-skill/       # anysearch CLI 搜索技能
+│   ├── understand-anything/   # 代码库知识图谱理解 (11 skills)
+│   └── herdr-skill/           # Herdr 终端复用器控制技能 (sparse submodule)
 ├── mcp.json                   # 统一 MCP 配置 (_platforms 过滤)
 ├── _dist/                     # 自动生成的平台产物 (已提交；skills/agents 不复制进此)
 │   ├── cursor/                # rules/*.mdc + mcp.json
@@ -56,6 +58,8 @@ uv run install.py --platform cursor
 uv run install.py --dry-run
 ```
 
+`install.py install` 会自动完成三方 skills 的 symlink 安装（mattpocock / anysearch / understand-anything / herdr），无需单独运行 `manual`。
+
 ### 子命令
 
 ```bash
@@ -64,6 +68,9 @@ uv run install.py build
 
 # 仅安装 symlinks（新机器 / _dist/ 已是最新）
 uv run install.py install --platform cursor
+
+# 单个三方技能重装
+uv run install.py manual <name>
 
 # 版本管理
 uv run install.py version              # 查看当前版本
@@ -95,6 +102,7 @@ uv run install.py version --bump patch # 递增版本号 (major/minor/patch)
 | Cursor | rules, skills, agents, MCP | 仅创建 symlink |
 | Claude Code | skills, agents, MCP | common rules, CLAUDE.md |
 | Codex | skills, MCP | AGENTS.md (含 common rules) |
+| pi | —（无兼容插件系统） | AGENTS.md, skills/agents symlink 直接部署 |
 
 ### 单一配置源原则
 
@@ -102,18 +110,17 @@ uv run install.py version --bump patch # 递增版本号 (major/minor/patch)
 
 - 不在 `~/.agents/skills/` 中手动放置 skill
 - 不安装与本仓库功能重叠的第三方插件
-- 第三方 skills（如 mattpocock/skills）：Claude 走原生插件安装；Codex/Cursor 通过 git submodule + vendor 分发
+- 第三方 skills（如 mattpocock/skills）：Claude 走原生插件安装；Codex/Cursor/pi 通过 git submodule + vendor symlink 分发
 - MCP 服务器统一在本仓库 `mcp.json` 中管理
 
 ### mattpocock/skills（混合管理）
 
-来自 [mattpocock/skills](https://github.com/mattpocock/skills) 的 22 个工程技能，对齐上游 [plugin.json](https://github.com/mattpocock/skills/blob/main/.claude-plugin/plugin.json) 的 skills 清单。采用**混合模式**分发，因 mattpocock 仓库只发布了 Claude 原生插件（无 Codex/Cursor 插件）：
+来自 [mattpocock/skills](https://github.com/mattpocock/skills) 的 25 个工程技能，对齐上游 [plugin.json](https://github.com/mattpocock/skills/blob/main/.claude-plugin/plugin.json) 的 skills 清单。采用**混合模式**分发，因 mattpocock 仓库只发布了 Claude 原生插件（无 Codex/Cursor 插件）：
 
 | 平台 | 分发方式 | 说明 |
 | ------ | --------- | ------ |
 | Claude Code | 原生插件 `mattpocock-skills@mattpocock` | 由上游插件提供，不在 repo-root `skills/` |
-| Codex | `install.py manual` → symlink 进 `~/.agents/skills/` | submodule 不进 `_dist/`，更新即时生效 |
-| Cursor | 同 Codex（`install.py manual` → symlink 进 `~/.agents/skills/`） | submodule 不进 `_dist/`，更新即时生效 |
+| Codex / Cursor / pi | `install.py install` 自动 symlink 进 `~/.agents/skills/` | submodule 不进 `_dist/`，更新即时生效 |
 
 ```bash
 # Claude Code：原生插件由 install.py install 自动安装（配置在 third-party.json）
@@ -121,17 +128,17 @@ uv run install.py version --bump patch # 递增版本号 (major/minor/patch)
 #   claude plugin marketplace add mattpocock/skills
 #   claude plugin install mattpocock-skills@mattpocock
 
-# Codex/Cursor：_dist/ 已入库，clone 后可直接用；
-# 仅在需要重新 build（修改 vendored skills 后）时才初始化 submodule
+# Codex/Cursor/pi：clone 后运行一次 install.py install 创建 symlinks；
+# symlinks 直接指向 vendor/，submodule 更新后无需重建
 git submodule update --init
 
-# 更新 vendor 到上游最新版本
+# 更新 vendor 到上游最新版本（symlinks 自动跟随）
 git submodule update --remote vendor/mattpocock-skills
 ```
 
 #### 推荐工作流
 
-```
+```text
 /grill-with-docs  →  需求对齐（深度询问 + 领域建模）
 /to-spec          →  生成结构化 spec 文档
 /to-tickets       →  拆解为可执行 ticket（本地 markdown 或 GitHub Issues）
@@ -139,7 +146,7 @@ git submodule update --remote vendor/mattpocock-skills
 /code-review      →  双轴并行 review（Standards + Spec）
 ```
 
-#### 技能清单（22 个，对齐上游 plugin.json）
+#### 技能清单（25 个，对齐上游 plugin.json）
 
 | 分类 | 技能 | 说明 |
 | ------ | ------ | ------ |
@@ -156,6 +163,7 @@ git submodule update --remote vendor/mattpocock-skills
 | | `code-review` | 双轴并行 subagent review |
 | | `prototype` | 快速原型（logic 或 UI 两条路径） |
 | | `research` | 后台 agent 研究 + 引用式 markdown |
+| | `wizard` | 交互式 bash 向导（引导仅人类可执行的步骤） |
 | **设计** | `domain-modeling` | CONTEXT.md 术语表 + ADR 管理 |
 | | `codebase-design` | 深模块设计词汇（module, seam, depth, adapter） |
 | | `improve-codebase-architecture` | 架构扫描 + HTML 报告 + grilling |
@@ -163,8 +171,10 @@ git submodule update --remote vendor/mattpocock-skills
 | | `grill-me` | 用户触发的需求对齐面试 |
 | | `handoff` | 跨 session 上下文传递 |
 | | `teach` | 教学型技能编写与讲解 |
-| | `writing-great-skills` | skill 编写规范与最佳实践 |
+| | `writing-for-agents` | agent 消费文档（skills/AGENTS.md）写作规范 |
 | | `ask-matt` | 向 Matt 提问的模板 |
+| | `to-questionnaire` | [待填] |
+| | `wait-what` | [待填] |
 
 ### 各平台安装方式
 
@@ -179,12 +189,11 @@ git submodule update --remote vendor/mattpocock-skills
 
 ### 目录组织
 
-```
+```text
 rules/
 ├── common/     # 通用规则：始终加载，适用所有项目
 ├── java/       # 仅在编辑 Java 文件时加载
-├── python/     # 仅在编辑 Python 文件时加载
-└── react/      # 仅在编辑 React/TSX 文件时加载
+└── python/     # 仅在编辑 Python 文件时加载
 ```
 
 ### Frontmatter 格式（源文件统一格式）
@@ -215,9 +224,8 @@ platforms: [cursor, claude]      # 平台过滤 (build-time, 不进入输出)
 | 规则类型 | Cursor | Claude Code | Codex |
 | --------- | -------- | ------------- | ------- |
 | **common/** (alwaysApply: true) | 始终加载 | 用户级始终加载 | 嵌入 AGENTS.md |
-| **java/** (globs: \*\*.java) | 编辑 Java 文件时自动附加 | 项目级条件加载; 用户级不部署 | 不包含 |
-| **python/** | 同上 (Python) | 同上 | 不包含 |
-| **react/** | 同上 (React) | 同上 | 不包含 |
+| **java/** (paths: \*\*.java) | 编辑 Java 文件时自动附加 | 项目级条件加载; 用户级不部署 | 不包含 |
+| **python/** (globs: \*\*.py) | 同上 (Python) | 同上 | 不包含 |
 
 ### 重要限制
 
@@ -288,4 +296,25 @@ cp -r _dist/claude/rules/java .claude/rules/
 
 ## 三方插件
 
-三方插件记录在 `third-party.json` 中。mattpocock/skills 采用混合管理：Claude 走原生插件安装，Codex/Cursor 由本仓库 vendor（submodule）分发，不再依赖 superpowers 插件。
+三方插件记录在 `third-party.json` 中（schema 见 `third-party.schema.json`），`install.py install` 自动完成安装：
+
+| 插件 | 形态 | 分发方式 |
+| ------ | ------ | ------ |
+| mattpocock-skills | Claude 原生插件 + vendor submodule | Claude 走原生插件；Codex/Cursor/pi symlink 进 `~/.agents/skills/` |
+| anysearch | vendor submodule（CLI 技能） | symlink 进 `~/.claude/skills/` + `~/.agents/skills/` |
+| understand-anything | vendor submodule（11 skills） | symlink 进 `~/.agents/skills/` + `~/.claude/skills/` |
+| herdr | vendor submodule（sparse，单技能） | symlink 进 `~/.agents/skills/` + `~/.claude/skills/` |
+| context-mode | 仅溯源登记 | 不经本仓库分发；各平台原生插件/npm 安装（Claude 由 install.py 自动装） |
+
+> symlink 安装绕过插件缓存，运行时文件（`runtime.conf`、生成的图谱等）得以跨 session 留存。
+> 详细机制与踩坑记录见 [AGENTS.md - third-party skills](AGENTS.md)。
+
+## 文档站点
+
+`site/` 为 VitePress 文档站（GitHub Pages 部署，CI 见 `.github/workflows/deploy-pages.yml`）：
+
+```bash
+pnpm install
+pnpm docs:dev      # 本地预览
+pnpm docs:build    # 构建
+```
