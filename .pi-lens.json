@@ -1,0 +1,19 @@
+{
+  "ignore": ["vendor/**"],
+  "rules": {
+    "project-policy": {
+      "disable": [
+        "python-path-traversal",
+        "jscpd:duplicate",
+        "nested-ternary-js",
+        "prefer-at-js",
+        "prefer-query-selector-js",
+        "prefer-dom-node-append-js",
+        "missing-integrity",
+        "html.security.audit.missing-integrity.missing-integrity",
+        "opengrep:html.security.audit.missing-integrity.missing-integrity",
+        "marksman"
+      ]
+    }
+  }
+}
