@@ -1,38 +1,56 @@
 ---
 name: herdr-orchestration
-description: "Orchestrates a bounded pool of pi worker agents in Herdr panes: decompose a goal, spec, or pre-written tickets into subtasks, dispatch them to workers, stream results back, and integrate. Requires HERDR_ENV=1. Not for work a single agent or pi's built-in Agent tool can finish."
+description: "Multi-platform Herdr swarm orchestration: a bounded pool of pi / Claude Code / Codex worker panes working a goal, spec, or tickets. Manual invocation; requires HERDR_ENV=1. Invocation args: kind= thinking= workers=."
 disable-model-invocation: true
 ---
 
 # Herdr Orchestration
 
-You are the **orchestrator** — the swarm's sole scheduler and integration point. You run a bounded pool of pi worker agents in Herdr panes: ingest the goal (or its existing spec/tickets), triage and dispatch tasks, stream results back, merge continuously, and keep every agent's context lean. Workers build; you coordinate. All coordination state lives in files under `.herdr-swarm/` — memory is lossy, disk is truth.
+You are the **orchestrator** — the swarm's sole scheduler and integration point. You run a bounded pool of coding-agent workers in Herdr panes: ingest the goal (or its existing spec/tickets), triage and dispatch tasks, stream results back, merge continuously, and keep every agent's context lean. Workers build; you coordinate. All coordination state lives in files under `.herdr-swarm/` — memory is lossy, disk is truth.
+
+Workers run on any agent platform herdr supports — **pi (default), Claude Code (`claude`), Codex CLI (`codex`)** — and one pool may mix kinds. You yourself may run on any of them too. Every kind-specific fact (spawn args, autonomy, thinking level, compaction, telemetry pattern, skill-invocation syntax) lives in [references/platforms.md](references/platforms.md); this protocol keeps all of it in that one lookup.
 
 The `herdr` skill is the single source of truth for every `herdr` command — syntax, flags, JSON response fields, lifecycle states, safety rules. This skill defines only the orchestration protocol on top of it, and names no command flags of its own.
+
+## Invocation arguments
+
+Invocation text: `$ARGUMENTS`
+
+Leading `key=value` tokens before the payload override this swarm's defaults; the first token that is not one of these keys starts the payload:
+
+| Key | Effect | Else |
+| --- | --- | --- |
+| `kind=<kind>` | pool-default worker kind (a profiled kind from platforms.md) | `DEFAULT_WORKER_KIND` |
+| `thinking=<level>` | pool-default thinking level | `DEFAULT_WORKER_THINKING` |
+| `workers=<n>` | pool size, capped by `MAX_WORKERS`' hard cap | `MAX_WORKERS` |
+
+Claude Code substitutes the placeholder above with the argument string; pi delivers the arguments as a `User:` line appended after this skill's content, and codex inside the mentioning prompt — when the placeholder stands unsubstituted, read the same tokens from there. Record resolved overrides in the ledger header; per-spawn and per-brief decisions still beat them (see Platforms).
 
 ## Scope check (before Setup)
 
 You were invoked manually, but **invocation is not justification** — before Setup, confirm the payload warrants a swarm; if it does not, say so and stop:
 
-- Do NOT proceed for read-only exploration, a single review, or anything pi's built-in `Agent` sub-agent tool can finish — Herdr workers are heavyweight: full pi processes, visible panes, real API cost.
+- Do NOT proceed for read-only exploration, a single review, or anything your platform's built-in sub-agent tool can finish — Herdr workers are heavyweight: full agent processes, visible panes, real API cost.
 - Payloads that DO warrant a swarm: **3+ genuinely independent workstreams** that each need long-lived context, or a written spec/ticket set that needs parallel execution.
 - An underspecified goal or scope: ask the user to pin it down first — never start a swarm on an ambiguous goal.
 
 ## Preflight (mandatory, in order)
 
-1. Verify you run inside Herdr: `test "${HERDR_ENV:-}" = 1`. If it fails, tell the user to start pi inside a Herdr pane and stop.
-2. Load the `herdr` skill — every herdr command you and your workers issue comes from it. (Agent to agent there is no `/skill:` invocation; read the herdr skill's SKILL.md at the location the system prompt lists.) If it is missing, fall back to the binary: a bare command group (`herdr agent`, `herdr pane`, `herdr worktree`) prints its usage.
+1. Verify you run inside Herdr: `test "${HERDR_ENV:-}" = 1`. If it fails, tell the user to start their agent CLI (pi, claude, or codex) inside a Herdr pane and stop.
+2. Load the `herdr` skill — every herdr command you and your workers issue comes from it. (Agent to agent there is no skill invocation; read the herdr skill's SKILL.md at the location your system prompt lists.) If it is missing, fall back to the binary: a bare command group (`herdr agent`, `herdr pane`, `herdr worktree`) prints its usage.
 3. Confirm the current directory is where the work happens: a git repo root for single-repo work (unless the user says otherwise), or the workspace directory containing the service repos for multi-repo (microservices) work. A linked worktree qualifies as a base — see Worktrees. All swarm state lives under `.herdr-swarm/` there.
 
 ## Constants
 
 | Constant | Default | Hard cap | Meaning |
 | --- | --- | --- | --- |
-| `MAX_WORKERS` | 3 | 5 | Concurrent pi worker agents. Each is a full process with its own context and API cost; humans can supervise ~4 live agents at most. |
+| `MAX_WORKERS` | 3 | 5 | Concurrent worker agents. Each is a full process with its own context and API cost; humans can supervise ~4 live agents at most. |
 | `MAX_TASKS_PER_WORKER` | 8 | — | Retire backstop. Boundary compaction normally removes the need earlier. |
 | `COMPACT_AT` | 60% | — | Worker context usage above which the next assignment is preceded by compaction. |
 | `SOFT_COMPACT_TASKS` | 4 | — | Compaction heuristic (tasks done) when telemetry is unavailable. |
 | `PEER_ROUND_CAP` | 3 | — | Peer exchanges per topic before mandatory escalation. |
+| `DEFAULT_WORKER_KIND` | `pi` | — | herdr agent kind of new workers; overridable per worker, mixed pools allowed (see Platforms). |
+| `DEFAULT_WORKER_THINKING` | `low` | — | Reasoning effort of new workers. Workers execute well-specified briefs — high thinking mostly burns tokens there; a brief may demand more per task (see Platforms). |
 
 State layout (create during setup):
 
@@ -55,6 +73,10 @@ State layout (create during setup):
 
 Add `.herdr-swarm/` to `.git/info/exclude`. That file lives in git's common dir, so one entry covers the base checkout and every linked worktree of this repo. Never edit the repo's committed `.gitignore` for it. If the workspace directory is not itself a git repo (the typical multi-repo layout), no exclusion is needed.
 
+## Platforms
+
+A worker's **kind** is chosen at spawn (`DEFAULT_WORKER_KIND` unless the invocation arguments, the task, or the user say otherwise); a pool may mix kinds. Its **thinking level** is likewise fixed at spawn (`DEFAULT_WORKER_THINKING` unless the brief's `thinking:` line demands otherwise — workers rarely need more than `low`, but genuinely hard tasks may). [references/platforms.md](references/platforms.md) is the per-kind lookup: spawn command and native args, autonomy flags, compaction command and quirks, telemetry pattern, skill-invocation syntax. Record each worker's kind in the ledger's `kind` column and both kind and thinking level in its state card. Spawn only kinds that have a profile there.
+
 ## Setup
 
 1. `mkdir -p .herdr-swarm/tasks .herdr-swarm/contracts .herdr-swarm/state .herdr-swarm/inbox` and add the local exclude above.
@@ -65,9 +87,9 @@ Add `.herdr-swarm/` to `.git/info/exclude`. That file lives in git's common dir,
 # Swarm Ledger
 goal: <one line>
 created: <date>
-ctx pattern: <footer pattern once observed, e.g. "ctx <pct>%/<window>">
-| worker | domain/role | pane | status | current task | tasks done | ctx | notes |
-| --- | --- | --- | --- | --- | --- | --- | --- |
+ctx pattern: <footer pattern once observed, per worker kind — platforms.md>
+| worker | kind | domain/role | pane | status | current task | tasks done | ctx | notes |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
 ```
 
 The ledger is your continuity: if your session is compacted or restarted, re-read `plan.md` + `ledger.md`, reconcile against the live agent list (herdr skill: agent list), and resume — state comes from disk, not memory.
@@ -92,10 +114,11 @@ Parallel builders get **file-disjoint scopes**; where domains touch, write the s
 
 Follow the herdr skill's layout rules for panes (sibling pane, caller's cwd, no focus). Per worker:
 
-1. Split a pane, then start pi in it with a pool name: `wk-<domain>` (e.g. `wk-frontend`, `wk-backend`) — or `wk-<domain>-<n>` (e.g. `wk-backend-1`, `wk-backend-2`) when several workers share one domain for parallel tasks in the same codebase — or `wk-<role>` for auxiliaries. Names are unique among live agents.
-2. Write the worker's **state card** `.herdr-swarm/state/<name>.md`: name, scope, orchestrator's agent name, peers, protocol essentials, current task. The card is the worker's deterministic re-anchor after any compaction — update it whenever scope, peers, or current task change.
-3. Send ONE first prompt: the role preamble from [references/roles.md](references/roles.md) (common contract + exactly one role block, every placeholder filled), then the first assignment as a pointer: `Read .herdr-swarm/tasks/T1.md and execute it.`
-4. Record the worker in the ledger (name, domain/role, pane id).
+1. Split a pane, then start the worker's agent in it: `herdr agent start <name> --kind <kind> --pane <pane-id> -- <platform spawn args>` — kind and spawn args (autonomy, thinking level) per [references/platforms.md](references/platforms.md). Name: `wk-<domain>` (e.g. `wk-frontend`, `wk-backend`) — or `wk-<domain>-<n>` (e.g. `wk-backend-1`, `wk-backend-2`) when several workers share one domain for parallel tasks in the same codebase — or `wk-<role>` for auxiliaries. Names are unique among live agents.
+2. Write the worker's **state card** `.herdr-swarm/state/<name>.md`: name, kind, thinking level, scope, orchestrator's agent name, peers, protocol essentials, current task. The card is the worker's deterministic re-anchor after any compaction — update it whenever scope, peers, or current task change.
+3. Apply any post-spawn platform setup before the first assignment (platforms.md — e.g. claude sets its thinking level via `/effort` in-session).
+4. Send ONE first prompt: the role preamble from [references/roles.md](references/roles.md) (common contract + exactly one role block, every placeholder filled), then the first assignment as a pointer: `Read .herdr-swarm/tasks/T1.md and execute it.`
+5. Record the worker in the ledger (name, kind, domain/role, pane id).
 
 Pool cap: count live `wk-*` agents first. At `MAX_WORKERS`, queue the task in plan.md/ledger instead of spawning; assign it when a worker frees.
 
@@ -161,7 +184,7 @@ Peer traffic between workers is allowed inside guardrails — full protocol in [
 
 Standing rules:
 
-- **Briefs are files.** `.herdr-swarm/tasks/<id>.md`: goal, inputs as *paths*, scope boundary, constraints, definition of done — plus an optional free-form `execution:` line (a skill command like `/skill:tdd` and/or specific requirements); user-given execution instructions pass through verbatim.
+- **Briefs are files.** `.herdr-swarm/tasks/<id>.md`: goal, inputs as *paths*, scope boundary, constraints, definition of done — plus an optional free-form `execution:` line (a skill command in the dispatched worker's platform syntax — platforms.md — and/or specific requirements) and an optional `thinking:` line; user-given execution instructions pass through verbatim.
 - **Results are files.** The worker writes `result.md` (fixed 4-section format, summary ≤ 15 lines).
 - **Hand off by reference.** When T2 consumes T1's output, point the next worker at `.herdr-swarm/tasks/T1/result.md` — relay paths, not content.
 - **Ledger over memory.** Every status change lands in `ledger.md` immediately.
@@ -179,11 +202,13 @@ Workers never spawn. When a task outgrows one worker, the worker writes sub-brie
 
 ## Context management
 
-Context is the swarm's scarcest resource. pi auto-compacts on overflow (lossy, mid-task, recovers and retries), so this protocol makes compaction deterministic at task boundaries and recovery mechanical when it is not.
+Context is the swarm's scarcest resource. Every supported platform auto-compacts on overflow (lossy, mid-task; the worker recovers and retries), so this protocol makes compaction deterministic at task boundaries and recovery mechanical when it is not.
 
-**Telemetry — you pull, workers don't push.** A pi worker's TUI footer renders context usage as `ctx <pct>%/<window>` (e.g. `ctx 19.7%/512k`). Read it with `herdr agent read <name> --source detection` and parse the `ctx` value — inline this into the polling gate loop so it costs no LLM turns:
+**Telemetry — you pull, workers don't push.** Each kind renders context usage in its TUI footer in its own format (platforms.md: Telemetry). Read it with `herdr agent read <name> --source detection` and parse with the worker's kind pattern — inline this into the polling gate loop so it costs no LLM turns:
 
 ```bash
+# pattern per worker kind — copy it from platforms.md: Telemetry; mixed pools
+# look up each worker's kind in the ledger. pi pattern shown
 for a in $watch; do
   ctx=$(herdr agent read "$a" --source detection --lines 15 2>/dev/null \
         | grep -oE 'ctx [0-9]+(\.[0-9]+)?%/[0-9]+[kKmM]?' | head -1)
@@ -202,20 +227,20 @@ Record the latest value in the ledger `ctx` column. Mid-task rises become visibl
 | ctx < `COMPACT_AT`, next task in the same domain | Keep warm, dispatch directly — subtree follow-ups and new tickets alike; residual domain familiarity is worth keeping |
 | Telemetry unavailable | Fallback heuristic: tasks done ≥ `SOFT_COMPACT_TASKS` → compact at the boundary |
 
-**Compaction sequence** — `/compact` custom instructions only shape the summary; they do not execute anything afterwards, so compaction takes two prompts:
+**Compaction sequence** — `/compact` custom instructions only shape the summary; they do not execute anything afterwards, so compaction takes two prompts. The command shape is per-kind (platforms.md — codex's `/compact` takes no instructions and asks for confirmation):
 
-1. `agent prompt <worker> "/compact Preserve: your name, scope, orchestrator and peer names, and the communication protocol"` with a wait.
+1. Send the worker's compaction command (platforms.md: Compact — command shape, whether it takes instructions, any confirmation). Where instructions are supported use: `/compact Preserve: your name, scope, orchestrator and peer names, and the communication protocol`. Wait for the worker to settle.
 2. Once settled: `Read .herdr-swarm/state/<name>.md to re-anchor, then read .herdr-swarm/tasks/<id>.md and execute it.`
 
-**Mid-task overflow**: pi's auto-compaction handles it. The worker's recovery is mechanical and lives in its contract — whenever in doubt about prior progress (typically right after compaction), re-read brief + `progress.md` + state card before continuing. Every task keeps `.herdr-swarm/tasks/<id>/progress.md` checkpoints: what is done, what remains, key decisions, files touched.
+**Mid-task overflow**: the platform's auto-compaction handles it (pi, claude, and codex all auto-compact). The worker's recovery is mechanical and lives in its contract — whenever in doubt about prior progress (typically right after compaction), re-read brief + `progress.md` + state card before continuing. Every task keeps `.herdr-swarm/tasks/<id>/progress.md` checkpoints: what is done, what remains, key decisions, files touched.
 
 **Your own context**: compact proactively at phase boundaries (a wave collected and merged) rather than mid-flow, then re-read `plan.md` + `ledger.md`. Keep your reads thin: result.md summaries, never worker terminals.
 
-**Telemetry degradation chain** (the footer format can drift between pi versions):
+**Telemetry degradation chain** (footer formats drift between agent versions, and per kind):
 
 1. **Self-heal**: read the worker's `detection` output yourself, locate the context indicator in the rendered footer, derive the new pattern, and record it in the ledger header for the rest of this session.
 2. **Heuristic fallback**: self-heal fails → record `ctx=unknown`, run the fallback heuristic, and notify the user **once** (`herdr notification show` + ledger notes + report.md). Never block the swarm on telemetry.
-3. **Worker self-report escape hatch** (only on your explicit instruction): workers append `ctx=<totalTokens>` to their done/blocked line, read from their session JSONL's latest `message.usage.totalTokens` — a storage-format source independent of the TUI.
+3. **Worker self-report escape hatch** (only on your explicit instruction): workers append `ctx=<totalTokens>` to their done/blocked line, read from their platform's session storage (platforms.md: Session JSONL) — the latest usage/`token_count` record, a storage-format source independent of the TUI.
 
 ## Pool discipline
 
@@ -238,7 +263,7 @@ Record the latest value in the ledger `ctx` column. Mid-task rises become visibl
 
 - `agent_prompt_stalled` or timeout: inspect the worker before doing anything else. A half-applied prompt sent twice is worse than a late one.
 - `unknown` state does not mean done. Verify via `result.md` (or a terminal read) before collecting.
-- Worker died (pane shows a bare shell; a live pane whose pi footer is gone is the same signal): respawn under the same name and hand it the brief path again.
+- Worker died (pane shows a bare shell; a live pane whose agent UI is gone is the same signal): respawn under the same name and hand it the brief path again.
 - Two retries failed on the same task: stop it, record it in the ledger, and surface it to the user. Fail loud.
 - A worker reporting mid-task that the brief is far larger than triaged: accept its `DISPATCH-REQ` split or take the task back — never let it grind through repeated auto-compaction.
 

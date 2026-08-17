@@ -20,8 +20,11 @@ When a ticket exists, the brief **wraps** it — preserve the ticket id, quote i
 # <id> — <title>
 ticket: <ticket id / path / URL, or "none">
 domain: <business domain — may span repos>    deps: <task ids, or none>
-execution: <how to work this task, free-form — a skill command like /skill:tdd,
-  specific requirements, or both; omit when nothing special applies>
+execution: <how to work this task, free-form — a skill command in the target
+  worker's platform syntax (platforms.md: Skill invocation), specific
+  requirements, or both; omit when nothing special applies>
+thinking: <level only if the task genuinely needs more than the pool default
+  (low); omit otherwise>
 
 ## Goal
 <what "done" means — quote the ticket where one exists>
@@ -44,7 +47,9 @@ execution: <how to work this task, free-form — a skill command like /skill:tdd
 
 Tasks without tickets use the same template with `ticket: none`.
 
-**`execution:`** is free-form execution guidance. A skill command (e.g. `/skill:tdd`) tells the worker to load and follow that skill; anything else is a binding requirement on how to work. Execution instructions the user gave at invocation are copied into briefs **verbatim** and outrank orchestrator defaults — the orchestrator only fills gaps at triage (e.g. `/skill:tdd` for feature/fix builders).
+**`execution:`** is free-form execution guidance. A skill command tells the worker to load and follow that skill — write it in the dispatched worker's platform syntax (platforms.md: Skill invocation); if the task later goes to a worker of another kind, rewrite the line at dispatch. Anything else is a binding requirement on how to work. Execution instructions the user gave at invocation are copied into briefs **verbatim** and outrank orchestrator defaults — the orchestrator only fills gaps at triage.
+
+**`thinking:`** optionally demands a reasoning level above the pool default (`low`) for genuinely hard tasks (ambiguous bugs, algorithmic cores, gnarly refactors). The orchestrator applies it at spawn: a warm worker running below the demanded level respawns under the same name at that level. Omit for default.
 
 ## Step 3 — Triage gate
 

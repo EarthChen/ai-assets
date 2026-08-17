@@ -1,0 +1,5 @@
+# Codex-side skill metadata (see developers.openai.com/codex/skills).
+# Mirrors the SKILL.md frontmatter `disable-model-invocation: true`:
+# the swarm must be invoked deliberately, never triggered implicitly.
+policy:
+  allow_implicit_invocation: false
