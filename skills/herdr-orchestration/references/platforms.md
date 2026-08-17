@@ -63,6 +63,19 @@ are native agent arguments — pass them after `--` on `herdr agent start`.
   `~/.claude/projects/<cwd-slug>/<session-id>.jsonl`, latest
   `message.usage.totalTokens`.
 
+**Windows caveat (manual starts only).** The `herdr agent start … -- claude …`
+form above is resolved by herdr and works as-is. But if you ever launch the
+Claude CLI yourself on Windows (e.g. to test or to drive it outside herdr),
+`claude` is a `*.cmd` shim, **not** an `.exe`. `Start-Process -FilePath claude`
+fails with *"%1 不是有效的 Win32 应用程序"*. Use the call operator instead:
+
+```powershell
+& claude --dangerously-skip-permissions          # correct
+# NOT: Start-Process -FilePath claude -ArgumentList '--dangerously-skip-permissions' -NoNewWindow -Wait
+```
+
+The same applies to `codex` and `herdr` if invoked manually on Windows.
+
 ## codex (Codex CLI)
 
 - **Spawn**: `herdr agent start <name> --kind codex --pane <pane-id> -- --sandbox workspace-write --ask-for-approval never -c model_reasoning_effort=<level>`
@@ -90,6 +103,19 @@ are native agent arguments — pass them after `--` on `herdr agent start`.
   `~/.codex/sessions/`, latest `token_count` event.
 - **Session capture**: right after spawn, record the worker's session id —
   newest rollout under `~/.codex/sessions/` — in the state card.
+
+## Paths & shell notes (cross-platform)
+
+Several profiles above use POSIX home-directory paths (`~`). On Windows
+PowerShell, translate them to `$HOME`:
+
+- `~/.claude/...` → `$HOME\.claude\...`
+- `~/.codex/...`   → `$HOME\.codex\...`
+- `~/.agents/...`  → `$HOME\.agents\...`
+
+All `herdr` CLI invocations in this file are shell-agnostic (no redirection,
+no pipes) and run unchanged on PowerShell. The polling/telemetry loops that
+do use shell features live in SKILL.md with both bash and PowerShell forms.
 
 ## Adding another kind
 

@@ -36,8 +36,17 @@ You were invoked manually, but **invocation is not justification** — before Se
 
 ## Preflight (mandatory, in order)
 
-1. Verify you run inside Herdr: `test "${HERDR_ENV:-}" = 1`. If it fails, tell the user to start their agent CLI (pi, claude, or codex) inside a Herdr pane and stop.
+1. Verify you run inside Herdr. The check is shell-specific:
+   - POSIX shell (bash/zsh): `test "${HERDR_ENV:-}" = 1`
+   - Windows PowerShell: `if ($env:HERDR_ENV -ne '1') { Write-Error 'Not in a Herdr pane'; exit }`
+   - Windows cmd: `if not "%HERDR_ENV%"=="1" (echo Not in a Herdr pane & exit /b)`
+   If the check fails, tell the user to start their agent CLI (pi, claude, or codex) inside a Herdr pane and stop.
 2. Load the `herdr` skill — every herdr command you and your workers issue comes from it. (Agent to agent there is no skill invocation; read the herdr skill's SKILL.md at the location your system prompt lists.) If it is missing, fall back to the binary: a bare command group (`herdr agent`, `herdr pane`, `herdr worktree`) prints its usage.
+
+**Windows invocation rule (important).** On Windows, `claude`, `codex`, and even `herdr` are not `.exe` files — they resolve to `*.cmd` / `*.ps1` shims shipped by their installers (e.g. `claude.cmd`). Consequences:
+   - Never start them with `Start-Process -FilePath claude …`: `Start-Process` looks for a real executable and fails with *"%1 不是有效的 Win32 应用程序"* because `claude` has no `.exe` extension. Use the call operator instead: `& claude --dangerously-skip-permissions`, or `cmd /c claude …` if you must shell out.
+   - Inside `herdr agent start … -- claude …`, the agent kind is resolved by herdr itself, so the bare name is fine there — only **manual** `Start-Process` / `-FilePath` calls hit this trap.
+   - Prefer running the whole orchestration inside a normal interactive PowerShell prompt (where `claude` resolves via `$env:PATHEXT`); avoid `Start-Process` wrappers for agent CLIs entirely.
 3. Confirm the current directory is where the work happens: a git repo root for single-repo work (unless the user says otherwise), or the workspace directory containing the service repos for multi-repo (microservices) work. A linked worktree qualifies as a base — see Worktrees. All swarm state lives under `.herdr-swarm/` there.
 
 ## Constants
@@ -74,6 +83,19 @@ State layout — `.herdr-swarm/` holds **one directory per plan**; `<plan-id>` i
 
 Add `.herdr-swarm/` to `.git/info/exclude`. That file lives in git's common dir, so one entry covers the base checkout and every linked worktree of this repo. Never edit the repo's committed `.gitignore` for it. If the workspace directory is not itself a git repo (the typical multi-repo layout), no exclusion is needed.
 
+Directory and exclude setup is shell-specific:
+- POSIX shell:
+  ```sh
+  mkdir -p .herdr-swarm
+  echo '.herdr-swarm/' >> .git/info/exclude
+  ```
+- Windows PowerShell:
+  ```powershell
+  New-Item -ItemType Directory -Force -Path .herdr-swarm | Out-Null
+  Add-Content -Path .git/info/exclude -Value '.herdr-swarm/'
+  ```
+  (On PowerShell, prefer `Out-File -Append -Encoding utf8` if your git expects LF endings.)
+
 **Concurrent plans.** One working directory may host several plans at once — state stays apart because each plan has its own directory, and names stay apart because each plan's workers carry its slug prefix. A repo already claimed by an unfinished plan is off-limits to a new plan's working tree: the new plan works that repo from its own linked worktree (Worktrees), or the user arbitrates the overlap.
 
 ## Platforms
@@ -83,7 +105,10 @@ A worker's **kind** is chosen at spawn (`DEFAULT_WORKER_KIND` unless the invocat
 ## Setup
 
 1. **Scan neighboring plans.** List `.herdr-swarm/*/plan.md`. A plan directory without `report.md` is unfinished — live in another pane or abandoned mid-run: settle each with the user (resume it — it becomes `<swarm>`, skipping step 2 — or leave it untouched and proceed). Read every unfinished plan's goal and task scopes.
-2. **Name the plan, create its home** (fresh plan only). First check the new plan's target repos and scopes against the unfinished plans from step 1 (Concurrent plans); a deep overlap with any of them (same repos, same file regions) is a case for merging the two plans into one or running them in sequence — parallel worktrees keep the writes safe but cannot remove the merge-time collision. `<plan-id>` = `<YYYY-MM-DD>-<slug>`: the slug is short (≤ 8 chars, lowercase-hyphen), unique among unfinished plans — it prefixes every worker name (`<slug>-wk-...`). `mkdir -p .herdr-swarm/<plan-id>/{tasks,contracts,state,inbox}` and add the git exclude. From here on `<swarm>` names this plan's directory; every `<swarm>/...` path in this protocol resolves there.
+2. **Name the plan, create its home** (fresh plan only). First check the new plan's target repos and scopes against the unfinished plans from step 1 (Concurrent plans); a deep overlap with any of them (same repos, same file regions) is a case for merging the two plans into one or running them in sequence — parallel worktrees keep the writes safe but cannot remove the merge-time collision. `<plan-id>` = `<YYYY-MM-DD>-<slug>`: the slug is short (≤ 8 chars, lowercase-hyphen), unique among unfinished plans — it prefixes every worker name (`<slug>-wk-...`). Create the plan directory and its subdirs, then add the git exclude. Shell-specific:
+   - POSIX shell: `mkdir -p .herdr-swarm/<plan-id>/{tasks,contracts,state,inbox}`
+   - Windows PowerShell: `New-Item -ItemType Directory -Force -Path .herdr-swarm/<plan-id>/tasks, .herdr-swarm/<plan-id>/contracts, .herdr-swarm/<plan-id>/state, .herdr-swarm/<plan-id>/inbox | Out-Null`
+   From here on `<swarm>` names this plan's directory; every `<swarm>/...` path in this protocol resolves there.
 3. **Intake first.** Determine the task source and produce `<swarm>/plan.md` — see [Intake](#intake) and [references/intake.md](references/intake.md).
 4. Initialize `<swarm>/ledger.md`:
 
@@ -133,7 +158,9 @@ Pool cap: count the plan's live `<slug>-wk-*` agents first. At `MAX_WORKERS`, qu
 Execute the task graph as a **stream**, not as waves.
 
 1. **Fan out.** Submit every `ready` task without waiting (herdr skill: agent prompt). `ready` means all dependencies are **integrated** — merged into the plan's integration branch and verified — not merely done: a dependent task must start from code that already contains its dependencies' work.
-2. **Collect via polling gate.** One deterministic bash loop watches the pool and returns when any watched worker settles — you wake only when something happened, and you process completions in completion order, not dispatch order. Illustration (adapt to the live CLI):
+2. **Collect via polling gate.** One deterministic loop watches the pool and returns when any watched worker settles — you wake only when something happened, and you process completions in completion order, not dispatch order. The loop is shell-specific (illustrations adapt to the live CLI):
+
+POSIX shell (bash/zsh) with `jq`:
 
 ```bash
 watch="pay-wk-frontend pay-wk-backend pay-wk-payments"
@@ -148,6 +175,23 @@ while :; do
   sleep 20
 done
 echo "$settled"
+```
+
+Windows PowerShell (no `jq` needed — parse JSON with `ConvertFrom-Json`):
+
+```powershell
+$watch = @('pay-wk-frontend', 'pay-wk-backend', 'pay-wk-payments')
+$settled = $null
+while ($true) {
+  $list = herdr agent list | ConvertFrom-Json
+  $settled = $list.result.agents |
+    Where-Object { $watch -contains $_.agent -and
+      ($_.agent_status -in 'idle','done','blocked') } |
+    ForEach-Object { "$($_.agent) $($_.agent_status)" }
+  if ($settled) { break }
+  Start-Sleep -Seconds 20
+}
+$settled
 ```
 
 1. **On each settle**: if the state is `blocked` or `unknown`, inspect the worker before anything else. Otherwise: read its `result.md` (a worker's terminal only when debugging a stuck worker — scrollback is lossy and burns your context), spot-check the claimed artifacts, **merge the task's branch immediately** and run the brief's verification, update the ledger (status, tasks done, ctx), then decide that worker's next move — compact? (see Context management) dispatch the best successor, or retire.
@@ -212,6 +256,8 @@ Context is the swarm's scarcest resource. Every supported platform auto-compacts
 
 **Telemetry — you pull, workers don't push.** Each kind renders context usage in its TUI footer in its own format (platforms.md: Telemetry). Read it with `herdr agent read <name> --source detection` and parse with the worker's kind pattern — inline this into the polling gate loop so it costs no LLM turns:
 
+POSIX shell (bash/zsh):
+
 ```bash
 # pattern per worker kind — copy it from platforms.md: Telemetry; mixed pools
 # look up each worker's kind in the ledger. pi pattern shown
@@ -220,6 +266,19 @@ for a in $watch; do
         | grep -oE 'ctx [0-9]+(\.[0-9]+)?%/[0-9]+[kKmM]?' | head -1)
   echo "$a: ${ctx:-ctx=?}"
 done
+```
+
+Windows PowerShell (use `Select-String`, which is the cross-platform `grep -oE` equivalent):
+
+```powershell
+# pattern per worker kind — copy it from platforms.md: Telemetry; mixed pools
+# look up each worker's kind in the ledger. pi pattern shown
+foreach ($a in $watch) {
+  $ctx = (herdr agent read $a --source detection --lines 15 2>$null) `
+        | Select-String -Pattern 'ctx [0-9]+(\.[0-9]+)?%/[0-9]+[kKmM]?' `
+        | Select-Object -First 1
+  "$a: $(if ($ctx) { $ctx.Matches[0].Value } else { 'ctx=?' })"
+}
 ```
 
 Record the latest value in the ledger `ctx` column. Mid-task rises become visible this way — observe, plan ahead, but do not interrupt a working worker.
