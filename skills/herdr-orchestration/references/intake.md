@@ -1,6 +1,6 @@
 # Task Intake & Triage
 
-Intake turns whatever the user hands you — nothing, a spec, or a finished ticket set — into dispatchable briefs under `.herdr-swarm/tasks/`. The orchestrator owns intake; workers never triage.
+Intake turns whatever the user hands you — nothing, a spec, or a finished ticket set — into dispatchable briefs under `<swarm>/tasks/`. The orchestrator owns intake; workers never triage.
 
 ## Step 1 — Identify the source
 
@@ -14,7 +14,7 @@ Ask the user when ambiguous — never guess a ticket source into existence.
 
 ## Step 2 — Write briefs (thin wrapper)
 
-When a ticket exists, the brief **wraps** it — preserve the ticket id, quote its intent, and add only the swarm fields. Never rewrite the ticket's substance away. Template for `.herdr-swarm/tasks/<id>.md`:
+When a ticket exists, the brief **wraps** it — preserve the ticket id, quote its intent, and add only the swarm fields. Never rewrite the ticket's substance away. Template for `<swarm>/tasks/<id>.md`:
 
 ```markdown
 # <id> — <title>
@@ -36,10 +36,10 @@ thinking: <level only if the task genuinely needs more than the pool default
 <path globs this task owns; everything outside is someone else's files>
 
 ## Contracts
-<.herdr-swarm/contracts/<name>.md references, or none>
+<<swarm>/contracts/<name>.md references, or none>
 
 ## Worktree
-<swarm/<id> branch + worktree path, or "base in-place", or "none (read-only)">
+swarm/<slug>-<id> branch + worktree path, or "base in-place" ("plan worktree in-place" when exiled — Worktrees), or "none (read-only)">
 
 ## Definition of done
 <checkable criteria, including the verification command to run>
@@ -58,7 +58,7 @@ Every brief gets exactly one verdict before queueing:
 | Verdict | Meaning | Action |
 | --- | --- | --- |
 | `ready` | File-disjoint scope expressible, inputs as paths, checkable DoD | queue for dispatch |
-| `needs-contract` | Domains touch without a written interface | write `.herdr-swarm/contracts/<name>.md`, re-triage |
+| `needs-contract` | Domains touch without a written interface | write `<swarm>/contracts/<name>.md`, re-triage |
 | `needs-split` | Too big for one context window | split into subtasks, or mark for brokered dispatch |
 | `blocked-info` | Missing decision only the user has | ask the user; park |
 
