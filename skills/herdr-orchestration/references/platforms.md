@@ -14,8 +14,12 @@ are native agent arguments — pass them after `--` on `herdr agent start`.
 - **Spawn**: `herdr agent start <name> --kind pi --pane <pane-id> -- --thinking <level>`
 - **Autonomy**: needs none — pi runs tools without approval gates.
 - **Thinking**: `--thinking off|minimal|low|medium|high|xhigh|max` at spawn.
-  Level changes are not part of the protocol — respawn the worker under the
-  same name instead (state lives in files).
+  Level change = **warm respawn**:
+  `herdr agent start <name> --kind pi --pane <pane-id> -- --session <session-id> --thinking <new-level>`
+  — the session restores and the explicit flag overrides the saved level
+  (verified pi 0.84.2). Caveat: any level change also persists as pi's
+  global `defaultThinkingLevel` setting — harmless here because every spawn
+  passes `--thinking` explicitly.
 - **Compact**: `/compact <instructions>` — instructions shape the summary only,
   nothing executes afterwards (hence the two-prompt compaction sequence).
 - **Auto-compact on overflow**: yes, lossy. Recovery: brief + progress.md +
@@ -25,6 +29,10 @@ are native agent arguments — pass them after `--` on `herdr agent start`.
 - **Skill invocation** (brief `execution:` line): `/skill:<name>`
 - **Session JSONL** (telemetry escape hatch): the pi session log, latest
   `message.usage.totalTokens`.
+- **Session capture**: right after `herdr agent start` returns, record the
+  worker's session id — newest `.jsonl` under `~/.pi/agent/sessions/`
+  (`PI_CODING_AGENT_SESSION_DIR` overrides) — in the state card; warm
+  respawn needs it.
 
 ## claude (Claude Code)
 
@@ -36,9 +44,10 @@ are native agent arguments — pass them after `--` on `herdr agent start`.
 - **Thinking**: no spawn flag. Thinking is on by default (effort defaults to
   high on current models — expensive). Set the level right after spawn, before
   the first assignment: prompt `/effort <level>` (`low|medium|high|xhigh|max`;
-  verify the command exists in that Claude version — if it does not, accept
-  the default and note it in the ledger). Mid-session re-adjustment works the
-  same way while the worker is idle.
+  verify the command exists in that Claude version — if it does not, fall
+  back to warm respawn: `claude --resume <session-id>` plus the spawn flag,
+  session id = the JSONL filename below). Mid-session re-adjustment works
+  the same way while the worker is idle.
 - **Compact**: `/compact <instructions>` — focus instructions supported,
   same two-prompt sequence as pi.
 - **Auto-compact on overflow**: yes, near ~95% of the window.
@@ -62,8 +71,11 @@ are native agent arguments — pass them after `--` on `herdr agent start`.
   grant extra dirs with `--add-dir` at spawn). Same trust caveat as claude.
 - **Thinking**: `-c model_reasoning_effort=minimal|low|medium|high|xhigh`
   (config override, applies to the whole session). Codex defaults to `medium`.
-  The TUI's `/model` picker also changes effort mid-session, but it is
-  interactive — prefer respawning for a level change.
+  Level change = **warm respawn**:
+  `herdr agent start <name> --kind codex --pane <pane-id> -- resume <session-id> --sandbox workspace-write --ask-for-approval never -c model_reasoning_effort=<new-level> -C <pane cwd>`
+  — `resume` accepts the same global flags; `-C` pins the directory (without
+  it codex may prompt on cwd mismatch). The TUI's `/model` picker also
+  changes effort but is interactive — unusable unattended.
 - **Compact**: `/compact` — takes NO instructions, and Codex asks for
   confirmation before summarizing. Sequence: send `/compact`, wait for
   `blocked`, inspect the dialog (state etiquette), confirm via send-keys,
@@ -76,12 +88,15 @@ are native agent arguments — pass them after `--` on `herdr agent start`.
   `.codex/skills/`, and `~/.agents/skills/`).
 - **Session JSONL** (telemetry escape hatch): rollout logs under
   `~/.codex/sessions/`, latest `token_count` event.
+- **Session capture**: right after spawn, record the worker's session id —
+  newest rollout under `~/.codex/sessions/` — in the state card.
 
 ## Adding another kind
 
 herdr recognizes more kinds (gemini, cursor, opencode, …). To admit one:
 verify spawn args for unattended autonomy, a compaction command (or document
-"respawn instead of compact"), a parseable context indicator (or document
-"telemetry unavailable → fallback heuristic"), and the skill-invocation
-syntax — then write its profile here. Spawn a kind only after its profile
-exists here.
+"respawn instead of compact"), a level-change path (in-session command or
+session resume — else document cold respawn), a parseable context indicator
+(or document "telemetry unavailable → fallback heuristic"), and the
+skill-invocation syntax — then write its profile here. Spawn a kind only
+after its profile exists here.

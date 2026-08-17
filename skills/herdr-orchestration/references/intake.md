@@ -49,7 +49,7 @@ Tasks without tickets use the same template with `ticket: none`.
 
 **`execution:`** is free-form execution guidance. A skill command tells the worker to load and follow that skill — write it in the dispatched worker's platform syntax (platforms.md: Skill invocation); if the task later goes to a worker of another kind, rewrite the line at dispatch. Anything else is a binding requirement on how to work. Execution instructions the user gave at invocation are copied into briefs **verbatim** and outrank orchestrator defaults — the orchestrator only fills gaps at triage.
 
-**`thinking:`** optionally demands a reasoning level above the pool default (`low`) for genuinely hard tasks (ambiguous bugs, algorithmic cores, gnarly refactors). The orchestrator applies it at spawn: a warm worker running below the demanded level respawns under the same name at that level. Omit for default.
+**`thinking:`** sets this task's reasoning demand when it departs from the pool default (`low`) — upward for genuinely hard tasks (ambiguous bugs, algorithmic cores, gnarly refactors). Levels track tasks: at dispatch, a warm worker at a different level is corrected to this brief's demand (SKILL.md § Platforms) — omitting the line demands the pool default, so a high-level worker picking up a plain task steps back down. Omit unless the task genuinely departs from the default.
 
 ## Step 3 — Triage gate
 
