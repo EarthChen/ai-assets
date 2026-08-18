@@ -1,5 +1,6 @@
 ---
 name: llm-wiki
+disable-model-invocation: true
 description: >-
   Build and maintain a Karpathy-style LLM knowledge base — a self-compiling
   Obsidian markdown wiki where an Agent ingests raw sources, compiles

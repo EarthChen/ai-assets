@@ -1,6 +1,6 @@
 ---
 name: git-workflow
-description: "Git conventions: conventional commits `<type>: <description>` (types: feat, fix, refactor, docs, test, chore, perf, ci), GitHub Flow branching, PR process, worktrees. Use when committing code, opening a PR, or using worktrees."
+description: "Git conventions: Conventional Commits, GitHub Flow branching, PR process, worktrees. Use when committing code, opening a PR, or using worktrees."
 ---
 
 # Git Workflow — Branching, Commits, PR & Worktrees

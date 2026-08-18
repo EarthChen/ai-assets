@@ -1,7 +1,3 @@
----
-name: react-testing
-description: React component and hook testing with React Testing Library — library choice, query priority, userEvent, async assertions, MSW network mocking, accessibility, coverage targets. Use when writing or reviewing React/TSX tests.
----
 
 # React Testing
 

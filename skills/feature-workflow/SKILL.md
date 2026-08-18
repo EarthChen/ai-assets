@@ -1,6 +1,6 @@
 ---
 name: feature-workflow
-description: "Feature development pipeline: plan → TDD → simplify → review → commit. Use when starting a feature/fix: run /grill-with-docs, /to-spec, /to-tickets, /tdd, code-simplifier/refactor-cleaner, /code-review, then commit."
+description: "Feature development pipeline: plan → TDD → simplify → review → commit (/grill-with-docs → /to-spec → /to-tickets → /tdd → /code-review). Use when starting a feature or fix."
 ---
 
 # Development Workflow

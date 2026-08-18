@@ -1,7 +1,3 @@
----
-name: react-security
-description: React security — XSS via dangerouslySetInnerHTML, unsafe URL schemes, target=_blank rel, Server Action input validation, secret exposure via env vars, CSP, prototype pollution. Use when reviewing React security or handling user-controlled input.
----
 
 # React Security
 

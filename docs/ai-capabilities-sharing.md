@@ -194,7 +194,7 @@ mattpocock `tdd` 的核心机制 seam 值得单独展开。seam 的本质是**�
 
 ### 2.2 语言编码模式
 
-该组针对具体技术栈提供"该怎么写"的领域知识：`python-patterns` / `python-testing`（Pythonic 习惯、PEP 8、类型标注、pytest）、`java-coding-standards`（Spring Boot / Quarkus 的命名、Optional、流、异常、CDI、响应式）、`springboot-patterns` / `springboot-tdd` / `springboot-verification`（Spring Boot 架构模式、TDD、构建后验证闭环）、`e2e-testing` / `error-handling` / `api-design`（跨语言 E2E、错误处理、REST API 设计模式）。该组高度绑定具体技术栈的实战模式，在工作流中于实现环节触发，为代码编写提供模式参考。路径在 `skills/`。
+该组针对具体技术栈提供"该怎么写"的领域知识，采用"一族一 skill + references/ 渐进披露"结构：`python`（Pythonic 习惯、类型标注、pytest）、`java`（Spring Boot / Quarkus 编码规范、架构模式、TDD、发布前验证闭环）、`react`（编码风格、组件架构、安全、RTL 测试）。三者均为自动触发，SKILL.md 正文是薄路由，按任务分支加载 `references/` 下的参考文件。另有 `e2e-testing`（Playwright）与 `error-handling`（跨语言错误处理）为手动加载 skill（`/skill:name` 显式调用，零常驻上下文）。路径在 `skills/`。
 
 ### 2.3 生产力与治理
 
@@ -214,18 +214,16 @@ mattpocock `tdd` 的核心机制 seam 值得单独展开。seam 的本质是**�
   | 隐私边界 | 查询发往第三方，明确标注"不得用于含敏感信息的查询" | 查询走平台自身，无第三方泄露面 |
 
   如此分工的设计依据是：内置工具的优势在于**零依赖、零配置、始终可用**，适合快速事实查询与富媒体内容提取（YouTube 视频、GitHub 仓库）；anysearch 的优势在于**专业领域的召回质量与多意图并行**——其垂直域能返回结构化数据（如股票代码、CVE 编号、DOI 的精确记录），通用搜索做不到。`global-instructions.md` 规定"anysearch 首选、内置回退"而非二选一，原因正是两者能力正交：垂直域与批量并行用 anysearch，富媒体提取与零配置场景用内置工具，按查询性质分流而非按偏好绑定。
-- `article-writing`：长文写作，按样例提取风格。
 - `research`：对高信源做调研并沉淀为 markdown。
-- `llm-wiki`：Karpathy 式自编译 Obsidian 知识库，支持摄入原始素材、编译交叉链接概念页、查询问答。
+- `llm-wiki`：Karpathy 式自编译 Obsidian 知识库，支持摄入原始素材、编译交叉链接概念页、查询问答。手动加载 skill（`/skill:llm-wiki`）。
 - `skill-creator`：创建、优化、评估 skill。
 - `project-docs-init`：初始化项目的 AGENTS.md / CLAUDE.md / README.md。
-- `agent-browser`：浏览器自动化 CLI，覆盖网页交互、Electron 应用、Slack 等场景。
 - `agent-introspection-debugging`：agent 失败时的结构化自调试流程。
 - `iterative-retrieval`：渐进式上下文检索模式，解决 subagent context 问题。
 
 ### 2.4 skills 与 rules 分离的原因
 
-存在一个常见困惑：`python-patterns`（skill）与 `rules/python/`（rule）均在处理 Python，为何不合并。原因在于**触发模型不同**：rules 为约束（永远生效或按文件类型生效，agent 必须遵守），skills 为脚本（按场景触发，提供做事步骤）。约束不宜写入 skill（可能根本不触发），步骤不宜写入 rule（会无差别占用上下文）。两者职责正交，合并将模糊边界。此即 `rules/common/common-testing.md` 中以"Skill Support"引用 TDD 而非将 TDD 步骤内联的原因。
+存在一个常见困惑：`python`（skill）与 `rules/python/`（rule）均在处理 Python，为何不合并。原因在于**触发模型不同**：rules 为约束（永远生效或按文件类型生效，agent 必须遵守），skills 为脚本（按场景触发，提供做事步骤）。约束不宜写入 skill（可能根本不触发），步骤不宜写入 rule（会无差别占用上下文）。两者职责正交，合并将模糊边界。此即 `rules/common/common-testing.md` 中以"Skill Support"引用 TDD 而非将 TDD 步骤内联的原因。
 
 ### 2.5 项目文档管理与不使用记忆系统的原因
 
@@ -483,7 +481,7 @@ flowchart LR
 3. to-tickets (skill)              拆分为 tracer-bullet 票
 4. implement (skill)               按票实现 (内含 tdd / code-review / commit)
    └─ 语言 rules 按文件类型生效 (rules/python, rules/java...)
-   └─ 语言 skills 提供模式 (python-patterns, springboot-patterns)
+   └─ 语言 skills 提供模式 (python, java, react)
    └─ 内含 /tdd: 红绿重构, 80% 覆盖底线
    └─ 写完即简化 → code-simplifier (agent) 轻量微调最近改动
    └─ 构建失败 → build-error-resolver (agent) 自动介入

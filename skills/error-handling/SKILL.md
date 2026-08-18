@@ -1,5 +1,6 @@
 ---
 name: error-handling
+disable-model-invocation: true
 description: Patterns for robust error handling across TypeScript, Python, and Go. Covers typed errors, error boundaries, retries, circuit breakers, and user-facing error messages.
 ---
 

@@ -1,5 +1,6 @@
 ---
 name: e2e-testing
+disable-model-invocation: true
 description: Playwright E2E testing patterns, Page Object Model, configuration, CI/CD integration, artifact management, and flaky test strategies.
 ---
 
