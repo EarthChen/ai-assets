@@ -20,6 +20,8 @@ Architect agents: `architect` for system-level depth, `code-architect` for featu
 
 Several independent explore / review / analysis tasks → launch them in one message (parallel fan-out), never sequentially.
 
+Briefing context-heavy subagents: apply `references/iterative-retrieval.md` (dispatch → evaluate → refine, max 3 cycles) instead of guessing what context they need.
+
 ## Delegate only when it pays
 
 Reserve sub-agents for parallelizable or context-heavy work. Handle single lookups and one-line edits inline — sub-agent overhead outweighs the gain on small tasks.

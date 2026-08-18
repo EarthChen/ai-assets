@@ -219,7 +219,6 @@ mattpocock `tdd` 的核心机制 seam 值得单独展开。seam 的本质是**�
 - `skill-creator`：创建、优化、评估 skill。
 - `project-docs-init`：初始化项目的 AGENTS.md / CLAUDE.md / README.md。
 - `agent-introspection-debugging`：agent 失败时的结构化自调试流程。
-- `iterative-retrieval`：渐进式上下文检索模式，解决 subagent context 问题。
 
 ### 2.4 skills 与 rules 分离的原因
 
