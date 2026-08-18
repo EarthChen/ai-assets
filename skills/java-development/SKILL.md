@@ -1,5 +1,5 @@
 ---
-name: java
+name: java-development
 description: Java development conventions (Spring Boot / Quarkus) — coding standards, architecture patterns, TDD, pre-release verification. Use when writing or reviewing Java code.
 ---
 

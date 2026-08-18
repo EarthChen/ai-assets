@@ -162,6 +162,7 @@ npx playwright test tests/search.spec.ts --retries=3
 ### Common Causes & Fixes
 
 **Race conditions:**
+
 ```typescript
 // Bad: assumes element is ready
 await page.click('[data-testid="button"]')
@@ -171,6 +172,7 @@ await page.locator('[data-testid="button"]').click()
 ```
 
 **Network timing:**
+
 ```typescript
 // Bad: arbitrary timeout
 await page.waitForTimeout(5000)
@@ -180,6 +182,7 @@ await page.waitForResponse(resp => resp.url().includes('/api/data'))
 ```
 
 **Animation timing:**
+
 ```typescript
 // Bad: click during animation
 await page.click('[data-testid="menu-item"]')

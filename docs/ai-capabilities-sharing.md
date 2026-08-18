@@ -194,7 +194,7 @@ mattpocock `tdd` 的核心机制 seam 值得单独展开。seam 的本质是**�
 
 ### 2.2 语言编码模式
 
-该组针对具体技术栈提供"该怎么写"的领域知识，采用"一族一 skill + references/ 渐进披露"结构：`python`（Pythonic 习惯、类型标注、pytest）、`java`（Spring Boot / Quarkus 编码规范、架构模式、TDD、发布前验证闭环）、`react`（编码风格、组件架构、安全、RTL 测试）。三者均为自动触发，SKILL.md 正文是薄路由，按任务分支加载 `references/` 下的参考文件。另有 `e2e-testing`（Playwright）与 `error-handling`（跨语言错误处理）为手动加载 skill（`/skill:name` 显式调用，零常驻上下文）。路径在 `skills/`。
+该组针对具体技术栈提供"该怎么写"的领域知识，采用"一族一 skill + references/ 渐进披露"结构：`python-development`（Pythonic 习惯、类型标注、pytest）、`java-development`（Spring Boot / Quarkus 编码规范、架构模式、TDD、发布前验证闭环）、`react-development`（编码风格、组件架构、安全、RTL 测试）。三者均为自动触发，SKILL.md 正文是薄路由，按任务分支加载 `references/` 下的参考文件。另有 `e2e-testing`（Playwright）为手动加载 skill（`/skill:name` 显式调用，零常驻上下文）。路径在 `skills/`。
 
 ### 2.3 生产力与治理
 
@@ -223,7 +223,7 @@ mattpocock `tdd` 的核心机制 seam 值得单独展开。seam 的本质是**�
 
 ### 2.4 skills 与 rules 分离的原因
 
-存在一个常见困惑：`python`（skill）与 `rules/python/`（rule）均在处理 Python，为何不合并。原因在于**触发模型不同**：rules 为约束（永远生效或按文件类型生效，agent 必须遵守），skills 为脚本（按场景触发，提供做事步骤）。约束不宜写入 skill（可能根本不触发），步骤不宜写入 rule（会无差别占用上下文）。两者职责正交，合并将模糊边界。此即 `rules/common/common-testing.md` 中以"Skill Support"引用 TDD 而非将 TDD 步骤内联的原因。
+存在一个常见困惑：`python-development`（skill）与 `rules/python/`（rule）均在处理 Python，为何不合并。原因在于**触发模型不同**：rules 为约束（永远生效或按文件类型生效，agent 必须遵守），skills 为脚本（按场景触发，提供做事步骤）。约束不宜写入 skill（可能根本不触发），步骤不宜写入 rule（会无差别占用上下文）。两者职责正交，合并将模糊边界。此即 `rules/common/common-testing.md` 中以"Skill Support"引用 TDD 而非将 TDD 步骤内联的原因。
 
 ### 2.5 项目文档管理与不使用记忆系统的原因
 
@@ -481,7 +481,7 @@ flowchart LR
 3. to-tickets (skill)              拆分为 tracer-bullet 票
 4. implement (skill)               按票实现 (内含 tdd / code-review / commit)
    └─ 语言 rules 按文件类型生效 (rules/python, rules/java...)
-   └─ 语言 skills 提供模式 (python, java, react)
+   └─ 语言 skills 提供模式 (python-development, java-development, react-development)
    └─ 内含 /tdd: 红绿重构, 80% 覆盖底线
    └─ 写完即简化 → code-simplifier (agent) 轻量微调最近改动
    └─ 构建失败 → build-error-resolver (agent) 自动介入

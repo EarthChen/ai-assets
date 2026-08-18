@@ -1,5 +1,5 @@
 ---
-name: python
+name: python-development
 description: Python development conventions — idioms, type hints, project structure, pytest testing with TDD. Use when writing or reviewing Python code.
 ---
 

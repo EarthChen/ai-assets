@@ -421,6 +421,45 @@ def _clean_mattpocock_skill_symlinks(dry_run: bool = False) -> None:
         log(f"skills/ stale mattpocock symlinks removed ({count})")
 
 
+def _clean_stale_skill_symlinks(link_dir: Path, source_root: Path, dry_run: bool = False) -> None:
+    """Remove stale skill symlinks in link_dir that point into source_root.
+
+    All local skills install from this repo: install symlinks every
+    skills/<name> (and pi/skills/<name>) dir into the user-level scan dirs
+    (~/.agents/skills/, ~/.pi/agent/skills/). When a skill dir is renamed or
+    removed in the repo, its link outlives it — every platform scanning the
+    dir then loads a ghost or trips on a broken link. Any symlink whose
+    target resolves under source_root and no longer holds a SKILL.md is
+    stale and removed. Third-party links (pointing into vendor/) are not
+    touched — their lifecycle belongs to install_manual_skills.
+    """
+    if not link_dir.is_dir():
+        return
+    source_real = source_root.resolve()
+    count = 0
+    for entry in sorted(link_dir.iterdir()):
+        if not entry.is_symlink():
+            continue
+        target = entry.readlink()
+        if not target.is_absolute():
+            target = entry.parent / target
+        try:
+            target.resolve().relative_to(source_real)
+        except ValueError:
+            continue  # owned elsewhere (vendor/, other repos) — leave it
+        if target.exists() and (target / "SKILL.md").exists():
+            continue
+        if dry_run:
+            log(f"[DRY-RUN] rm stale skill symlink {entry.name}")
+            count += 1
+            continue
+        # pi-lens-ignore: ast-grep:unchecked-throwing-call-python
+        entry.unlink()
+        count += 1
+    if count and not dry_run:
+        log(f"{link_dir}: stale skill symlinks removed ({count})")
+
+
 def _sync_claude_manifest_agents(dry_run: bool = False) -> None:
     """Sync .claude-plugin/plugin.json `agents` field with the root agents/ dir.
 
@@ -825,6 +864,7 @@ def install_pi(dry_run: bool = False) -> None:
     # 2. Skills: symlink self-owned skills into the shared standard dir that
     # pi scans natively (same mechanism as mattpocock/anysearch manual installs)
     shared_skills = AGENTS_HOME / "skills"
+    _clean_stale_skill_symlinks(shared_skills, REPO_ROOT / "skills", dry_run)
     count = 0
     for skill_dir in sorted((REPO_ROOT / "skills").iterdir()):
         if not skill_dir.is_dir() or not (skill_dir / "SKILL.md").exists():
@@ -838,6 +878,7 @@ def install_pi(dry_run: bool = False) -> None:
     # is scanned by pi only, so these skills never leak to other platforms.
     pi_skills_src = REPO_ROOT / "pi" / "skills"
     pi_skills_dst = PI_AGENT_HOME / "skills"
+    _clean_stale_skill_symlinks(pi_skills_dst, REPO_ROOT / "pi" / "skills", dry_run)
     count = 0
     for skill_dir in sorted(pi_skills_src.iterdir()):
         if not skill_dir.is_dir() or not (skill_dir / "SKILL.md").exists():
