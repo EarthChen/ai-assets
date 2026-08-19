@@ -30,11 +30,18 @@ Run before any mutation. Each guard fails only its project (see **Failure & isol
 The project's current branch is its feature branch; the **target branch** is the one named in the invocation argument (`test` when none is given). Every step ends on its stated criterion.
 
 1. **Commit the working tree** — skip when the tree is already clean; otherwise analyze the diff and create conventional, atomic commits per the `git-workflow` skill (one concern per commit), committing directly, without confirmation. Done when the tree is clean.
-2. **Push the feature branch** — add `-u` when upstream is missing. Done when the branch is on the remote.
+2. **Push the feature branch** — add `-u` when upstream is missing. Rejected because the remote branch moved → **Feature-branch catch-up**. Done when the branch is on the remote.
 3. **Switch to the target branch** — fetch, create a local target branch tracking `origin/<target>` when missing (remote has no target branch → fail the project), then sync the local target branch with its remote counterpart merge-style: the target is a shared branch, so it moves by merge only. Done when sitting on a target branch even with its remote counterpart.
 4. **Merge the feature branch** — default merge commit, keeping full history on the shared branch. `Already up to date` → record "nothing to merge" and go to step 6. Conflicts → **Conflict resolution**. Done when the merge commit exists.
 5. **Push the target branch** — done when the push succeeds; that ends the project.
 6. **Restore** — back on the feature branch, then the next project.
+
+## Feature-branch catch-up
+
+A feature push rejected as non-fast-forward means the remote feature branch moved — typically another worktree or a teammate pushed to it. A shared branch moves by merge only, same as the target:
+
+1. **Integrate** — fetch, then merge `origin/<feature>` into the local feature branch. Conflicts → **Conflict resolution**. Done when the merge commit exists.
+2. **Retry the push** — done when the push succeeds; rejected again → hand off per **Failure & isolation**.
 
 ## Conflict resolution
 
@@ -50,7 +57,7 @@ For the resolution mechanics follow the `resolving-merge-conflicts` skill, with 
 
 ## Failure & isolation
 
-- A remote rejection (feature push or target-branch push) is a hand-off to the human: fail the project as-is — rebase, force-push, and retry stay the human's call.
+- A remote rejection is a hand-off to the human: fail the project as-is — rebase, force-push, and retry stay the human's call. One exception recovers in-workflow: a feature push rejected because the remote branch moved goes through **Feature-branch catch-up** first.
 - Every failure path restores the project to a clean feature branch before moving on (`git merge --abort` + switch back when mid-merge). One project's failure stays inside that project.
 
 ## Final report
