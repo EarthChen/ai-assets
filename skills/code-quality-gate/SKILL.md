@@ -35,7 +35,7 @@ Required where the project has the corresponding test surface:
 2. **Integration Tests** — API endpoints, database operations
 3. **E2E Tests** — critical user flows (framework chosen per language)
 
-Troubleshooting failures: diagnose via the `/tdd` workflow → check test isolation → verify mocks are correct → fix the implementation, not the tests (unless the tests are wrong).
+Troubleshooting failures: diagnose via the `tdd` skill workflow → check test isolation → verify mocks are correct → fix the implementation, not the tests (unless the tests are wrong).
 
 ## 4. Review standards
 
@@ -58,11 +58,11 @@ Troubleshooting failures: diagnose via the `/tdd` workflow → check test isolat
 | MEDIUM | Maintainability concern | **INFO** - Consider fixing |
 | LOW | Style or minor suggestion | **NOTE** - Optional |
 
-**Reviewer routing:** `/code-review` skill (dual-axis Standards + Spec review), `security-reviewer`, `typescript-reviewer`, `python-reviewer`.
+**Reviewer routing:** `code-review` skill (dual-axis Standards + Spec review), `security-reviewer`, `typescript-reviewer`, `python-reviewer`.
 
 **Approval:** Approve = no CRITICAL or HIGH; Warning = only HIGH issues (merge with caution); Block = CRITICAL issues found.
 
-> Quality/security checklists live in the coding-style, security, and testing rules; the `/code-review` skill carries the detailed review workflow.
+> Quality/security checklists live in the coding-style, security, and testing rules; the `code-review` skill carries the detailed review workflow.
 
 ## Completion criterion
 

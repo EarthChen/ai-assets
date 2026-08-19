@@ -38,7 +38,7 @@ Statements in the existing docs with **no code corroboration** (team "don'ts", g
 
 ## Generate
 
-Regenerate each file whole — not a patch. Match the dominant language from the probe. Apply `/writing-for-agents` while generating — it carries the writing levers (no-op test, single source of truth, leading words, progressive disclosure) that keep both bodies tight and agent-predictable; this skill adds only the section structure and hard constraints below.
+Regenerate each file whole — not a patch. Match the dominant language from the probe. Apply the `writing-for-agents` skill while generating — it carries the writing levers (no-op test, single source of truth, leading words, progressive disclosure) that keep both bodies tight and agent-predictable; this skill adds only the section structure and hard constraints below.
 
 ### AGENTS.md — six sections, ≤190 lines hard
 
@@ -55,7 +55,7 @@ Aim well under 190; 190 is the wall.
 
 No `[待填]` placeholders in AGENTS.md — they cost lines and the agent reads them as incomplete. For a light intent item you can't resolve, infer it and tag `[推断]` so the user can correct in review; for a real boundary rule the code can't yield, grill.
 
-After generating, count lines. Over 190: self-tighten with no semantic loss — apply the pruning levers from `/writing-for-agents`. Still over: leave a `<!-- TODO: over 190 lines, trim X -->` marker and tell the user which section resists compression and what you'd cut. Do not silently truncate mid-sentence; do not silently axe content the code can't rebuild.
+After generating, count lines. Over 190: self-tighten with no semantic loss — apply the pruning levers from the `writing-for-agents` skill. Still over: leave a `<!-- TODO: over 190 lines, trim X -->` marker and tell the user which section resists compression and what you'd cut. Do not silently truncate mid-sentence; do not silently axe content the code can't rebuild.
 
 ### README.md — six sections, no line cap, human-facing
 
@@ -92,7 +92,7 @@ Handle CLAUDE.md per the argument (default `--symlink` on). Adaptive: whichever 
 
 ## Grill
 
-When you hit intent the code cannot yield — a positioning phrase you can't pin, a team boundary rule, a statement with no code corroboration — run a `/grilling` session for **these points only**. The grilling skill carries the interview mechanics (design tree, frontier rounds, each question with your recommended answer); reach it rather than reinventing the format. Scope the session to the unresolved intent points this run surfaced — don't rebuild the whole project as a design tree.
+When you hit intent the code cannot yield — a positioning phrase you can't pin, a team boundary rule, a statement with no code corroboration — run a `grilling` skill session for **these points only**. The grilling skill carries the interview mechanics (design tree, frontier rounds, each question with your recommended answer); reach it rather than reinventing the format. Scope the session to the unresolved intent points this run surfaced — don't rebuild the whole project as a design tree.
 
 Only grill on what the code can't resolve. Everything probed from code (structure, commands, stack, language) never becomes a question — you already have the answer. The grill fires for intent and for destructive changes (deleting or heavily rewriting existing content) — never for pure additions, dedup, or correcting obviously stale facts, which you do directly.
 

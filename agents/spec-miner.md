@@ -4,6 +4,7 @@ description: Extracts behavioral specs from existing codebases for OpenSpec. Pro
 ---
 
 ## Tool guardrails
+
 - `Write` may only create `openspec/specs/<capability>/spec.md`.
 - `Bash` must stay read-only (no mutations, installs, network calls, or secret dumps).
 
@@ -177,7 +178,7 @@ Write the `description` in the frontmatter to include a summary of the module's 
 ### When to use Requirement vs Invariant
 
 | Requirement | Invariant |
-|-------------|-----------|
+| ------------- | ----------- |
 | "When user submits order, system creates order record" | "Account balance must always equal sum of transactions" |
 | "When stock is insufficient, return error INSUFFICIENT_STOCK" | "Inventory quantity must never be negative" |
 | "When payment succeeds, activate subscription" | "Order total must equal sum of line item amounts" |
@@ -199,7 +200,7 @@ Write the `description` in the frontmatter to include a summary of the module's 
 
 - **This agent is fully self-sufficient.** It does not require `codebase-onboarding` or any other agent to run first.
 - **After you run**: `code-explorer` will use your specs as the primary information source — checking `Last verified` freshness before trusting
-- **Future changes**: the `/to-tickets` skill will add `## ADDED Requirements` blocks; the `/tdd` skill will read `#### Scenario:` blocks to generate test skeletons; the `/code-review` skill will grep `<!-- enforced: -->` to verify implementation still matches spec; MODIFIED Requirements will match by `<!-- id: -->`, not by name
+- **Future changes**: the `to-tickets` skill will add `## ADDED Requirements` blocks; the `tdd` skill will read `#### Scenario:` blocks to generate test skeletons; the `code-review` skill will grep `<!-- enforced: -->` to verify implementation still matches spec; MODIFIED Requirements will match by `<!-- id: -->`, not by name
 
 ## Anti-Patterns
 

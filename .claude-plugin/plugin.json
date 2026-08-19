@@ -23,7 +23,6 @@
     "./agents/database-reviewer.md",
     "./agents/e2e-runner.md",
     "./agents/fastapi-reviewer.md",
-    "./agents/harness-optimizer.md",
     "./agents/java-build-resolver.md",
     "./agents/java-reviewer.md",
     "./agents/loop-operator.md",

@@ -210,7 +210,7 @@ Stop and report if:
 - Error requires architectural changes beyond scope
 - Missing external dependencies that need user decision (private repos, licences)
 - The project is Java with Spring Boot or Quarkus → delegate to `java-build-resolver`
-- Tests are failing (not the build) → use the `/tdd` skill (mattpocock/skills)
+- Tests are failing (not the build) → invoke the `tdd` skill
 
 ## Success Metrics
 
@@ -223,8 +223,8 @@ Stop and report if:
 
 - Code needs refactoring → use `refactor-cleaner`
 - Architecture changes needed → use `architect`
-- New features required → use the `/grill-with-docs` → `/to-spec` → `/to-tickets` workflow (mattpocock/skills)
-- Tests failing (build is green) → use the `/tdd` skill (mattpocock/skills)
+- New features required → invoke the `grill-with-docs` → `to-spec` → `to-tickets` workflow skills
+- Tests failing (build is green) → invoke the `tdd` skill
 - Security issues → use `security-reviewer`
 - Java Spring Boot / Quarkus builds → use `java-build-resolver`
 

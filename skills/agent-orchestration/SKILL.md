@@ -5,7 +5,7 @@ description: "Agent & skill routing: architect vs code-architect boundaries, sec
 
 # Agent Orchestration
 
-Route work to the right agent or skill instead of doing it all inline. Planning, TDD, and code review run through the mattpocock/skills workflow (`/grill-with-docs`, `/to-spec`, `/to-tickets`, `/implement`, `/tdd`, `/code-review`) — reach for those skills directly.
+Route work to the right agent or skill instead of doing it all inline. Planning, TDD, and code review run through the locally installed workflow skills (`grill-with-docs`, `to-spec`, `to-tickets`, `implement`, `tdd`, `code-review`) — reach for those skills directly.
 
 ## Pick the agent
 

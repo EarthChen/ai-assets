@@ -249,4 +249,4 @@ Before ANY commit:
 
 ## Test-Driven Development
 
-TDD is mandatory for new features and bug fixes — the red-green-refactor loop is carried by the `/tdd` skill (see the development workflow rule).
+TDD is mandatory for new features and bug fixes — the red-green-refactor loop is carried by the `tdd` skill (see the development workflow rule).

@@ -168,7 +168,7 @@ See `references/schemas.md` for the full schema (including the `assertions` fiel
 
 ## Running and evaluating test cases
 
-This section is one continuous sequence — don't stop partway through. Do NOT use `/skill-test` or any other testing skill.
+This section is one continuous sequence — don't stop partway through. Do NOT use the `skill-test` skill or any other testing skill.
 
 Put results in `<skill-name>-workspace/` as a sibling to the skill directory. Within the workspace, organize results by iteration (`iteration-1/`, `iteration-2/`, etc.) and within that, each test case gets a directory (`eval-0/`, `eval-1/`, etc.). Don't create all of this upfront — just create directories as you go.
 

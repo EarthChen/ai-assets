@@ -19,7 +19,7 @@ Java conventions covering Spring Boot and Quarkus. Detect the framework first (b
 ## Always
 
 - `references/coding-standards.md` is the authority for naming, immutability, Optional, and DI — check it for every class touched.
-- Red-green-refactor via the `/tdd` skill; fix the implementation, not the failing test.
+- Red-green-refactor via the `tdd` skill; fix the implementation, not the failing test.
 - Run the `references/verification.md` loop before any release or PR.
 
 ## Completion criterion
