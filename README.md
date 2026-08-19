@@ -23,9 +23,11 @@ ai-assets/
 │   │   └── ...
 │   ├── java/                  # Java 规则 (paths: **/*.java)
 │   └── python/                # Python 规则 (globs: **/*.py)
-├── skills/                    # 共享技能 (28 个自有实目录；vendor skills 由 install.py symlink 安装)
-├── agents/                    # Subagent 定义 (Cursor + Claude + pi，20 个)
+├── skills/                    # 共享技能 (16 个自有实目录；vendor skills 由 install.py symlink 安装)
+├── agents/                    # Subagent 定义 (Cursor + Claude + pi，19 个)
 ├── pi/                        # pi 专属资源: skills/ + agents/ → ~/.pi/agent/ (仅 pi 加载)
+├── docs/                      # 团队分享文档（能力、设计依据与工作流）
+├── site/                      # VitePress 文档站源码（GitHub Pages，CI 部署）
 ├── vendor/                    # 第三方 git submodules
 │   ├── mattpocock-skills/     # mattpocock/skills 工程技能库 (25 skills)
 │   ├── anysearch-skill/       # anysearch CLI 搜索技能
@@ -173,8 +175,8 @@ git submodule update --remote vendor/mattpocock-skills
 | | `teach` | 教学型技能编写与讲解 |
 | | `writing-for-agents` | agent 消费文档（skills/AGENTS.md）写作规范 |
 | | `ask-matt` | 向 Matt 提问的模板 |
-| | `to-questionnaire` | [待填] |
-| | `wait-what` | [待填] |
+| | `to-questionnaire` | 把无法立刻拍板的决策转成问卷，交给他人填写 |
+| | `wait-what` | 叫停重来：上一条消息没被理解时，重新阐述上一轮提议 |
 
 ### 各平台安装方式
 
@@ -318,3 +320,7 @@ pnpm install
 pnpm docs:dev      # 本地预览
 pnpm docs:build    # 构建
 ```
+
+## License
+
+MIT（`package.json` 声明）。仓库暂无 `LICENSE` 文件 [待填：是否补交 LICENSE 文件]。
