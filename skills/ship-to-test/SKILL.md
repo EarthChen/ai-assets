@@ -45,7 +45,7 @@ A feature push rejected as non-fast-forward means the remote feature branch move
 
 ## Conflict resolution
 
-Gate every conflicting hunk first:
+Resolve conflicts yourself by default; hand to the human only the hunks whose intent you cannot distinguish. Gate every conflicting hunk first:
 
 - **Deterministic** — both sides' intent survives mechanically: pure additions with no semantic overlap (keep both), lockfile conflicts (regenerate with the package manager), one side a strict subset of the other (take the superset). Resolve these directly.
 - **Ambiguous** — the sides are incompatible and a choice is required: present both sides' intent plus your suggested resolution, then wait for the human's decision. Anything not clearly deterministic is ambiguous.
