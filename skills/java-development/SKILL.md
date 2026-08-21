@@ -1,6 +1,6 @@
 ---
 name: java-development
-description: Java development conventions (Spring Boot / Quarkus) — coding standards, architecture patterns, TDD, pre-release verification. Use when writing or reviewing Java code.
+description: "Java development conventions (Spring Boot / Quarkus) — coding standards, architecture patterns, TDD, pre-release verification, build error troubleshooting. Use when writing or reviewing Java code, or when a Java build fails."
 ---
 
 # Java
@@ -15,6 +15,7 @@ Java conventions covering Spring Boot and Quarkus. Detect the framework first (b
 | Spring Boot architecture: REST layering, repositories, services/transactions, DTOs/validation, caching, async | `references/patterns.md` |
 | Test-first work: JUnit 5, Mockito, MockMvc, DataJpaTest, Testcontainers, JaCoCo | `references/tdd.md` |
 | Pre-release / pre-PR: build → static analysis → tests + coverage → security scan → diff review | `references/verification.md` |
+| Build failing: compile errors, dependency conflicts, annotation processor / Spring / Quarkus build issues | `references/build-troubleshooting.md` |
 
 ## Always
 

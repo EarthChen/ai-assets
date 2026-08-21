@@ -584,6 +584,58 @@ def test_with_tmpdir(tmpdir):
     assert result == "data"
 ```
 
+## Integration Testing
+
+Principles (boundaries, sociable/solitary, narrow integration, isolation rules): `~/.agents/skills/testing-principles/SKILL.md`. This section carries only the Python stack specifics.
+
+### Real Database via Testcontainers
+
+```python
+import pytest
+from sqlalchemy import create_engine
+from testcontainers.postgres import PostgresContainer
+
+@pytest.fixture(scope="session")
+def postgres_url():
+    with PostgresContainer("postgres:16") as pg:
+        yield pg.get_connection_url()
+
+@pytest.fixture
+def db_session(postgres_url):
+    engine = create_engine(postgres_url)
+    Base.metadata.create_all(engine)
+    session = Session(bind=engine)
+    yield session
+    session.rollback()   # isolation: roll back instead of cleaning up rows
+    session.close()
+```
+
+### API + Database Together (FastAPI)
+
+```python
+@pytest.fixture
+def client(db_session):
+    app = create_app(testing=True)
+    app.dependency_overrides[get_db] = lambda: db_session
+    with TestClient(app) as c:
+        yield c
+
+@pytest.mark.integration   # marker already declared in pyproject.toml
+def test_create_user_persists(client, db_session):
+    resp = client.post("/api/users", json={"name": "Alice", "email": "alice@example.com"})
+    assert resp.status_code == 201
+
+    # Persisted side effect — a status code alone proves nothing
+    found = db_session.query(User).filter_by(email="alice@example.com").first()
+    assert found is not None
+```
+
+### What to Mock
+
+- **Real**: database, cache, message broker — all via testcontainers
+- **Mocked**: third-party HTTP boundaries (`respx` for httpx, `responses` for requests) — slow, flaky, rate-limited
+- **Never mock**: the code under test, the auth layer
+
 ## Test Organization
 
 ### Directory Structure
@@ -797,7 +849,7 @@ pytest --pdb
 ## Quick Reference
 
 | Pattern | Usage |
-|---------|-------|
+| --------- | ------- |
 | `pytest.raises()` | Test expected exceptions |
 | `@pytest.fixture()` | Create reusable test fixtures |
 | `@pytest.mark.parametrize()` | Run tests with multiple inputs |

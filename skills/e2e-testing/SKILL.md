@@ -1,10 +1,15 @@
 ---
 name: e2e-testing
 disable-model-invocation: true
-description: Playwright E2E testing patterns, Page Object Model, configuration, CI/CD integration, artifact management, and flaky test strategies.
+description: "E2E testing patterns — web frontends (Playwright: Page Object Model, configuration, CI/CD integration, artifact management, flaky test strategies) and backend APIs (three-layer assertions, auth fixtures, data isolation, schema validation)."
 ---
 
 # E2E Testing Patterns
+
+Two branches — load only what the current task touches:
+
+- **Web frontend** (Playwright): everything in this file
+- **Backend/API**: `references/backend-api.md` — three-layer assertions, auth fixtures, data isolation, schema validation, per-stack examples (pytest + httpx, supertest, REST Assured)
 
 Comprehensive Playwright patterns for building stable, fast, and maintainable E2E test suites.
 

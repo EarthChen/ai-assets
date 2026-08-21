@@ -1,6 +1,6 @@
 ---
 name: code-reviewer
-description: Execution agent for the code-audit skill. Runs the three-axis code audit (Standards+Spec compliance + language-specific trap detection + cross-language review lenses: silent failure, type design, security). Invoke when the user asks for a deep code audit of a branch, PR, file, or module. For a quick diff review against general code smells, use the mattpocock code-review skill directly instead.
+description: "Execution agent for the code-audit skill. Runs the three-axis code audit (Standards+Spec compliance + language-specific trap detection + cross-language review lenses: silent failure, type design, security). Invoke when the user asks for a deep code audit of a branch, PR, file, or module. For a quick diff review against general code smells, use the mattpocock code-review skill directly instead."
 ---
 ## Load The Rules
 

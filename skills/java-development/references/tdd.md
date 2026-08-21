@@ -3,6 +3,8 @@
 
 TDD guidance for Spring Boot services with 80%+ coverage (unit + integration).
 
+Cross-stack testing principles (boundaries, sociable/solitary, narrow integration, isolation rules, F.I.R.S.T): `~/.agents/skills/testing-principles/SKILL.md` — this file carries only Spring-specific application.
+
 ## When to Use
 
 - New features or endpoints
@@ -17,6 +19,8 @@ TDD guidance for Spring Boot services with 80%+ coverage (unit + integration).
 4) Enforce coverage (JaCoCo)
 
 ## Unit Tests (JUnit 5 + Mockito)
+
+Mock slow/side-effectful collaborators (repositories, HTTP clients); in-process domain collaborators may stay real — sociable unit tests are fine.
 
 ```java
 @ExtendWith(MockitoExtension.class)
@@ -38,6 +42,7 @@ class MarketServiceTest {
 ```
 
 Patterns:
+
 - Arrange-Act-Assert
 - Avoid partial mocks; prefer explicit stubbing
 - Use `@ParameterizedTest` for variants
@@ -62,6 +67,10 @@ class MarketControllerTest {
 ```
 
 ## Integration Tests (SpringBootTest)
+
+Boundary: real DB and real Spring context; mock only external boundaries (third-party HTTP, message brokers).
+
+Isolation: `@Transactional` on the test class rolls back each test; tests that commit via external threads clean up in `@AfterEach`.
 
 ```java
 @SpringBootTest
@@ -107,10 +116,12 @@ class MarketRepositoryTest {
 
 - Use reusable containers for Postgres/Redis to mirror production
 - Wire via `@DynamicPropertySource` to inject JDBC URLs into Spring context
+- Use real databases via testcontainers; H2 dialect and behavior differ from production Postgres. `@AutoConfigureTestDatabase(replace = NONE)` keeps Spring from swapping one in
 
 ## Coverage (JaCoCo)
 
 Maven snippet:
+
 ```xml
 <plugin>
   <groupId>org.jacoco</groupId>
