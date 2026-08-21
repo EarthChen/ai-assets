@@ -12,11 +12,10 @@ Single source of truth for both inline and dispatched execution. Read end-to-end
 
 ## Select Axes
 
-Three axes run independently. A change can pass one and fail the others; they never merge or re-rank.
+Two sub-agent groups run independently. A change can pass one and fail the others; they never merge or re-rank.
 
 - **Standards+Spec axis** (diff scope only) — does the code conform to documented repo standards + a Fowler smell baseline, and does it faithfully implement the originating issue/spec? Process source: the mattpocock `code-review` skill's SKILL.md (located at install time — the path differs across harnesses and plugin caches).
-- **Lang axis** — language-specific traps (framework mismatches, async correctness, type-safety holes, query-plan killers). Process source: `references/<lang>-review.md` in this skill's directory.
-- **Lens axis** — cross-language review lenses: silent failure hunting, type design analysis, and security vulnerability detection. Pattern-level checks ("is this error silently swallowed?", "do these types make illegal states impossible?", "is this an OWASP Top 10 issue?"). Process source: `references/lens-review.md` in this skill's directory.
+- **Lang+Lens axis** — one sub-agent runs both checklists: the matching `references/<lang>-review.md` (language-specific traps: framework mismatches, async correctness, type-safety holes, query-plan killers) and `references/lens-review.md` (cross-language review lenses: silent failure, type design, security). Each finding tags its origin `[lang]` or `[lens]` so the aggregator can split reports. The two are orthogonal: Lang asks language-specific rule questions ("is this Java catch written correctly?"); Lens asks pattern-level questions ("is this error swallowed?"). Both may fire on the same code — the aggregator flags overlaps, it does not dedupe.
 
 ## Execute
 
@@ -30,9 +29,11 @@ find -L "$PWD/skills" ~/.agents/skills ~/.pi/agent/skills ~/.claude/plugins/cach
 
 If several hits remain (multiple cached plugin versions), prefer the newest. Read that SKILL.md and follow its Process (Pin the fixed point → Identify spec source → Identify standards sources → Spawn Standards and Spec sub-agents in parallel → Aggregate). Execute its steps; do not invoke it as a Skill tool — it is a process document, read and followed. Each finding cites the standard or spec line it violates; baseline smells are always judgement calls and a documented repo standard overrides the baseline.
 
-### Lang axis
+### Lang+Lens axis
 
-Spawn a lang sub-agent. Pass it the diff/file scope and the loaded `references/<lang>-review.md` checklist (read from this skill's directory first; the sub-agent has no other access). The sub-agent applies the checklist top to bottom, classifies each finding, and returns ranked findings records. Isolating the lang axis keeps the aggregator's context clean — the same reason the Standards and Spec axes run as sub-agents. If the detected language has no reference file, skip this axis and report "no lang checklist for <lang>".
+Spawn one sub-agent for both checklists. Pass it the diff/file scope and the loaded reference files (read from this skill's directory first; the sub-agent has no other access): the matching `references/<lang>-review.md` if a language was detected, and `references/lens-review.md` always. The sub-agent applies both checklists top to bottom, classifies each finding, tags it `[lang]` or `[lens]`, and returns ranked findings records. Isolating this axis keeps the aggregator's context clean — the same reason the Standards and Spec axes run as separate sub-agents.
+
+If the detected language has no reference file, the sub-agent runs only `references/lens-review.md` and reports "no lang checklist for <lang>".
 
 Each finding classifies:
 
@@ -42,13 +43,9 @@ Each finding classifies:
 
 State the evidence per finding: which rule fired, where in the diff or file, and why the class holds.
 
-### Lens axis
-
-Spawn a lens sub-agent. Pass it the diff/file scope and the loaded `references/lens-review.md` checklist (read from this skill's directory first; the sub-agent has no other access). The sub-agent applies the three lenses (silent failure, type design, security) and returns ranked findings records. The Lens axis is orthogonal to the Lang axis: Lens asks pattern-level questions ("is this error swallowed?"); Lang asks language-specific rule questions ("is this Java catch written correctly?"). Both may fire on the same code — the aggregator flags overlaps, it does not dedupe by dropping findings.
-
 ## Aggregate
 
-Present the axes under `## Standards+Spec`, `## Lang (<language>)`, and `## Lens` headings, separately. Do not merge or re-rank across axes. Where a Lens finding and a Lang finding flag the same code, note the overlap under both headings (do not dedupe). End with a one-line summary: total findings per axis and the worst issue within each axis.
+Present the axes under `## Standards+Spec`, `## Lang (<language>)`, and `## Lens` headings, separately. (The Lang+Lens sub-agent returns findings tagged `[lang]` or `[lens]`; the aggregator splits them into the two headings by tag.) Do not merge or re-rank across axes. Where a Lens finding and a Lang finding flag the same code, note the overlap under both headings (do not dedupe). End with a one-line summary: total findings per axis and the worst issue within each axis.
 
 Audit output uses this compact record per finding:
 
