@@ -34,7 +34,6 @@ import argparse
 import json
 import shutil
 import subprocess
-import re
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent
@@ -493,73 +492,6 @@ def _sync_claude_manifest_agents(dry_run: bool = False) -> None:
         log(f".claude-plugin/plugin.json agents synced ({len(agent_files)} files)")
 
 
-def _sync_agent_prompt_defense(dry_run: bool = False) -> None:
-    """Sync the ## Prompt Defense Baseline section in every agents/*.md from
-    the canonical source at agents/_shared/prompt-defense-baseline.md.
-
-    The 6-bullet PDB is duplicated across all agents; editing it in place
-    caused drift (three worded variants existed before this sync). The
-    canonical file is the single source of truth — build overwrites the PDB
-    section in each agent with its content, so a one-place edit flows to all.
-
-    Agents with threat-model-specific additions (e.g. spec-miner reads repo
-    content as input) keep them in a separate ## Prompt Defense Extension
-    section AFTER the synced PDB. The sync only replaces the PDB section;
-    extension sections are left untouched. If an agent has no PDB section at
-    all (none currently do), the sync inserts one right after the frontmatter.
-
-    The canonical file itself and the _shared/ dir are NOT valid agent files
-    (no top-level frontmatter), so they are skipped by the agent glob.
-    """
-    canonical = REPO_ROOT / "agents" / "_shared" / "prompt-defense-baseline.md"
-    agents_dir = REPO_ROOT / "agents"
-    if not canonical.exists() or not agents_dir.exists():
-        return
-    # pi-lens-ignore: ast-grep:unchecked-throwing-call-python
-    canon_text = canonical.read_text(encoding="utf-8")
-    # Extract the canonical PDB section (## Prompt Defense Baseline up to
-    # the next ## heading or EOF). The canonical file's own prose above it
-    # is documentation for humans editing the file, not part of the sync.
-    m = re.search(r"(## Prompt Defense Baseline\n.*)", canon_text, re.DOTALL)
-    if not m:
-        log("WARNING: no ## Prompt Defense Baseline section in canonical source")
-        return
-    canon_pdb = m.group(1).rstrip() + "\n"
-    count = 0
-    for agent_file in sorted(agents_dir.glob("*.md")):
-        content = agent_file.read_text(encoding="utf-8")
-        # Strip frontmatter, then replace/insert the PDB section.
-        if content.startswith("---"):
-            end = content.find("---", 3)
-            if end == -1:
-                continue  # malformed; skip
-            fm = content[: end + 3]
-            body = content[end + 3 :].lstrip("\n")
-        else:
-            fm = ""
-            body = content
-        # Replace existing PDB section (up to the next ## heading or
-        # ## Prompt Defense Extension), else insert after frontmatter.
-        pdb_pattern = re.compile(
-            r"## Prompt Defense Baseline\n.*?(?=\n## (?!Prompt Defense Baseline)|\Z)",
-            re.DOTALL,
-        )
-        if pdb_pattern.search(body):
-            new_body = pdb_pattern.sub(canon_pdb, body, count=1)
-        else:
-            new_body = canon_pdb + "\n" + body
-        new_content = fm + ("\n\n" if fm else "") + new_body
-        if new_content == content:
-            continue  # already in sync; skip write
-        if dry_run:
-            log(f"[DRY-RUN] sync PDB in {agent_file.name}")
-        else:
-            agent_file.write_text(new_content, encoding="utf-8")
-            count += 1
-    if count and not dry_run:
-        log(f"agents/*.md Prompt Defense Baseline synced ({count} files)")
-
-
 def build_dist(dry_run: bool = False) -> None:
     """Generate platform-filtered content in _dist/."""
     log_section("Building _dist/ (platform-filtered content)")
@@ -683,7 +615,6 @@ def build_dist(dry_run: bool = False) -> None:
     # directory), so this must run after the agents copy above. See
     # https://code.claude.com/docs/en/plugins-reference "Component path fields".
     _sync_claude_manifest_agents(dry_run)
-    _sync_agent_prompt_defense(dry_run)
 
 
 # ─── Phase 2: Deploy ───────────────────────────────────────────────────────────
