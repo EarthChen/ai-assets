@@ -26,9 +26,6 @@
     "./agents/loop-operator.md",
     "./agents/performance-optimizer.md",
     "./agents/refactor-cleaner.md",
-    "./agents/security-reviewer.md",
-    "./agents/silent-failure-hunter.md",
-    "./agents/spec-miner.md",
-    "./agents/type-design-analyzer.md"
+    "./agents/spec-miner.md"
   ]
 }

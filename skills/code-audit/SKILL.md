@@ -1,7 +1,7 @@
 ---
 name: code-audit
 disable-model-invocation: true
-description: Deep, systematic code audit with two axes — Standards+Spec compliance (via the mattpocock code-review skill's two-axis process) and language-specific trap detection (Java/Python/TypeScript/FastAPI/PostgreSQL checklists). User-invoked. For a quick diff review against general code smells, use the mattpocock `code-review` skill directly instead.
+description: Deep, systematic code audit along three axes — Standards+Spec compliance, language-specific trap detection (Java/Python/TypeScript/FastAPI/PostgreSQL), and cross-language review lenses (silent failure, type design, security). For a quick diff review against general code smells, use the mattpocock code-review skill directly instead.
 ---
 
 # Code Audit
