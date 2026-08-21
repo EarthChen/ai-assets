@@ -23,8 +23,8 @@ ai-assets/
 │   │   └── ...
 │   ├── java/                  # Java 规则 (paths: **/*.java)
 │   └── python/                # Python 规则 (globs: **/*.py)
-├── skills/                    # 共享技能 (16 个自有实目录；vendor skills 由 install.py symlink 安装)
-├── agents/                    # Subagent 定义 (Cursor + Claude + pi，19 个)
+├── skills/                    # 共享技能 (17 个自有实目录；vendor skills 由 install.py symlink 安装)
+├── agents/                    # Subagent 定义 (Cursor + Claude + pi，12 个)
 ├── pi/                        # pi 专属资源: skills/ + agents/ → ~/.pi/agent/ (仅 pi 加载)
 ├── docs/                      # 团队分享文档（能力、设计依据与工作流）
 ├── site/                      # VitePress 文档站源码（GitHub Pages，CI 部署）

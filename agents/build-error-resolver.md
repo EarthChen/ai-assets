@@ -123,7 +123,6 @@ The table below lists the highest-frequency error → fix pairs per language. It
 
 > **All Java build errors dispatch to `java-build-resolver`** (Step 1 detects `pom.xml`/`build.gradle` and delegates). java-build-resolver covers general Java, Spring Boot, and Quarkus, plus Maven/Gradle troubleshooting. Do not handle Java errors here.
 
-
 ## DO and DON'T
 
 **DO:**
