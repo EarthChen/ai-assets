@@ -29,8 +29,8 @@ cat go.mod 2>/dev/null
 # Rust
 cat Cargo.toml 2>/dev/null
 
-# Java (general — if Spring/Quarkus detected, defer to java-build-resolver)
-cat pom.xml 2>/dev/null | head -40 || cat build.gradle 2>/dev/null | head -40
+# Java — if pom.xml/build.gradle detected, dispatch to java-build-resolver (do not handle here)
+# (java-build-resolver covers general Java + Spring Boot + Quarkus + Maven/Gradle)
 
 # Generic CI / task runners
 cat Makefile 2>/dev/null | head -40
@@ -47,7 +47,7 @@ Match the first file that exists to its build system:
 | `pyproject.toml` / `requirements.txt` | Python | `uv run pytest --collect-only` / `python -m compileall src` | `uv sync` / `pip install -e .` |
 | `go.mod` | Go | `go build ./...` | `go mod tidy` |
 | `Cargo.toml` | Rust | `cargo check` / `cargo build` | `cargo fetch` |
-| `pom.xml` / `build.gradle` | Java (general) | `./mvnw compile` / `./gradlew build` | `./mvnw dependency:resolve` |
+| `pom.xml` / `build.gradle` | Java | **Dispatch to `java-build-resolver`** (covers general Java + Spring Boot + Quarkus) | — |
 | `Makefile` / `justfile` | Any | `make build` / `just build` | per Makefile targets |
 
 > If the project uses `pnpm` (lockfile `pnpm-lock.yaml`) or `yarn` (`yarn.lock`), substitute those for `npm` throughout.
@@ -119,17 +119,10 @@ The table below lists the highest-frequency error → fix pairs per language. It
 | `unresolved import` / `cargo` dependency missing | Add to `Cargo.toml` `[dependencies]` |
 | `expected one of ...` | Read the parser hint — usually a missing comma/brace |
 
-### Java (general — non-Spring/Quarkus)
+### Java
 
-| Error | Fix |
-| --- | --- |
-| `cannot find symbol` | Missing import, typo, or missing dependency |
-| `incompatible types: X cannot be converted to Y` | Add explicit cast or fix type |
-| `package X does not exist` | Add dependency to `pom.xml`/`build.gradle` |
-| `variable X might not have been initialized` | Initialize before use |
-| `non-static method X cannot be referenced from a static context` | Create instance or make method static |
+> **All Java build errors dispatch to `java-build-resolver`** (Step 1 detects `pom.xml`/`build.gradle` and delegates). java-build-resolver covers general Java, Spring Boot, and Quarkus, plus Maven/Gradle troubleshooting. Do not handle Java errors here.
 
-> **Spring Boot / Quarkus errors** (e.g. `No qualifying bean`, `UnsatisfiedResolutionException`, `Build step threw exception`) → delegate to `java-build-resolver`.
 
 ## DO and DON'T
 
@@ -179,8 +172,6 @@ go clean -modcache && go mod tidy
 # Rust
 cargo clean && cargo build
 
-# Java (general)
-./mvnw clean compile || ./gradlew clean build
 ```
 
 ## Stop Conditions
@@ -191,7 +182,7 @@ Stop and report if:
 - Fix introduces more errors than it resolves
 - Error requires architectural changes beyond scope
 - Missing external dependencies that need user decision (private repos, licences)
-- The project is Java with Spring Boot or Quarkus → delegate to `java-build-resolver`
+- The project is Java (any — general, Spring Boot, or Quarkus) → already dispatched to `java-build-resolver` in Step 1; if java-build-resolver cannot resolve, stop
 - Tests are failing (not the build) → invoke the `tdd` skill
 
 ## Success Metrics
@@ -208,7 +199,7 @@ Stop and report if:
 - New features required → invoke the `grill-with-docs` → `to-spec` → `to-tickets` workflow skills
 - Tests failing (build is green) → invoke the `tdd` skill
 - Security issues → use `security-reviewer`
-- Java Spring Boot / Quarkus builds → use `java-build-resolver`
+- Java builds (general, Spring Boot, or Quarkus) → use `java-build-resolver`
 
 ---
 **Remember**: Detect the build system, read the error, apply the minimal fix, verify the build passes, move on. Speed and precision over perfection.

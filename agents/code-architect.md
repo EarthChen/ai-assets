@@ -1,6 +1,6 @@
 ---
 name: code-architect
-description: Designs feature architectures by analyzing existing codebase patterns and conventions, then providing implementation blueprints with concrete files, interfaces, data flow, and build order.
+description: Feature-level architecture specialist — implementation blueprints for a single feature: concrete files, interfaces, data flow, and build order, derived from analysis of existing codebase patterns and conventions. Use PROACTIVELY when turning a feature spec or design decision into an actionable build plan. For system-level decisions (scalability, service boundaries, technology selection across features), use architect instead.
 ---
 ## Process
 
