@@ -460,6 +460,45 @@ def _clean_stale_skill_symlinks(link_dir: Path, source_root: Path, dry_run: bool
         log(f"{link_dir}: stale skill symlinks removed ({count})")
 
 
+def _clean_stale_agent_symlinks(link_dir: Path, source_root: Path, dry_run: bool = False) -> None:
+    """Remove stale agent symlinks in link_dir that point into source_root.
+
+    Symmetric to _clean_stale_skill_symlinks but for *.md agent files:
+    install symlinks every agents/*.md into ~/.pi/agent/agents/. When an
+    agent file is renamed or removed in the repo, its link outlives it —
+    pi-subagents' discoverAgents() scans that dir and loads *.md, so a broken
+    link to a deleted agent is a ghost the harness must skip or fail on.
+    Any symlink whose target resolves under source_root and no longer exists
+    is stale and removed. Third-party links (pointing into vendor/) are not
+    touched.
+    """
+    if not link_dir.is_dir():
+        return
+    source_real = source_root.resolve()
+    count = 0
+    for entry in sorted(link_dir.iterdir()):
+        if not entry.is_symlink():
+            continue
+        target = entry.readlink()
+        if not target.is_absolute():
+            target = entry.parent / target
+        try:
+            target.resolve().relative_to(source_real)
+        except ValueError:
+            continue  # owned elsewhere (vendor/, other repos) — leave it
+        if target.exists() and target.is_file():
+            continue
+        if dry_run:
+            log(f"[DRY-RUN] rm stale agent symlink {entry.name}")
+            count += 1
+            continue
+        # pi-lens-ignore: ast-grep:unchecked-throwing-call-python
+        entry.unlink()
+        count += 1
+    if count and not dry_run:
+        log(f"{link_dir}: stale agent symlinks removed ({count})")
+
+
 def _sync_claude_manifest_agents(dry_run: bool = False) -> None:
     """Sync .claude-plugin/plugin.json `agents` field with the root agents/ dir.
 
@@ -897,6 +936,7 @@ def install_pi(dry_run: bool = False) -> None:
     # subagent({ action: "list" }) after install.
     pi_agents_dir = PI_AGENT_HOME / "agents"
     agents_src = REPO_ROOT / "agents"
+    _clean_stale_agent_symlinks(pi_agents_dir, agents_src, dry_run)
     count = 0
     for agent_file in sorted(agents_src.glob("*.md")):
         create_symlink(agent_file, pi_agents_dir / agent_file.name, dry_run)
