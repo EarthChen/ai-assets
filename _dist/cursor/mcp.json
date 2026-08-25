@@ -1,11 +1,5 @@
 {
   "mcpServers": {
-    "playwright": {
-      "command": "npx",
-      "args": [
-        "@playwright/mcp@latest"
-      ]
-    },
     "mcp-feedback-pro": {
       "command": "uvx",
       "args": [
@@ -17,13 +11,6 @@
       },
       "autoApprove": [
         "interactive_feedback"
-      ]
-    },
-    "sequential-thinking": {
-      "command": "npx",
-      "args": [
-        "-y",
-        "@modelcontextprotocol/server-sequential-thinking"
       ]
     }
   }
