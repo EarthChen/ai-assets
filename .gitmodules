@@ -13,3 +13,6 @@
 	path = vendor/herdr-skill
 	url = git@github.com:herdrdev/herdr.git
 	sparse = true
+[submodule "vendor/playwright-cli"]
+	path = vendor/playwright-cli
+	url = git@github.com:microsoft/playwright-cli.git
