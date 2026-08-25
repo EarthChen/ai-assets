@@ -19,8 +19,6 @@ WRONG:  modify(original, field, value) → changes original in-place
 CORRECT: update(original, field, value) → returns new copy with change
 ```
 
-Rationale: Immutable data prevents hidden side effects, makes debugging easier, and enables safe concurrency.
-
 ## File Organization
 
 MANY SMALL FILES > FEW LARGE FILES:
@@ -43,7 +41,6 @@ ALWAYS handle errors comprehensively:
 
 ALWAYS validate at system boundaries:
 
-- Validate all user input before processing
 - Use schema-based validation where available
 - Fail fast with clear error messages
 - Never trust external data (API responses, user input, file content)

@@ -87,7 +87,6 @@ Ask yourself: "Would a senior engineer say this is overcomplicated?" If yes, sim
 When editing existing code:
 - Don't "improve" adjacent code, comments, or formatting.
 - Don't refactor things that aren't broken.
-- Match existing style, even if you'd do it differently.
 - If you notice unrelated dead code, mention it - don't delete it.
 
 When your changes create orphans:
@@ -175,8 +174,6 @@ WRONG:  modify(original, field, value) → changes original in-place
 CORRECT: update(original, field, value) → returns new copy with change
 ```
 
-Rationale: Immutable data prevents hidden side effects, makes debugging easier, and enables safe concurrency.
-
 ## File Organization
 
 MANY SMALL FILES > FEW LARGE FILES:
@@ -199,7 +196,6 @@ ALWAYS handle errors comprehensively:
 
 ALWAYS validate at system boundaries:
 
-- Validate all user input before processing
 - Use schema-based validation where available
 - Fail fast with clear error messages
 - Never trust external data (API responses, user input, file content)
@@ -222,7 +218,6 @@ Before ANY commit:
 
 ## Secret Management
 
-- NEVER hardcode secrets in source code
 - ALWAYS use environment variables or a secret manager
 - Validate that required secrets are present at startup
 - Rotate any secrets that may have been exposed
@@ -231,16 +226,14 @@ Before ANY commit:
 # 技术栈约束 (Strict Tech Stack)
 
 ## Python 环境管理
-- **唯一工具**：必须且仅能使用 `uv`。
-- **严禁使用**：禁止使用 `pip`、`conda` 或 `poetry`。
+- **唯一工具**：仅用 `uv`（禁止 `pip`、`conda`、`poetry`）。
 - **标准工作流**（项目依赖必须进 `pyproject.toml`）：
   - 初始化：`uv init`（临时环境可用 `uv venv`）
   - 依赖安装：`uv add <package>`（同步用 `uv sync`；`uv pip install` 不写入 `pyproject.toml`，仅限一次性脚本/临时环境）
   - 脚本执行：`uv run <script>.py`（一次性依赖用 `uv run --with <pkg>`）
 
 ## Node.js 生态
-- **唯一工具**：必须且仅能使用 `pnpm`。
-- **严禁使用**：禁止使用 `npm` 或 `yarn`。
+- **唯一工具**：仅用 `pnpm`（禁止 `npm`、`yarn`）。
 - **自动转换**：若用户提供 `npm` 指令，必须自动将其转换为 `pnpm` 等效版本后再执行。
 
 ## 代码与架构标准
@@ -251,8 +244,5 @@ Before ANY commit:
 
 # Testing Requirements
 
-## Minimum Test Coverage: 80%
-
-## Test-Driven Development
-
-TDD is mandatory for new features and bug fixes — the red-green-refactor loop is carried by the `tdd` skill (see the development workflow rule).
+- Minimum test coverage: 80%.
+- TDD is mandatory for new features and bug fixes — the red-green-refactor loop is carried by the `tdd` skill (part of the `feature-workflow` skill pipeline).
