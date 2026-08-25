@@ -63,14 +63,12 @@ For multi-step tasks, state a brief plan:
 
 Strong success criteria let you loop independently. Weak criteria ("make it work") require constant clarification.
 
-<!-- Extended Rules -->
-
 ## 5. Use the model only for judgment calls
 Use the model for: classification, drafting, summarization, extraction from unstructured text.
 Do NOT use the model for: routing, retries, status-code handling, deterministic transforms.
 If a status code already answers the question, plain code answers the question.
 
-## 6. Prefer concise responses
+## 6. Manage context limits
 If a task is growing beyond manageable scope, summarize progress and restart with fresh context.
 Do not push through when context is degrading — surfacing the limitation > silently overrunning.
 

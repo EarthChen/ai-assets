@@ -6,7 +6,7 @@ platforms: [cursor]
 
 # MCP 增强反馈协议 (Mandatory Protocol)
 
-适用：Cursor 的 `mcp-feedback-pro` 反馈循环。本协议对任何加载到该规则的 agent 生效，按角色区分职责，无豁免。
+本协议对任何加载到该规则的 agent 生效，按角色区分职责，无豁免。
 
 ## 执行边界 (Critical)
 

@@ -1,5 +1,5 @@
 ---
-description: "Tech stack constraints: mandatory uv/pnpm, Python-first scripts, SRP, visualization"
+description: "Tech stack constraints: mandatory uv/pnpm, Python-first scripts, atomic functions, visualization"
 alwaysApply: true
 ---
 # 技术栈约束 (Strict Tech Stack)
@@ -17,5 +17,5 @@ alwaysApply: true
 
 ## 代码与架构标准
 - **默认脚本**：自动化脚本首选 Python。
-- **设计原则**：严格遵守单一职责原则 (SRP)，函数应短小精悍，逻辑原子化。
+- **设计原则**：函数短小精悍，逻辑原子化。
 - **可视化**：复杂逻辑、系统架构或调用链路优先使用 `Mermaid` 或 `PlantUML` 提供可视化图表。

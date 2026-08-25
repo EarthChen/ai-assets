@@ -113,14 +113,12 @@ For multi-step tasks, state a brief plan:
 
 Strong success criteria let you loop independently. Weak criteria ("make it work") require constant clarification.
 
-<!-- Extended Rules -->
-
 ## 5. Use the model only for judgment calls
 Use the model for: classification, drafting, summarization, extraction from unstructured text.
 Do NOT use the model for: routing, retries, status-code handling, deterministic transforms.
 If a status code already answers the question, plain code answers the question.
 
-## 6. Prefer concise responses
+## 6. Manage context limits
 If a task is growing beyond manageable scope, summarize progress and restart with fresh context.
 Do not push through when context is degrading — surfacing the limitation > silently overrunning.
 
@@ -238,7 +236,7 @@ Before ANY commit:
 
 ## 代码与架构标准
 - **默认脚本**：自动化脚本首选 Python。
-- **设计原则**：严格遵守单一职责原则 (SRP)，函数应短小精悍，逻辑原子化。
+- **设计原则**：函数短小精悍，逻辑原子化。
 - **可视化**：复杂逻辑、系统架构或调用链路优先使用 `Mermaid` 或 `PlantUML` 提供可视化图表。
 
 
