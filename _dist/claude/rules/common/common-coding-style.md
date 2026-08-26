@@ -6,8 +6,9 @@ alwaysApply: true
 
 ## Design Principles
 
-- Apply first-principles thinking when analyzing problems, architecture, and module composition
 - Follow DRY, KISS, SOLID, and YAGNI when coding
+- A bug report names one symptom; trace every caller of the code you touch, find the shared cause, fix it once
+- Mark deliberate simplifications with a known ceiling (global lock, O(n²) scan, naive heuristic) using a `ceiling:` comment naming the ceiling and the upgrade path
 
 ## Immutability (CRITICAL)
 
