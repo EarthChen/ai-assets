@@ -34,6 +34,7 @@ import argparse
 import json
 import shutil
 import subprocess
+import sys
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent
@@ -1078,6 +1079,65 @@ def _deploy_shared_skills(dry_run: bool = False) -> None:
 
 # ─── Main ──────────────────────────────────────────────────────────────────────
 
+def detect_platforms(home: Path = HOME) -> dict[str, tuple[bool, str]]:
+    """Detect which agent platforms are present on this machine.
+
+    Each platform is detected by the most authoritative available signal:
+      - claude / codex / pi: CLI on PATH (the same binary the installer uses),
+        falling back to the user-level config dir (~/.claude, ~/.codex, ~/.pi).
+      - cursor: CLI on PATH, then ~/.cursor config dir, then the macOS app
+        bundle (Cursor's `cursor` CLI is opt-in via the Command Palette, so
+        the .app is the strongest signal — only checked on sys.platform=darwin).
+
+    Returns a dict with all 4 keys regardless of detection outcome, so callers
+    can log a uniform detection report. Each value is `(installed, reason)`:
+    reason names the signal that triggered the decision (positive or negative).
+    """
+    results: dict[str, tuple[bool, str]] = {}
+
+    claude_cli = shutil.which("claude")
+    if claude_cli:
+        results["claude"] = (True, f"claude CLI on PATH: {claude_cli}")
+    elif CLAUDE_HOME.exists():
+        results["claude"] = (True, f"config dir: {CLAUDE_HOME}")
+    else:
+        results["claude"] = (False, "no claude CLI on PATH and ~/.claude not found")
+
+    codex_cli = shutil.which("codex")
+    if codex_cli:
+        results["codex"] = (True, f"codex CLI on PATH: {codex_cli}")
+    elif CODEX_HOME.exists():
+        results["codex"] = (True, f"config dir: {CODEX_HOME}")
+    else:
+        results["codex"] = (False, "no codex CLI on PATH and ~/.codex not found")
+
+    cursor_cli = shutil.which("cursor")
+    if cursor_cli:
+        results["cursor"] = (True, f"cursor CLI on PATH: {cursor_cli}")
+    elif CURSOR_HOME.exists():
+        results["cursor"] = (True, f"config dir: {CURSOR_HOME}")
+    elif sys.platform == "darwin":
+        for app in (Path("/Applications/Cursor.app"), home / "Applications" / "Cursor.app"):
+            if app.exists():
+                results["cursor"] = (True, f"app bundle: {app}")
+                break
+        else:
+            results["cursor"] = (False, "no cursor CLI on PATH, ~/.cursor not found, "
+                                       "and /Applications/Cursor.app missing")
+    else:
+        results["cursor"] = (False, "no cursor CLI on PATH and ~/.cursor not found")
+
+    pi_cli = shutil.which("pi")
+    if pi_cli:
+        results["pi"] = (True, f"pi CLI on PATH: {pi_cli}")
+    elif PI_AGENT_HOME.exists():
+        results["pi"] = (True, f"config dir: {PI_AGENT_HOME}")
+    else:
+        results["pi"] = (False, "no pi CLI on PATH and ~/.pi/agent not found")
+
+    return results
+
+
 def _do_install(platform: str, dry_run: bool) -> None:
     """Run platform installers, then install third-party manual skills.
 
@@ -1087,9 +1147,27 @@ def _do_install(platform: str, dry_run: bool) -> None:
     (~/.agents/skills/, ~/.claude/skills/) that are shared across platforms,
     so a single pass covers all of them. Use `install.py manual <name>`
     to reinstall just one skill.
+
+    Platform detection: `detect_platforms()` decides what is on this machine.
+      - `--platform all` (default): installs only detected platforms, logging
+        the reason for any skipped platform. Prevents polluting home with
+        ~/.codex / ~/.cursor / ~/.pi on a machine that lacks them.
+      - `--platform <name>`: errors out (SystemExit) if that platform is not
+        detected, since an explicit request almost always means a typo or a
+        real install gap — fail loud rather than silently writing config
+        into a directory the tool will never read.
     """
     _ensure_submodules(dry_run)
     _clean_mattpocock_skill_symlinks(dry_run)
+
+    detection = detect_platforms()
+    detected = {name for name, (ok, _reason) in detection.items() if ok}
+
+    log_section("Platform detection")
+    for name, (ok, reason) in detection.items():
+        marker = "✓" if ok else "✗"
+        log(f"{marker} {name}: {reason}")
+
     platforms = {
         "claude": install_claude,
         "codex": install_codex,
@@ -1097,9 +1175,18 @@ def _do_install(platform: str, dry_run: bool) -> None:
         "pi": install_pi,
     }
     if platform == "all":
-        for installer in platforms.values():
-            installer(dry_run)
+        for name, installer in platforms.items():
+            if name in detected:
+                installer(dry_run)
+            else:
+                log(f"[skip {name}] {detection[name][1]}")
     else:
+        if platform not in detected:
+            _, reason = detection[platform]
+            raise SystemExit(
+                f"platform '{platform}' not detected on this machine ({reason}). "
+                f"Install it, or omit --platform to default to detected platforms only."
+            )
         platforms[platform](dry_run)
     # Install all third-party manual skills once (not per-platform — they
     # link into shared user-level dirs). Same third-party.json source as
