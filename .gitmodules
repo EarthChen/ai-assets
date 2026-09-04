@@ -16,3 +16,6 @@
 [submodule "vendor/playwright-cli"]
 	path = vendor/playwright-cli
 	url = git@github.com:microsoft/playwright-cli.git
+[submodule "vendor/humanlayer-skills"]
+	path = vendor/humanlayer-skills
+	url = git@github.com:humanlayer/skills.git

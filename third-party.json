@@ -140,6 +140,32 @@
       }
     },
     {
+      "name": "show-me",
+      "description": "HumanLayer's visual-explanation skill (humanlayer/skills plugin monorepo, plugins/show-me). Explains the current topic visually with the smallest fitting view: pseudocode, call trees, component/file trees, Mermaid, diff sketches, or a focused HTML artifact. Single skill (plugins/show-me/skills/show-me/SKILL.md). Upstream carries no release tags — pinned to a main commit (upstream plugin.json version 1.0.1); upgrade via git submodule update --remote vendor/humanlayer-skills + re-pin. Submodule stays out of build/_dist.",
+      "install": {
+        "source": "vendor/humanlayer-skills",
+        "generate": {
+          "scan_dir": "plugins/show-me/skills",
+          "link_dir": "~/.agents/skills",
+          "extra_links": ["~/.claude/skills"]
+        }
+      },
+      "platforms": {
+        "claude": {
+          "note": "Installed by `install.py manual show-me` — symlinks plugins/show-me/skills/show-me into ~/.claude/skills/ (Claude scans this user-level dir; it does NOT read ~/.agents/skills/). Upstream is a 5-plugin monorepo; only show-me is linked."
+        },
+        "codex": {
+          "note": "Installed by `install.py manual show-me` — symlinks into ~/.agents/skills/ (Codex standard user path; follows symlinks per loader.rs User scope = Follow)."
+        },
+        "cursor": {
+          "note": "Same as codex: `install.py manual show-me` → ~/.agents/skills/. Cursor scans ~/.agents/skills/ by default and follows symlinks correctly."
+        },
+        "pi": {
+          "note": "pi scans ~/.agents/skills/ natively; no extra deploy step beyond `install.py manual show-me`."
+        }
+      }
+    },
+    {
       "name": "context-mode",
       "description": "MCP server + session-continuity layer by mksglu/context-mode. Saves context by sandboxing tool output (ctx_execute/ctx_execute_file/ctx_batch_execute/ctx_fetch_and_index/ctx_index/ctx_search) and tracking session events in FTS5-backed SQLite for restore across compactions. NOT a skill distributed by this repo — installed per-platform via each platform's native plugin or npm path. This repo's AGENTS.md already references ctx-* tools, so this entry formalizes their provenance.",
       "platforms": {
