@@ -2,6 +2,8 @@
 
 个人统一 AI Agent 资产管理仓库。一处维护，全平台同步。
 
+> 仓库维护者文档：见 [CONTRIBUTING.md](CONTRIBUTING.md)（deploy 流水线、vendor 管理、build transforms、诊断步骤）。
+
 ## 支持平台
 
 | 平台 | 插件加载 | 脚本补充 |
@@ -16,14 +18,13 @@
 ```text
 ai-assets/
 ├── global-instructions.md     # 全局基础指令 (部署为 CLAUDE.md / AGENTS.md)
-├── rules/                     # 共享规则 (按子目录分类)
-│   ├── common/                # 通用规则 (所有平台/项目始终加载)
-│   │   ├── common-coding-style.md
-│   │   ├── KarpathyGuide.md
-│   │   └── ...
-│   ├── java/                  # Java 规则 (paths: **/*.java)
-│   └── python/                # Python 规则 (globs: **/*.py)
-├── skills/                    # 共享技能 (17 个自有实目录；vendor skills 由 install.py symlink 安装)
+├── rules/                     # 共享规则 (仅 common/；语言规则已合并到 skills/)
+│   └── common/                # 通用规则 (所有平台/项目始终加载)
+│       ├── common-coding-style.md
+│       ├── KarpathyGuide.md
+│       └── ...
+│   ├── (历史：java/、python/ 已合并到 skills/java-development/references/ 与 skills/python-development/references/)
+├── skills/                    # 共享技能 (18 个自有实目录；vendor skills 由 install.py symlink 安装)
 ├── agents/                    # Subagent 定义 (Cursor + Claude + pi，12 个)
 ├── pi/                        # pi 专属资源: skills/ + agents/ → ~/.pi/agent/ (仅 pi 加载)
 ├── docs/                      # 团队分享文档（能力、设计依据与工作流）
@@ -32,7 +33,10 @@ ai-assets/
 │   ├── mattpocock-skills/     # mattpocock/skills 工程技能库 (25 skills)
 │   ├── anysearch-skill/       # anysearch CLI 搜索技能
 │   ├── understand-anything/   # 代码库知识图谱理解 (11 skills)
-│   └── herdr-skill/           # Herdr 终端复用器控制技能 (sparse submodule)
+│   ├── herdr-skill/           # Herdr 终端复用器控制技能 (sparse submodule)
+│   ├── playwright-cli/        # microsoft/playwright-cli 浏览器自动化技能
+│   ├── humanlayer-skills/     # humanlayer/skills monorepo (仅链接 show-me)
+│   └── yao-meta-skill/        # skill 工程元技能 (替代原 skill-creator)
 ├── mcp.json                   # 统一 MCP 配置 (_platforms 过滤)
 ├── _dist/                     # 自动生成的平台产物 (已提交；skills/agents 不复制进此)
 │   ├── cursor/                # rules/*.mdc + mcp.json
@@ -60,7 +64,7 @@ uv run install.py --platform cursor
 uv run install.py --dry-run
 ```
 
-`install.py install` 会自动完成三方 skills 的 symlink 安装（mattpocock / anysearch / understand-anything / herdr），无需单独运行 `manual`。
+`install.py install` 会自动完成三方 skills 的 symlink 安装（mattpocock / anysearch / understand-anything / herdr / playwright-cli / show-me / yao-meta-skill），无需单独运行 `manual`。
 
 ### 子命令
 
@@ -189,14 +193,16 @@ git submodule update --remote vendor/mattpocock-skills
 
 ## Rules 系统详解
 
+语言专属规则（Java、Python）已合并到 `skills/java-development/references/` 与 `skills/python-development/references/`，由 skill description 触发加载。下面只讲通用 `rules/common/` 及其 frontmatter 机制。
+
 ### 目录组织
 
 ```text
 rules/
-├── common/     # 通用规则：始终加载，适用所有项目
-├── java/       # 仅在编辑 Java 文件时加载
-└── python/     # 仅在编辑 Python 文件时加载
+└── common/     # 通用规则：始终加载，适用所有项目
 ```
+
+新增通用规则：在 `rules/common/` 添加 `.md` 文件 + 写 YAML frontmatter（`description`、`alwaysApply: true` 可选）。
 
 ### Frontmatter 格式（源文件统一格式）
 
@@ -226,8 +232,7 @@ platforms: [cursor, claude]      # 平台过滤 (build-time, 不进入输出)
 | 规则类型 | Cursor | Claude Code | Codex |
 | --------- | -------- | ------------- | ------- |
 | **common/** (alwaysApply: true) | 始终加载 | 用户级始终加载 | 嵌入 AGENTS.md |
-| **java/** (paths: \*\*.java) | 编辑 Java 文件时自动附加 | 项目级条件加载; 用户级不部署 | 不包含 |
-| **python/** (globs: \*\*.py) | 同上 (Python) | 同上 | 不包含 |
+| **java/** / **python/** (历史) | 已合并到 skills，参见各 skill 描述触发加载 | 同上 (项目级规则依然有效) | 通过 skills 提供 |
 
 ### 重要限制
 
@@ -239,7 +244,7 @@ platforms: [cursor, claude]      # 平台过滤 (build-time, 不进入输出)
 ### Codex 32KB 限制
 
 Codex `~/.codex/AGENTS.md` 默认限制 32KB (`project_doc_max_bytes`)。
-本项目只嵌入 `rules/common/` (~20KB)，语言规则通过 Skills 按需提供。
+本项目嵌入 `global-instructions.md` + `rules/common/`，当前共 12.6KB；语言规则通过 Skills 按需提供，不占常驻预算。组成细节见 `CONTRIBUTING.md` 的 Codex AGENTS.md 32KB Limit 一节。
 
 如需调大：在 `~/.codex/config.toml` 设置 `project_doc_max_bytes = 131072`。
 
@@ -279,22 +284,15 @@ MCP 配置中使用 `_platforms` 字段：
 
 ## 新增规则
 
-1. 在 `rules/<category>/` 添加规则文件（`.md` + YAML frontmatter）
-2. 通用规则放 `rules/common/`，语言规则放对应子目录
-3. 语言规则需添加 `paths` 或 `globs` 字段指定文件匹配
-4. 如需限定平台，添加 `platforms: [cursor, claude]`
-5. 运行 `uv run install.py build` 重新生成 `_dist/`
-6. 运行 `uv run install.py install` 部署
-7. 重启 agent 生效
+1. 在 `rules/common/` 添加规则文件（`.md` + YAML frontmatter，`alwaysApply: true`）
+2. 平台过滤用 `platforms: [cursor, claude]`
+3. 运行 `uv run install.py build` 重新生成 `_dist/`
+4. 运行 `uv run install.py install` 部署
+5. 重启 agent 生效
 
-### 语言规则部署到项目
+## 新增语言规则（Java / Python / 等）
 
-Claude Code 的语言规则需手动复制到项目才能条件加载：
-
-```bash
-# 复制 Java 规则到当前项目
-cp -r _dist/claude/rules/java .claude/rules/
-```
+语言规则放在 `skills/<lang>-development/references/` 而不是 `rules/<lang>/`，由 skill description 触发加载。增加新语言：新建 `skills/<lang>-development/` + 写 SKILL.md + 在 `references/` 里放主题文档；如有项目级语言规则仍可放 `rules/<lang>/` 并用 `globs`/`paths` 触发。
 
 ## 三方插件
 
@@ -306,6 +304,9 @@ cp -r _dist/claude/rules/java .claude/rules/
 | anysearch | vendor submodule（CLI 技能） | symlink 进 `~/.claude/skills/` + `~/.agents/skills/` |
 | understand-anything | vendor submodule（11 skills） | symlink 进 `~/.agents/skills/` + `~/.claude/skills/` |
 | herdr | vendor submodule（sparse，单技能） | symlink 进 `~/.agents/skills/` + `~/.claude/skills/` |
+| playwright-cli | vendor submodule（单技能） | symlink 进 `~/.agents/skills/` + `~/.claude/skills/` |
+| show-me | vendor submodule（humanlayer monorepo，仅链接 show-me） | symlink 进 `~/.agents/skills/` + `~/.claude/skills/` |
+| yao-meta-skill | vendor submodule（单技能，仓库根即 skill） | symlink 进 `~/.claude/skills/` + `~/.agents/skills/` |
 | context-mode | 仅溯源登记 | 不经本仓库分发；各平台原生插件/npm 安装（Claude 由 install.py 自动装） |
 
 > symlink 安装绕过插件缓存，运行时文件（`runtime.conf`、生成的图谱等）得以跨 session 留存。

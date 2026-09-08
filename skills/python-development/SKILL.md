@@ -1,6 +1,6 @@
 ---
 name: python-development
-description: Python development conventions — idioms, type hints, project structure, pytest testing with TDD. Use when writing or reviewing Python code.
+description: Python development conventions — idioms, type hints, project structure, pytest testing with TDD, FastAPI services, code-level security, editor hooks. Use when writing or reviewing Python code.
 ---
 
 # Python
@@ -13,6 +13,9 @@ Python conventions. Load only the reference matching the current task branch.
 | --- | --- |
 | Idioms, readability, EAFP, type hints, project structure, performance | `references/patterns.md` |
 | pytest: TDD workflow, fixtures, mocking, parametrization, coverage | `references/testing.md` |
+| FastAPI services: app factory, async discipline, DI, schemas, security, testing | `references/fastapi.md` |
+| Code-level security: secrets, SQL injection, deserialisation, auth, output rendering | `references/security.md` |
+| PostToolUse hooks: format-on-edit, type-check-on-edit, print() detection | `references/hooks.md` |
 
 ## Always
 

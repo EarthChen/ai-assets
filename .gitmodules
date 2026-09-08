@@ -19,3 +19,6 @@
 [submodule "vendor/humanlayer-skills"]
 	path = vendor/humanlayer-skills
 	url = git@github.com:humanlayer/skills.git
+[submodule "vendor/yao-meta-skill"]
+	path = vendor/yao-meta-skill
+	url = git@github.com:yaojingang/yao-meta-skill.git

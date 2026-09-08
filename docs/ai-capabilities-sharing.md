@@ -82,7 +82,7 @@ rules 分为两个文件，前者是 agent 的全局角色与认知底座，后�
 rules 目录下分两类，其**加载方式**完全不同，此为第一层设计权衡：
 
 - **`rules/common/`**（上文）：常驻规则。所有平台、所有项目、所有时刻均加载，是 agent 的出厂设置。
-- **`rules/{java,python,react}/`**：条件规则。仅在打开对应类型文件时触发（Java 规则匹配 `**/*.java`，Python 匹配 `**/*.py`，React 匹配 `**/*.tsx`）。
+- **条件规则**：仅在打开对应类型文件时触发（Cursor 称 `globs`，Claude 称 `paths`）。本仓库自有的 `rules/{java,python}/` 已于 2026-09-04 并入 `skills/{java,python}-development/references/`（原因见 §2.4），`rules/` 下现仅存 `common/`；条件触发机制本身仍适用于项目级 `.claude/rules/`。
 
 如此分层的原因在于：agent 的上下文窗口有限，常驻规则越多，留给实际任务的有效上下文越少。**仅在用得上的时刻将规则灌入上下文**，属于上下文带宽优化。其代价在于需维护"规则→文件类型"的映射（Cursor 称 `globs`，Claude 称 `paths`，Codex 不支持条件触发、只能整体嵌入 AGENTS.md），`install.py build` 负责将该映射转换为各平台所识别的格式。
 
@@ -216,13 +216,15 @@ mattpocock `tdd` 的核心机制 seam 值得单独展开。seam 的本质是**�
   如此分工的设计依据是：内置工具的优势在于**零依赖、零配置、始终可用**，适合快速事实查询与富媒体内容提取（YouTube 视频、GitHub 仓库）；anysearch 的优势在于**专业领域的召回质量与多意图并行**——其垂直域能返回结构化数据（如股票代码、CVE 编号、DOI 的精确记录），通用搜索做不到。`global-instructions.md` 规定"anysearch 首选、内置回退"而非二选一，原因正是两者能力正交：垂直域与批量并行用 anysearch，富媒体提取与零配置场景用内置工具，按查询性质分流而非按偏好绑定。
 - `research`：对高信源做调研并沉淀为 markdown。
 - `llm-wiki`：Karpathy 式自编译 Obsidian 知识库，支持摄入原始素材、编译交叉链接概念页、查询问答。手动加载 skill（`/skill:llm-wiki`）。
-- `skill-creator`：创建、优化、评估 skill。
+- `yao-meta-skill`（三方 vendor，yaojingang/yao-meta-skill）：创建、优化、评估、打包与治理 skill（Skill OS：Skill IR、目标编译器、评测、发布门禁）。vendor submodule + symlink 分发，替代原自有 `skill-creator`（2026-09-04 移除）。
 - `project-docs-init`：初始化项目的 AGENTS.md / CLAUDE.md / README.md。
 - `agent-introspection-debugging`：agent 失败时的结构化自调试流程。
 
 ### 2.4 skills 与 rules 分离的原因
 
-存在一个常见困惑：`python-development`（skill）与 `rules/python/`（rule）均在处理 Python，为何不合并。原因在于**触发模型不同**：rules 为约束（永远生效或按文件类型生效，agent 必须遵守），skills 为脚本（按场景触发，提供做事步骤）。约束不宜写入 skill（可能根本不触发），步骤不宜写入 rule（会无差别占用上下文）。两者职责正交，合并将模糊边界。此即 `rules/common/common-testing.md` 中以"Skill Support"引用 TDD 而非将 TDD 步骤内联的原因。
+存在一个常见困惑：`python-development`（skill）与语言规则均在处理 Python，为何不合并。原因在于**触发模型不同**：rules 为约束（永远生效或按文件类型生效，agent 必须遵守），skills 为脚本（按场景触发，提供做事步骤）。约束不宜写入 skill（可能根本不触发），步骤不宜写入 rule（会无差别占用上下文）。两者职责正交，合并将模糊边界。此即 `rules/common/common-testing.md` 中以"Skill Support"引用 TDD 而非将 TDD 步骤内联的原因。
+
+**2026-09-04 更新**：语言约束已从 `rules/{java,python}/` 迁入对应 skill 的 `references/`，上文"约束不宜写入 skill"的顾虑由触发面反转解决——`globs`/`paths` 条件触发只有 Cursor 与 Claude 项目级支持，Codex 无 frontmatter、pi 无对应机制，两个平台上语言规则**根本不加载**；skill description 触发四个平台一致生效。约束与脚本的职责区分保留：约束按主题拆为 `references/security.md`、`references/patterns.md` 等独立文件，由 SKILL.md 的分支表按需加载，而非内联进做事步骤。
 
 ### 2.5 项目文档管理与不使用记忆系统的原因
 
@@ -479,7 +481,7 @@ flowchart LR
 2. to-spec (skill)                 沉淀为 spec
 3. to-tickets (skill)              拆分为 tracer-bullet 票
 4. implement (skill)               按票实现 (内含 tdd / code-review / commit)
-   └─ 语言 rules 按文件类型生效 (rules/python, rules/java...)
+   └─ 语言约束随 skill 加载 (skills/{python,java}-development/references/)
    └─ 语言 skills 提供模式 (python-development, java-development, react-development)
    └─ 内含 /tdd: 红绿重构, 80% 覆盖底线
    └─ 写完即简化 → code-simplifier (agent) 轻量微调最近改动
