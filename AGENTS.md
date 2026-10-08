@@ -13,7 +13,7 @@ For repo maintenance (deploy pipeline, vendor submodule management, build transf
 ```text
 Source (single truth)     →  _dist/ (only platform-specific)  →  Plugin loads / Script deploys
 rules/common/*.md              _dist/cursor/rules/**/*.mdc       .cursor-plugin (skills→./skills/, agents→./agents/)
-rules/common/                  _dist/claude/rules/**/*.md        .claude-plugin (skills省略扫根, agents→./agents/*.md, mcp)
+rules/common/                  _dist/claude/rules/**/*.md        .claude-plugin (skills/agents 均省略→Claude 自动扫根, mcp)
 mcp.json (_platforms tag)      _dist/codex/AGENTS.md             .codex-plugin (skills→./skills/, mcp)
 global-instructions.md         _dist/codex/mcp.json
 skills/      ──────────────────┐  (all 4 platforms scan repo-root skills/ directly;
@@ -33,7 +33,7 @@ pi/skills/ + pi/agents/ ─────── pi only (install_pi symlinks into 
 - **Skills**: self-owned skills symlinked into `~/.agents/skills/` — pi scans that standard directory natively; same mechanism as the mattpocock/anysearch manual installs (which therefore need no extra work). Not registered via `settings.json`. Note: Codex also scans `~/.agents/skills/`, so it sees these links in addition to its plugin copy
 - **pi-only skills**: `pi/skills/*` symlinked into `~/.pi/agent/skills/` — pi scans that dir recursively and no other harness scans it (unlike `~/.agents/skills/`, which Codex also reads), so these skills load exclusively on pi. Currently: none (`herdr-orchestration` moved to root `skills/` — it went multi-platform: orchestrator AND workers can run on pi, Claude Code, or Codex, mixed pools allowed)
 - **Agents**: `agents/*.md` symlinked into `~/.pi/agent/agents/` — pi-subagents' `discoverAgents()` scans that user dir (alongside its builtins scout/reviewer/worker/...) and loads `*.md` with YAML frontmatter. Repo agent frontmatter only sets `name` + `description`; `model` and `tools` are intentionally omitted so pi-subagents inherits the parent session's model and grants the default tool set. Verify with `/subagents-doctor` + `subagent({ action: "list" })` after install.
-- **pi-only agents**: `pi/agents/*.md` symlinked into the same `~/.pi/agent/agents/` dir — the Claude manifest sync (`_sync_claude_manifest_agents`) enumerates only `agents/`, so these load exclusively on pi. Currently: `Explore.md`
+- **pi-only agents**: `pi/agents/*.md` symlinked into the same `~/.pi/agent/agents/` dir — they sit outside the plugin-root `agents/` that Claude auto-scans and outside the `./agents/` path Cursor's manifest declares, so these load exclusively on pi. Currently: `Explore.md`
 - **NOT deployed**: MCP (pi covers playwright etc. via its own extensions — no `mcp.json` sync), separate rules files (embedded in AGENTS.md; language rules via skills on demand)
 
 ## Update Mechanism
@@ -48,6 +48,7 @@ pi/skills/ + pi/agents/ ─────── pi only (install_pi symlinks into 
 Headline caveats (full details in `CONTRIBUTING.md`):
 
 - **Claude Code version-gating**: same `plugin.json` version → cached snapshot; reinstall forces fresh snapshot. Bump optional, diagnostic only.
+- **Claude manifest declares no `agents`**: Claude auto-scans the plugin-root `agents/`; an `agents` key loads zero agents and `claude plugin validate` still passes (probe-verified on 2.1.285). Check reality with `claude plugin details earthchen-ai-assets@earthchen-ai-assets`.
 - **Cursor local plugin is a real directory** (not symlink); Cursor's scanner skips symlinks in `~/.cursor/plugins/local/`.
 - **Cursor marketplace has a stale-cache problem**; local real-dir wins over remote marketplace.
 - **Cursor "Include third-party Plugins, Skills, and other configs": keep OFF** — recursive scan loads each skill ~11×.

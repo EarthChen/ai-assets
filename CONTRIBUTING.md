@@ -20,20 +20,22 @@ The repo has two layers:
 
 `install.py build` regenerates `_dist/` from source. Skills and agents are **not** copied into `_dist/` — all three platforms scan the repo root `skills/`/`agents/` directly. `_dist/` holds only what genuinely differs per platform:
 
-- `mcp.json` (`_platforms` filter)
+- `mcp.json` (`_platforms` filter) — written even when the filter yields zero servers: repo-root `.mcp.json` symlinks to `_dist/claude/mcp.json` and `.codex-plugin/plugin.json` declares `mcpServers: "./.mcp.json"`, so skipping the write dangles both (that was the state until 2026-10-08). Claude accepts an empty `{"mcpServers": {}}` plugin file.
 - `rules/` (`.mdc` vs `.md` + frontmatter transform)
 - `global-instructions.md` deploy (becomes `CLAUDE.md` / `AGENTS.md`)
 
 Why commit `_dist/`? Fresh clones work without running the install script. Cursor and Codex don't need a build step; Claude Code users run `install.py install` to refresh from the committed `_dist/claude/`.
 
-### Plugin Manifest Sync (`_dist/claude/plugin.json`)
+### Claude Plugin Manifest (`.claude-plugin/plugin.json`) — No `agents`, No `skills`
 
-`install.py build` calls `_sync_claude_manifest_agents()` to keep two manifest fields synced with the repo root:
+Claude Code auto-scans the plugin-root `agents/` and `skills/` dirs. Declaring either key does not add to that scan — for `agents` it replaces it with a resolver that loads nothing:
 
-- **`agents`** accepts only file paths (string|array), NOT a directory. A directory value fails `claude plugin validate` with `agents: Invalid input` and the whole plugin fails to load. Build enumerates `agents/*.md` into the `./agents/<name>` array; the synced array is committed alongside the build output so Claude's snapshot always lists the current agents.
+- **`agents` must stay absent.** Probe-verified 2026-10-08 on Claude Code 2.1.285: two plugins sharing an identical `agents/probe-agent.md`, the one declaring `"agents": ["./agents/probe-agent.md"]` reported `Agents (0)` in `claude plugin details`, the one without the key reported `Agents (1)`. `claude plugin validate` passes either way, so the failure is silent — this repo shipped 12 declared agents that Claude never loaded. A directory value (`"./agents/"`, which is what `.cursor-plugin/plugin.json` uses) is worse: it fails validation with `agents: Invalid input`. Anthropic's own plugins (`feature-dev`, `plugin-dev`, `pr-review-toolkit`, `code-modernization`, `agent-sdk-dev`, `hookify`, `code-simplifier`, `claude-security`) all ship an `agents/` dir with no `agents` key.
 - **`skills`** is deliberately omitted. Per schema it *adds to* the default `skills/` scan, so setting it would duplicate. Claude scans the plugin-root `skills/` directly, which holds only the self-owned skills (mattpocock/anysearch are manual-installed elsewhere).
 
-After adding/removing an agent, run `uv run install.py build` and commit the regenerated `plugin.json`.
+`install.py build` runs `_ensure_claude_manifest_autoscan()`, which strips an `agents` key if one is ever committed again.
+
+After adding or removing an agent, commit `agents/<name>.md` and nothing else — there is no manifest to sync. Verify what Claude actually loaded with `claude plugin details earthchen-ai-assets@earthchen-ai-assets`: the component inventory must list every agent.
 
 ## Build Transforms (rules frontmatter → per-platform)
 
@@ -77,6 +79,8 @@ The marketplace is registered as a **local directory** (`marketplace_source: "lo
 But the version check is unchanged: Claude compares `plugin.json`'s `version` field against the installed snapshot; same version → it reports "already at latest" and skips the re-snapshot, even when the working tree has changed. Verified: at 1.1.0, content changes without a version bump left the cache at the old snapshot with deleted agents still present. `install.py install`'s reinstall path fixes this (`uninstall`+`install` under the hood, bypasses the version skip).
 
 **Update flow**: edit → `build` (if `_dist/claude/` changed) → `install.py install --platform claude`.
+
+**Snapshot accumulation**: every reinstall writes a fresh `~/.claude/plugins/cache/earthchen-ai-assets/earthchen-ai-assets/<version>/`, and Claude's own sweep is unreliable — a stale `.in_use` lock pinned a 2026-07 snapshot for months. Each snapshot of this repo is ~136M because the local marketplace source is the repo root, so the copy carries `node_modules/` (108M) and `vendor/` (26M) as well. `install_claude` therefore prunes this plugin's non-current snapshots right after the reinstall (`_prune_claude_plugin_cache`); it deletes nothing when the current version's directory is missing, so a failed reinstall cannot wipe the only working copy. Other plugins' caches are left alone.
 
 **Bump policy**: bump `plugin.json` + `marketplace.json` together if at all. Claude reads `plugin.json` version only (marketplace.json's version alone is not enough). Bump is diagnostic only — cache dir + `plugin list` reflect the real content either way.
 
@@ -180,7 +184,7 @@ git submodule update --remote vendor/mattpocock-skills  # update upstream (symli
 
 **Adding a new skill**: drop `skills/<name>/SKILL.md` + optional `references/`. Run `uv run install.py build`. No `_dist/` change unless the skill listing affects a manifest. Commit.
 
-**Adding a new agent**: drop `agents/<name>.md`. Run `uv run install.py build` — `_sync_claude_manifest_agents` updates `.claude-plugin/plugin.json`. Commit both files.
+**Adding a new agent**: drop `agents/<name>.md` and commit it. Claude auto-scans the dir (the manifest must NOT list agents — see Claude Plugin Manifest above); pi gets a symlink on `install.py install --platform pi`; Cursor reads `"agents": "./agents/"` from its own manifest. Verify Claude's count with `claude plugin details earthchen-ai-assets@earthchen-ai-assets`.
 
 **Adding a new rule**: see `README.md` Rules 系统详解 (or AGENTS.md if that's where rules deployment strategy lives).
 
@@ -200,8 +204,10 @@ uv run install.py build --dry-run
 # 3. Check _dist/ contents
 ls _dist/claude/rules/ _dist/cursor/rules/ _dist/codex/
 
-# 4. Validate Claude manifest (catches `agents: Invalid input` errors)
+# 4. Validate the Claude manifest, then check what Claude actually loaded
 uv run python -c "import json; json.load(open('.claude-plugin/plugin.json'))"
+claude plugin validate .
+claude plugin details earthchen-ai-assets@earthchen-ai-assets  # skills/agents/MCP counts
 
 # 5. Check Codex AGENTS.md size budget
 wc -c _dist/codex/AGENTS.md  # must be < 32KB

@@ -500,36 +500,34 @@ def _clean_stale_agent_symlinks(link_dir: Path, source_root: Path, dry_run: bool
         log(f"{link_dir}: stale agent symlinks removed ({count})")
 
 
-def _sync_claude_manifest_agents(dry_run: bool = False) -> None:
-    """Sync .claude-plugin/plugin.json `agents` field with the root agents/ dir.
+def _ensure_claude_manifest_autoscan(dry_run: bool = False) -> None:
+    """Keep the `agents` key out of .claude-plugin/plugin.json.
 
-    Claude Code's manifest schema requires `agents` to be file paths
-    (string|array), NOT a directory — unlike `skills` which accepts a
-    directory. A directory value fails validation with "agents: Invalid input"
-    and the whole plugin fails to load (none of its skills/agents register).
-    Skills/agents are no longer deep-copied into _dist/ (all three platforms
-    scan the repo-root skills/ and agents/ directly now that those dirs hold
-    only committed real files, no vendor symlinks). So enumerate the root
-    agents/*.md into the manifest so the two never drift.
+    Claude Code 2.1.x auto-scans the plugin-root agents/ dir, and a manifest
+    `agents` array silently overrides that scan with a resolver that loads
+    nothing. Verified 2026-10-08 with two probe plugins sharing one agents/
+    dir: the one declaring `"agents": ["./agents/x.md"]` reported Agents (0)
+    in `claude plugin details`, the one without the key reported Agents (1).
+    `claude plugin validate` passes either way, so the failure is silent.
+    Anthropic's own plugins (feature-dev, pr-review-toolkit, plugin-dev, ...)
+    ship an agents/ dir with no `agents` key. Build strips the key if it
+    returns, so the repo cannot drift back into loading zero agents.
     """
     manifest = REPO_ROOT / ".claude-plugin" / "plugin.json"
-    agents_dir = REPO_ROOT / "agents"
-    if not manifest.exists() or not agents_dir.exists():
+    if not manifest.exists():
         return
-    agent_files = sorted(f.name for f in agents_dir.glob("*.md"))
-    agents_value = [f"./agents/{name}" for name in agent_files]
     # pi-lens-ignore: ast-grep:unchecked-throwing-call-python
     data = json.loads(manifest.read_text(encoding="utf-8"))
-    if data.get("agents") == agents_value:
-        return  # already in sync; skip write to avoid touching git mtime
-    data["agents"] = agents_value
+    if "agents" not in data:
+        return
+    del data["agents"]
     if dry_run:
-        log(f"[DRY-RUN] sync {manifest.relative_to(REPO_ROOT)} agents "
-            f"({len(agent_files)} files)")
-    else:
-        manifest.write_text(
-            json.dumps(data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
-        log(f".claude-plugin/plugin.json agents synced ({len(agent_files)} files)")
+        log(f"[DRY-RUN] strip `agents` from {manifest.relative_to(REPO_ROOT)} "
+            f"(Claude auto-scans agents/; the key loads zero agents)")
+        return
+    manifest.write_text(
+        json.dumps(data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    log(".claude-plugin/plugin.json: stripped `agents` (Claude auto-scans agents/)")
 
 
 def build_dist(dry_run: bool = False) -> None:
@@ -564,7 +562,13 @@ def build_dist(dry_run: bool = False) -> None:
         # MCP: filtered per platform (pi excluded — pi gets MCP-equivalent
         # capabilities like playwright via its own extensions, not this repo)
         mcp_servers = {} if platform == "pi" else filter_mcp_for_platform(platform)
-        if mcp_servers:
+        if platform != "pi":
+            # Always write the file, even with zero servers. Repo-root .mcp.json
+            # is a symlink to _dist/claude/mcp.json and .codex-plugin/plugin.json
+            # declares `mcpServers: "./.mcp.json"`, so skipping the write on an
+            # empty filter leaves both dangling (hit 2026-10-08: the only server
+            # is tagged _platforms: cursor, so _dist/claude/mcp.json never
+            # existed). Claude accepts an empty {"mcpServers": {}} plugin file.
             mcp_out = platform_dir / "mcp.json"
             content = json.dumps({"mcpServers": mcp_servers}, indent=2, ensure_ascii=False)
             if dry_run:
@@ -649,12 +653,10 @@ def build_dist(dry_run: bool = False) -> None:
         if has_rules and not dry_run:
             log(f"_dist/{platform}/rules/ generated")
 
-    # Sync .claude-plugin/plugin.json agents array with the built
-    # _dist/claude/agents/ files. Claude's manifest schema rejects a directory
-    # path for `agents` (only file paths, unlike `skills` which accepts a
-    # directory), so this must run after the agents copy above. See
-    # https://code.claude.com/docs/en/plugins-reference "Component path fields".
-    _sync_claude_manifest_agents(dry_run)
+    # Claude auto-scans the plugin-root agents/ dir; a manifest `agents` key
+    # overrides that scan and loads zero agents (probe-verified — see
+    # _ensure_claude_manifest_autoscan).
+    _ensure_claude_manifest_autoscan(dry_run)
 
 
 # ─── Phase 2: Deploy ───────────────────────────────────────────────────────────
@@ -763,6 +765,40 @@ def _ensure_claude_plugin(
             log(f"{plugin_id} update failed: {result.stderr.strip()}")
 
 
+def _prune_claude_plugin_cache(plugin_id: str, keep_version: str, dry_run: bool = False) -> None:
+    """Delete stale version snapshots of one plugin from Claude's cache.
+
+    Claude keeps every installed version under
+    ~/.claude/plugins/cache/<marketplace>/<plugin>/<version>/ and its own sweep
+    does not reliably remove old ones (a leftover .in_use lock pinned a
+    2026-07 snapshot for months). Snapshots of this repo are >100M each
+    because the local marketplace source is the repo root, so the copy carries
+    node_modules/ and vendor/ too. Deletes nothing when the keep-version
+    snapshot is missing — a failed reinstall must not wipe the only copy.
+    """
+    name, _, marketplace = plugin_id.partition("@")
+    cache_root = CLAUDE_HOME / "plugins" / "cache" / (marketplace or name) / name
+    if not cache_root.is_dir():
+        return
+    if not (cache_root / keep_version).is_dir():
+        log(f"cache prune skipped: {cache_root / keep_version} does not exist")
+        return
+    removed = 0
+    for entry in sorted(cache_root.iterdir()):
+        if not entry.is_dir() or entry.name == keep_version:
+            continue
+        if dry_run:
+            log(f"[DRY-RUN] rmtree {entry}")
+            removed += 1
+            continue
+        # pi-lens-ignore: ast-grep:unchecked-throwing-call-python
+        shutil.rmtree(entry)
+        log(f"removed stale Claude plugin cache {name}/{entry.name}")
+        removed += 1
+    if removed and not dry_run:
+        log(f"{name}: kept {keep_version}, removed {removed} stale snapshot(s)")
+
+
 def install_claude(dry_run: bool = False) -> None:
     log_section("Deploying Claude Code")
 
@@ -787,6 +823,15 @@ def install_claude(dry_run: bool = False) -> None:
         for p in plugins:
             _ensure_claude_plugin(
                 installed, p["marketplace_ref"], p["marketplace_source"], p["plugin_id"]
+            )
+
+    # Local-marketplace plugins are reinstalled from the working tree on every
+    # run, so each run leaves another full snapshot behind. Prune our own;
+    # remote plugins' caches stay Claude's business.
+    for p in plugins:
+        if p["marketplace_source"] == "local":
+            _prune_claude_plugin_cache(
+                p["plugin_id"], _get_current_version(), dry_run
             )
 
     # 2. CLAUDE.md (plugin can't handle)
@@ -943,9 +988,10 @@ def install_pi(dry_run: bool = False) -> None:
         create_symlink(agent_file, pi_agents_dir / agent_file.name, dry_run)
         count += 1
     log(f"{count} agents -> {pi_agents_dir}")
-    # 3b. pi-only agents: symlink pi/agents/*.md into the same dir. NOT enumerated
-    # by _sync_claude_manifest_agents (which scans only agents/), so these load
-    # exclusively on pi and never on Claude/Codex/Cursor.
+    # 3b. pi-only agents: symlink pi/agents/*.md into the same dir. They live
+    # outside the plugin-root agents/ dir Claude auto-scans and outside the
+    # ./agents/ path Cursor's manifest declares, so these load exclusively on
+    # pi and never on Claude/Codex/Cursor.
     agents_pi_src = REPO_ROOT / "pi" / "agents"
     count = 0
     for agent_file in sorted(agents_pi_src.glob("*.md")):
@@ -1001,13 +1047,32 @@ MARKETPLACE_JSON = REPO_ROOT / ".claude-plugin" / "marketplace.json"
 
 
 def _get_current_version() -> str:
-    """Read version from the first available plugin.json."""
+    """Highest version across the platform manifests.
+
+    Reading the first available file instead let drift silently re-issue an
+    existing version: with .cursor-plugin at 1.3.0 and .claude-plugin at 1.3.1,
+    `version --bump patch` computed 1.3.0 -> 1.3.1 and wrote 1.3.1 everywhere
+    (hit 2026-10-08). set_version keeps the three aligned, so the max is the
+    base a bump should start from.
+    """
+    def sort_key(ver: str) -> tuple:
+        parts = [int(p) for p in ver.split(".")[:3] if p.isdigit()]
+        while len(parts) < 3:
+            parts.append(0)
+        return tuple(parts)
+
+    versions = []
     for pj in PLUGIN_JSONS:
-        if pj.exists():
-            # pi-lens-ignore: ast-grep:unchecked-throwing-call-python
-            data = json.loads(pj.read_text(encoding="utf-8"))
-            return data.get("version", "0.0.0")
-    return "0.0.0"
+        if not pj.exists():
+            continue
+        # pi-lens-ignore: ast-grep:unchecked-throwing-call-python
+        data = json.loads(pj.read_text(encoding="utf-8"))
+        ver = data.get("version")
+        if ver:
+            versions.append(ver)
+    if not versions:
+        return "0.0.0"
+    return max(versions, key=sort_key)
 
 
 def _bump_version(current: str, part: str) -> str:
