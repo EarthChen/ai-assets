@@ -32,7 +32,7 @@
           "note": "Native plugin is the sole source of mattpocock skills on Claude; this repo's build excludes them from its Claude distribution. NOT installed by `install.py manual` on Claude."
         },
         "codex": {
-          "note": "Installed by `install.py manual mattpocock-skills` — generates 22 symlinks into ~/.agents/skills/ (Codex standard user path) from the upstream plugin.json skill list. Codex follows symlinks per loader.rs (User scope = Follow)."
+          "note": "Installed by `install.py manual mattpocock-skills` — generates 27 symlinks into ~/.agents/skills/ (Codex standard user path) from the upstream plugin.json skill list. Codex follows symlinks per loader.rs (User scope = Follow). Upstream removed `resolving-merge-conflicts` in v1.3.0; `install.py` does not prune stale links, so delete ~/.agents/skills/resolving-merge-conflicts by hand after that upgrade."
         },
         "cursor": {
           "note": "Same as codex: `install.py manual mattpocock-skills` → ~/.agents/skills/. Cursor scans ~/.agents/skills/ by default and follows symlinks correctly."
@@ -141,7 +141,7 @@
     },
     {
       "name": "show-me",
-      "description": "HumanLayer's visual-explanation skill (humanlayer/skills plugin monorepo, plugins/show-me). Explains the current topic visually with the smallest fitting view: pseudocode, call trees, component/file trees, Mermaid, diff sketches, or a focused HTML artifact. Single skill (plugins/show-me/skills/show-me/SKILL.md). Upstream carries no release tags — pinned to a main commit (upstream plugin.json version 1.0.1); upgrade via git submodule update --remote vendor/humanlayer-skills + re-pin. Submodule stays out of build/_dist.",
+      "description": "HumanLayer's visual-explanation skill (humanlayer/skills plugin monorepo, plugins/show-me). Explains the current topic visually with the smallest fitting view: pseudocode, call trees, component/file trees, Mermaid, diff sketches, or a focused HTML artifact. Single skill (plugins/show-me/skills/show-me/SKILL.md). Upstream sets `disable-model-invocation: true`, so it runs only when the user invokes it. Upstream carries no release tags — pinned to a main commit (upstream plugin.json version 1.0.1); upgrade via git submodule update --remote vendor/humanlayer-skills + re-pin. Submodule stays out of build/_dist.",
       "install": {
         "source": "vendor/humanlayer-skills",
         "generate": {
@@ -152,7 +152,7 @@
       },
       "platforms": {
         "claude": {
-          "note": "Installed by `install.py manual show-me` — symlinks plugins/show-me/skills/show-me into ~/.claude/skills/ (Claude scans this user-level dir; it does NOT read ~/.agents/skills/). Upstream is a 5-plugin monorepo; only show-me is linked."
+          "note": "Installed by `install.py manual show-me` — symlinks plugins/show-me/skills/show-me into ~/.claude/skills/ (Claude scans this user-level dir; it does NOT read ~/.agents/skills/). Upstream is a 6-plugin monorepo; show-me and visual-pr are linked (visual-pr has its own entry below)."
         },
         "codex": {
           "note": "Installed by `install.py manual show-me` — symlinks into ~/.agents/skills/ (Codex standard user path; follows symlinks per loader.rs User scope = Follow)."
@@ -162,6 +162,32 @@
         },
         "pi": {
           "note": "pi scans ~/.agents/skills/ natively; no extra deploy step beyond `install.py manual show-me`."
+        }
+      }
+    },
+    {
+      "name": "visual-pr",
+      "description": "HumanLayer's PR-description skill (humanlayer/skills plugin monorepo, plugins/visual-pr). Writes or updates the pull request for the current task with a concise visual outline for reviewers (SKILL.md + 3 references: pr_description_template, describe_pr_final_answer, show-me). Single skill (plugins/visual-pr/skills/visual-pr/SKILL.md); upstream SKILL.md restricts it to explicit user invocation. Same submodule as show-me (vendor/humanlayer-skills, upstream plugin.json version 1.0.0, no release tags — pinned to a main commit). Submodule stays out of build/_dist.",
+      "install": {
+        "source": "vendor/humanlayer-skills",
+        "generate": {
+          "scan_dir": "plugins/visual-pr/skills",
+          "link_dir": "~/.agents/skills",
+          "extra_links": ["~/.claude/skills"]
+        }
+      },
+      "platforms": {
+        "claude": {
+          "note": "Installed by `install.py manual visual-pr` — symlinks plugins/visual-pr/skills/visual-pr into ~/.claude/skills/ (Claude scans this user-level dir; it does NOT read ~/.agents/skills/)."
+        },
+        "codex": {
+          "note": "Installed by `install.py manual visual-pr` — symlinks into ~/.agents/skills/ (Codex standard user path; follows symlinks per loader.rs User scope = Follow)."
+        },
+        "cursor": {
+          "note": "Same as codex: `install.py manual visual-pr` → ~/.agents/skills/. Cursor scans ~/.agents/skills/ by default and follows symlinks correctly."
+        },
+        "pi": {
+          "note": "pi scans ~/.agents/skills/ natively; no extra deploy step beyond `install.py manual visual-pr`."
         }
       }
     },

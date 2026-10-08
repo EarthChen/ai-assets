@@ -30,12 +30,12 @@ ai-assets/
 ├── docs/                      # 团队分享文档（能力、设计依据与工作流）
 ├── site/                      # VitePress 文档站源码（GitHub Pages，CI 部署）
 ├── vendor/                    # 第三方 git submodules
-│   ├── mattpocock-skills/     # mattpocock/skills 工程技能库 (25 skills)
+│   ├── mattpocock-skills/     # mattpocock/skills 工程技能库 (27 skills)
 │   ├── anysearch-skill/       # anysearch CLI 搜索技能
 │   ├── understand-anything/   # 代码库知识图谱理解 (11 skills)
 │   ├── herdr-skill/           # Herdr 终端复用器控制技能 (sparse submodule)
 │   ├── playwright-cli/        # microsoft/playwright-cli 浏览器自动化技能
-│   ├── humanlayer-skills/     # humanlayer/skills monorepo (仅链接 show-me)
+│   ├── humanlayer-skills/     # humanlayer/skills monorepo (链接 show-me + visual-pr)
 │   └── yao-meta-skill/        # skill 工程元技能 (替代原 skill-creator)
 ├── mcp.json                   # 统一 MCP 配置 (_platforms 过滤)
 ├── _dist/                     # 自动生成的平台产物 (已提交；skills/agents 不复制进此)
@@ -64,7 +64,7 @@ uv run install.py --platform cursor
 uv run install.py --dry-run
 ```
 
-`install.py install` 会自动完成三方 skills 的 symlink 安装（mattpocock / anysearch / understand-anything / herdr / playwright-cli / show-me / yao-meta-skill），无需单独运行 `manual`。
+`install.py install` 会自动完成三方 skills 的 symlink 安装（mattpocock / anysearch / understand-anything / herdr / playwright-cli / show-me / visual-pr / yao-meta-skill），无需单独运行 `manual`。
 
 ### 子命令
 
@@ -121,7 +121,7 @@ uv run install.py version --bump patch # 递增版本号 (major/minor/patch)
 
 ### mattpocock/skills（混合管理）
 
-来自 [mattpocock/skills](https://github.com/mattpocock/skills) 的 25 个工程技能，对齐上游 [plugin.json](https://github.com/mattpocock/skills/blob/main/.claude-plugin/plugin.json) 的 skills 清单。采用**混合模式**分发，因 mattpocock 仓库只发布了 Claude 原生插件（无 Codex/Cursor 插件）：
+来自 [mattpocock/skills](https://github.com/mattpocock/skills) 的 27 个工程技能，对齐上游 [plugin.json](https://github.com/mattpocock/skills/blob/main/.claude-plugin/plugin.json) 的 skills 清单。采用**混合模式**分发，因 mattpocock 仓库只发布了 Claude 原生插件（无 Codex/Cursor 插件）：
 
 | 平台 | 分发方式 | 说明 |
 | ------ | --------- | ------ |
@@ -152,7 +152,7 @@ git submodule update --remote vendor/mattpocock-skills
 /code-review      →  双轴并行 review（Standards + Spec）
 ```
 
-#### 技能清单（25 个，对齐上游 plugin.json）
+#### 技能清单（27 个，对齐上游 plugin.json）
 
 | 分类 | 技能 | 说明 |
 | ------ | ------ | ------ |
@@ -163,7 +163,11 @@ git submodule update --remote vendor/mattpocock-skills
 | | `setup-matt-pocock-skills` | 项目一次性配置（issue tracker、domain docs） |
 | | `triage` | issue 分类与优先级判断 |
 | | `wayfinder` | 在复杂代码库中定位实现路径 |
-| | `resolving-merge-conflicts` | 合并冲突解决 |
+| | `implement-spec` | 落地 `/to-spec` + `/to-tickets` 的产出 |
+| | `pr` | 撰写 PR 描述 |
+| | `retro` | 编码 session 复盘 |
+
+> 上游 v1.3.0 已删除 `resolving-merge-conflicts`（无替代技能）。本仓库 `skills/ship-to-test/` 内联了冲突处理步骤；升级后需手动删除 `~/.agents/skills/resolving-merge-conflicts` 这条悬空 symlink。
 | **核心能力** | `tdd` | Red-green-refactor + seam 测试 |
 | | `diagnosing-bugs` | 6 阶段诊断法（含 feedback loop 构建） |
 | | `code-review` | 双轴并行 subagent review |
@@ -305,7 +309,8 @@ MCP 配置中使用 `_platforms` 字段：
 | understand-anything | vendor submodule（11 skills） | symlink 进 `~/.agents/skills/` + `~/.claude/skills/` |
 | herdr | vendor submodule（sparse，单技能） | symlink 进 `~/.agents/skills/` + `~/.claude/skills/` |
 | playwright-cli | vendor submodule（单技能） | symlink 进 `~/.agents/skills/` + `~/.claude/skills/` |
-| show-me | vendor submodule（humanlayer monorepo，仅链接 show-me） | symlink 进 `~/.agents/skills/` + `~/.claude/skills/` |
+| show-me | vendor submodule（humanlayer monorepo，仅用户显式调用） | symlink 进 `~/.agents/skills/` + `~/.claude/skills/` |
+| visual-pr | vendor submodule（humanlayer monorepo，PR 可视化描述） | symlink 进 `~/.agents/skills/` + `~/.claude/skills/` |
 | yao-meta-skill | vendor submodule（单技能，仓库根即 skill） | symlink 进 `~/.claude/skills/` + `~/.agents/skills/` |
 | context-mode | 仅溯源登记 | 不经本仓库分发；各平台原生插件/npm 安装（Claude 由 install.py 自动装） |
 
