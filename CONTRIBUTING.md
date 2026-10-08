@@ -125,7 +125,7 @@ Eight third-party skill sets are **NOT plugin-distributed** — they install as 
 
 `install.py manual <name>` remains as a single-skill reinstall entry point. All four platforms (Claude, Codex, Cursor, pi) follow these symlinks correctly; no per-platform workaround needed. Adding a third-party skill = adding a `third-party.json` entry with an `install` object (choose `links` for single-skill repos, `generate.from+field` if upstream declares a skill list, `generate.scan_dir` if it doesn't) — no `install.py` code change. See `third-party.schema.json` for the `install`/`installConfig`/`generateConfig` schema.
 
-**Stale-link caveat**: `install_manual_skills` only creates links — it never prunes. When upstream deletes or renames a skill, the old link survives as a dangling symlink, so after any vendor upgrade check `find ~/.agents/skills ~/.claude/skills -maxdepth 1 -type l ! -exec test -e {} \; -print` and delete what it lists. Hit in practice: mattpocock dropped `resolving-merge-conflicts` in v1.3.0.
+**Stale-link caveat**: `install_manual_skills` only creates links — it never prunes. When upstream deletes or renames a skill, the old link survives as a dangling symlink, so after any vendor upgrade check `find ~/.agents/skills ~/.claude/skills -maxdepth 1 -type l ! -exec test -e {} \; -print` and delete what it lists. Hit in practice: a 2026-09 upstream skill deletion left one behind.
 
 **context-mode** also has a `third-party.json` entry but is a **provenance record only** — installed per-platform via each platform's native plugin/npm path (Claude: `install.py` auto-runs `claude plugin marketplace add mksglu/context-mode` + `plugin install context-mode@context-mode --scope user`). The entry formalizes the ctx-* tools this repo's docs reference.
 
@@ -168,7 +168,7 @@ Trade-off vs old build-deep-copy: submodule updates now flow to Codex/Cursor imm
 
 **27 skills** (full list with descriptions: `vendor/mattpocock-skills/.claude-plugin/plugin.json`). User-invoked workflow chain: `grill-with-docs` → `to-spec` → `to-tickets` → `implement` / `implement-spec` → `pr` → `code-review` → `retro`. Model-invoked: `tdd`, `diagnosing-bugs`, `research`, `domain-modeling`, `codebase-design`, `prototype`, `grilling`. Productivity: `handoff`, `teach`, `writing-for-agents`, `grill-me`, `to-questionnaire`, `wait-what`. Support: `wizard`. Routers: `ask-matt`, `wayfinder`, `triage`, `improve-codebase-architecture`, `setup-matt-pocock-skills`.
 
-v1.3.0 deleted `resolving-merge-conflicts` (upstream archived it with no replacement), so `skills/ship-to-test/SKILL.md` now inlines its conflict-resolution mechanics instead of delegating to it.
+Upstream v1.3.0 deleted its merge-conflict skill with no replacement (it keeps an archived doc page only), so `skills/ship-to-test/SKILL.md` inlines the conflict-resolution mechanics instead of delegating them to a skill.
 
 ```bash
 uv run install.py manual mattpocock-skills              # install all 27

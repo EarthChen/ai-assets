@@ -32,7 +32,7 @@
           "note": "Native plugin is the sole source of mattpocock skills on Claude; this repo's build excludes them from its Claude distribution. NOT installed by `install.py manual` on Claude."
         },
         "codex": {
-          "note": "Installed by `install.py manual mattpocock-skills` — generates 27 symlinks into ~/.agents/skills/ (Codex standard user path) from the upstream plugin.json skill list. Codex follows symlinks per loader.rs (User scope = Follow). Upstream removed `resolving-merge-conflicts` in v1.3.0; `install.py` does not prune stale links, so delete ~/.agents/skills/resolving-merge-conflicts by hand after that upgrade."
+          "note": "Installed by `install.py manual mattpocock-skills` — generates 27 symlinks into ~/.agents/skills/ (Codex standard user path) from the upstream plugin.json skill list. Codex follows symlinks per loader.rs (User scope = Follow). `install.py` does not prune stale links, so an upstream skill deletion leaves a dangling symlink to delete by hand."
         },
         "cursor": {
           "note": "Same as codex: `install.py manual mattpocock-skills` → ~/.agents/skills/. Cursor scans ~/.agents/skills/ by default and follows symlinks correctly."

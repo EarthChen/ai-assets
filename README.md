@@ -166,8 +166,6 @@ git submodule update --remote vendor/mattpocock-skills
 | | `implement-spec` | 落地 `/to-spec` + `/to-tickets` 的产出 |
 | | `pr` | 撰写 PR 描述 |
 | | `retro` | 编码 session 复盘 |
-
-> 上游 v1.3.0 已删除 `resolving-merge-conflicts`（无替代技能）。本仓库 `skills/ship-to-test/` 内联了冲突处理步骤；升级后需手动删除 `~/.agents/skills/resolving-merge-conflicts` 这条悬空 symlink。
 | **核心能力** | `tdd` | Red-green-refactor + seam 测试 |
 | | `diagnosing-bugs` | 6 阶段诊断法（含 feedback loop 构建） |
 | | `code-review` | 双轴并行 subagent review |
