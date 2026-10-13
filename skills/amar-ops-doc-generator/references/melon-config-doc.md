@@ -11,12 +11,12 @@
 
 ## 扫描步骤（逐仓库 `git diff <基线>...HEAD`）
 
-1. 找 `+ @MoaProvider(uri = "...")`——新增或修改的 MOA 服务 URI。
+1. 新增 provider：diff 中 `+` 的 `@MoaProvider` 行与 `service_uri` / `SERVICE_URI` 常量（**两种大小写都要匹配**）。过滤 diff 文件头的写法：`git diff <基线>...HEAD | grep '^+' | grep -v '^+++'`——勿用 `'^\+[^+].*@Xxx'`（`[^+]` 吞掉 `+@MoaProvider` 的 `@` 后模式又要求再匹配一个 `@`，新增注解行全部漏报，已实测踩坑）。
 2. 找对应接口方法：MOA 方法是 io/api 模块 interface 中的**普通 public 方法，无方法级注解**——从 `@MoaProvider` 实现类的 `implements` 接口定位方法清单；URI 常量在 interface（`String service_uri = "/service/..."`）或 `@MoaProvider(uri = ...)` 中。
 3. 接口位置判定规则：
    - `**/interfaces/external/**`、`**/facade/external/**` → external 包 + `@MoaProvider`，需要 Melon 路由。
    - `**/internal/**` 下 Later 工单回调 → 走 HTTP 而非 MOA，按 HTTP 回调路由单列。
-4. 修改类变更：URI 未变但方法清单增删 → 归"修改"，写明新增/删除的方法名。
+4. 修改类变更：既有 URI 的 io/api **interface 文件（diff M 状态）里 `+` 的方法签名** = 方法清单增删 → 归"修改"，写明新增/删除的方法名；接口注释 `@path /xx/yy` 即该方法的网关路径，新方法 = 新路径要补配。只扫 `@MoaProvider` 增删会漏掉这类（已实测踩坑）。
 5. `spring.application.name` 从各服务 `application.yml` 取，用于拼后门/服务标识时交叉核对。
 
 ## 文档结构模板（checklist 节样式，团队惯称“melon 配置”）
@@ -37,6 +37,7 @@
 - **Melon 路由必须在服务部署前配置完毕，否则客户端调用 404**——文档首条风险，checkbox 未勾时禁止发版结论。
 - 线下与线上是两个独立配置动作，须分别给出链接与 checkbox。
 - 回调类（云审 callbackUrl、Later 工单）与 Melon 路由是两回事，不要混写；回调地址配置归动态配置清单。
+- `internal/` 包 ≠ 免路由：调用方是外部系统（如审核方回调）时仍需网关暴露，internal 只指包组织位置。
 
 ## 验收
 
