@@ -5,9 +5,7 @@
 ## 概念
 
 - Melon = 网关路由配置平台（`melon.wemomo.com`），为对外暴露的 MOA/HTTP 接口配置路由。
-- 平台入口（按环境区分）：
-  - 线下：`https://melon.wemomo.com/gateway/outRoute?corp=alpha&env=stage&tenant=ddoversea`
-  - 线上：`https://melon.wemomo.com/gateway/outRoute?corp=overseas&env=overseas&tenant=ddoversea`
+- 平台入口（线下/线上两环境，链接见下方模板，全文仅一份）。
 
 ## 扫描步骤（逐仓库 `git diff <基线>...HEAD`）
 
@@ -24,10 +22,13 @@
 ```markdown
 ### 2.2 melon 配置
 
-- [ ] /service/<uri>
+平台入口（两环境独立配置，链接全文仅此一份）：
+
+- [ ] 线下：https://melon.wemomo.com/gateway/outRoute?corp=alpha&env=stage&tenant=ddoversea
+- [ ] 线上：https://melon.wemomo.com/gateway/outRoute?corp=overseas&env=overseas&tenant=ddoversea
+
+- [ ] /service/<uri>（新增 | 修改：新增方法 <m>）
   - 方法：<新增/全部方法名，逗号分隔>
-  - 变更：新增 | 修改（方法级增删）
-  - [线下](https://melon.wemomo.com/gateway/outRoute?corp=alpha&env=stage&tenant=ddoversea) | [线上](https://melon.wemomo.com/gateway/outRoute?corp=overseas&env=overseas&tenant=ddoversea)
 ```
 
 独立文档时另加：目的、URI 总览表、每个 URI 的方法明细、配置风险、验收（MOA/HTTP 接口可正常访问）。
@@ -35,7 +36,7 @@
 ## 硬性风险
 
 - **Melon 路由必须在服务部署前配置完毕，否则客户端调用 404**——文档首条风险，checkbox 未勾时禁止发版结论。
-- 线下与线上是两个独立配置动作，须分别给出链接与 checkbox。
+- 线下与线上是两个独立配置动作，在文档头部平台入口处分别勾选；**链接只保留这一份**，不为每个接口重复。
 - 回调类（云审 callbackUrl、Later 工单）与 Melon 路由是两回事，不要混写；回调地址配置归动态配置清单。
 - `internal/` 包 ≠ 免路由：调用方是外部系统（如审核方回调）时仍需网关暴露，internal 只指包组织位置。
 
