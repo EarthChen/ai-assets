@@ -14,7 +14,10 @@
 3. 接口位置判定规则：
    - `**/interfaces/external/**`、`**/facade/external/**` → external 包 + `@MoaProvider`，需要 Melon 路由。
    - `**/internal/**` 下 Later 工单回调 → 走 HTTP 而非 MOA，按 HTTP 回调路由单列。
-4. 修改类变更：既有 URI 的 io/api **interface 文件（diff M 状态）里 `+` 的方法签名** = 方法清单增删 → 归"修改"，写明新增/删除的方法名；接口注释 `@path /xx/yy` 即该方法的网关路径，新方法 = 新路径要补配。只扫 `@MoaProvider` 增删会漏掉这类（已实测踩坑）。
+4. 修改类变更（三种形态，只扫 `@MoaProvider` 增删会漏掉全部，已实测踩坑）：
+   - **方法增删**：既有 URI 的 io/api interface 文件（diff M 状态）里 `+`/`-` 的方法签名；接口注释 `@path /xx/yy` 即该方法的网关路径，新方法 = 新路径要补配。
+   - **入参/返回类型变更**：方法参数类型/数量或返回值变更 → 确认路由配置是否需调整。
+   - **DTO 字段变更**：方法签名未变但入参/响应 DTO 字段增删 → 免新路由，列为"客户端知悉"项（JSON 序列化通常向后兼容，标注即可）。
 5. `spring.application.name` 从各服务 `application.yml` 取，用于拼后门/服务标识时交叉核对。
 
 ## 文档结构模板（checklist 节样式，团队惯称“melon 配置”）
@@ -39,6 +42,11 @@
 - 线下与线上是两个独立配置动作，在文档头部平台入口处分别勾选；**链接只保留这一份**，不为每个接口重复。
 - 回调类（云审 callbackUrl、Later 工单）与 Melon 路由是两回事，不要混写；回调地址配置归动态配置清单。
 - `internal/` 包 ≠ 免路由：调用方是外部系统（如审核方回调）时仍需网关暴露，internal 只指包组织位置。
+- **Later/moji 工单回调**（internal 包但走 HTTP，需 Melon）：三个判定特征——类名含 `MojiOrder`；或入参 DTO 位于 `model.req.mojiorder` 包；或入参 DTO 含 `wosId`/`wos_url` 字段。
+
+## 快照与自检
+
+本文快照日期 2026-10-13。Later 回调服务清单、`@path` 网关路径惯例是代码快照；怀疑偏移时按上述判定特征全工程复核。
 
 ## 验收
 
