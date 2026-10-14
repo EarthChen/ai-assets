@@ -8,6 +8,8 @@ and whatever the user put there by hand.
 
 from __future__ import annotations
 
+import sys
+
 from conftest import link, make_agent, make_skill
 
 from installer import cli, deploy_pi
@@ -126,3 +128,25 @@ def test_install_pi_removes_stale_pi_only_agent_links_and_keeps_root_agents(sand
     deploy_pi.install_pi()
 
     assert sorted(p.name for p in pi_agents.iterdir()) == ["Explore.md", "foreign.md", "reviewer.md"]
+
+
+def test_single_platform_install_keeps_legacy_links_while_pi_is_detected(
+        sandbox, empty_path, monkeypatch):
+    # The legacy links are pi's only skill source until install_pi relinks
+    # into ~/.pi/agent/skills; a claude-only run must not strip them.
+    monkeypatch.setattr(sys, "platform", "linux")
+    monkeypatch.setattr(cli, "install_claude", lambda dry_run: None)
+    monkeypatch.setattr(cli, "install_manual_skills", lambda name, dry_run: None)
+    repo = sandbox.repo
+    make_skill(repo / "skills", "alpha")
+    vendor = repo / "vendor" / "mattpocock-skills"
+    vendor.mkdir(parents=True)
+    (vendor / ".placeholder").write_text("", encoding="utf-8")
+    (sandbox.home / ".claude").mkdir()
+    (sandbox.home / ".pi" / "agent").mkdir(parents=True)
+    shared = sandbox.home / ".agents" / "skills"
+    link(shared / "alpha", repo / "skills" / "alpha")
+
+    cli._do_install("claude", dry_run=False)
+
+    assert (shared / "alpha").is_symlink()
