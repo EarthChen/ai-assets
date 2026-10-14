@@ -1,6 +1,6 @@
 ---
 name: agent-orchestration
-description: "Agent & skill routing: architect vs code-architect boundaries, security review, build failures, parallel subagent fan-out. Use for architectural decisions, security-sensitive code, build breaks, or multiple independent explore/review tasks."
+description: "Use for architectural decisions, security-sensitive code, build breaks, or 2+ independent explore/review tasks: routes work to the right agent or skill."
 ---
 
 # Agent Orchestration

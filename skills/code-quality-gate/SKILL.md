@@ -1,6 +1,6 @@
 ---
 name: code-quality-gate
-description: "Pre-completion quality gate: security incident response, code quality checklist, test-type selection, review criteria and severity. Use before marking work done or when a security issue is discovered."
+description: "Use before marking work done or when a security issue is discovered: security incident response, quality checklist, test-type selection, review severity."
 ---
 
 # Quality Gate

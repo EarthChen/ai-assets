@@ -1,6 +1,6 @@
 ---
 name: agent-introspection-debugging
-description: Structured self-debugging workflow for AI agent failures using capture, diagnosis, contained recovery, and introspection reports. Use when the same tool call fails 2+ times, a loop or tool-call limit is hit, or context bloat degrades output.
+description: "Use when the same tool call fails 2+ times, a loop or tool-call limit is hit, or context bloat degrades output: capture, diagnose, contain, report."
 ---
 
 # Agent Introspection Debugging

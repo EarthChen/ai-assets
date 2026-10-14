@@ -1,6 +1,6 @@
 ---
 name: feature-workflow
-description: "Feature development pipeline: plan → TDD → simplify → review → commit (user runs /grill-with-docs → /to-spec → /to-tickets; model runs tdd → code-simplifier → mattpocock code-review). Use when starting a feature or fix."
+description: "Use when starting a feature or fix: plan → TDD → simplify → review → commit pipeline, with the user-run vs model-run split."
 ---
 
 # Development Workflow
