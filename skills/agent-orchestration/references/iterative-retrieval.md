@@ -198,8 +198,3 @@ When retrieving context for this task:
 3. **Track what's missing** - Explicit gap identification drives refinement
 4. **Stop at "good enough"** - 3 high-relevance files beats 10 mediocre ones
 5. **Exclude confidently** - Low-relevance files won't become relevant
-
-## Related
-
-- [The Longform Guide](https://x.com/affaanmustafa/status/2014040193557471352) - Subagent orchestration section
-- Agent definitions bundled with ECC (manual install path: `agents/`)

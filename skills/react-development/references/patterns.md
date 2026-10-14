@@ -1,7 +1,7 @@
 
 # React Patterns
 
-> For hook-specific rules see [react-hooks.md](./react-hooks.md).
+> For hook-specific rules see the Hooks section below.
 
 ## When to Use
 
@@ -180,18 +180,18 @@ Older codebases on React 18 still need `forwardRef`.
 ### Next.js (App Router)
 
 - Server Actions, Route Handlers, Middleware, Parallel/Intercepted Routes, streaming Metadata
-- Treated as a separate framework concern — when adding deep Next-specific patterns, propose a dedicated `rules/nextjs/` track
+- Treated as a separate framework concern — when adding deep Next-specific patterns, propose a dedicated reference file in this skill
 - For now follow Next.js official docs for App Router specifics
 
 ### React Native
 
 - Platform-specific imports (`Platform.OS`, `.ios.tsx` / `.android.tsx`), `StyleSheet`, navigation libraries (React Navigation, Expo Router)
-- Treated as a separate track — `rules/react-native/` is not yet present
+- Treated as a separate track — not yet covered by this skill
 - React core hooks/patterns from this file still apply
 
 ## Hooks
 
-> This file covers **React hooks** (`useState`, `useEffect`, `useMemo`, `useCallback`, custom hooks) — NOT the Claude Code `hooks/` runtime system. Naming matches the per-language convention `rules/<lang>/hooks.md` used across this repo.
+> This file covers **React hooks** (`useState`, `useEffect`, `useMemo`, `useCallback`, custom hooks) — NOT the Claude Code `hooks/` runtime system.
 
 ### Rules of Hooks
 

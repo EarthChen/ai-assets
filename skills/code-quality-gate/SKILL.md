@@ -1,6 +1,6 @@
 ---
 name: code-quality-gate
-description: "Pre-completion quality gate: security incident response, code quality checklist, test-type selection, review criteria and severity. Use before marking work done, before commits/reviews, or when a security issue is discovered."
+description: "Pre-completion quality gate: security incident response, code quality checklist, test-type selection, review criteria and severity. Use before marking work done or when a security issue is discovered."
 ---
 
 # Quality Gate
@@ -12,7 +12,7 @@ The pre-completion gate. Apply all four sections to the current change; section 
 If a security vulnerability or sensitive-data exposure is found in code, dependencies, or configuration — stop all other work:
 
 1. STOP immediately
-2. Use the **security-reviewer** agent
+2. Use the **`code-reviewer`** agent (its security lens); on Claude Code, the built-in `/security-review` command also reviews pending changes
 3. Fix CRITICAL issues before continuing
 4. Rotate any exposed secrets
 5. Review the entire codebase for similar issues
@@ -21,11 +21,8 @@ If a security vulnerability or sensitive-data exposure is found in code, depende
 
 - [ ] Code is readable and well-named
 - [ ] Functions are small (<50 lines)
-- [ ] Files are focused (<800 lines)
 - [ ] No deep nesting (>4 levels)
-- [ ] Proper error handling
 - [ ] No hardcoded values (use constants or config)
-- [ ] No mutation in new code (immutable patterns used)
 
 ## 3. Test types
 
@@ -47,9 +44,9 @@ Troubleshooting failures: diagnose via the `tdd` skill workflow → check test i
 - When architectural changes are made
 - Before merging pull requests
 
-**Security review triggers — STOP and use security-reviewer when touching:** authentication/authorization code, user input handling, database queries, file system operations, external API calls, cryptographic operations, payment or financial code.
+**Security review triggers — STOP and use the `code-reviewer` agent (security lens; on Claude Code also `/security-review`) when touching:** authentication/authorization code, user input handling, database queries, file system operations, external API calls, cryptographic operations, payment or financial code. The security checks themselves live in the security rule.
 
-**Severity:**
+**Severity** (applies to `code-reviewer` agent / code-audit output only; the mattpocock `code-review` skill reports Standards and Spec findings without severity — address every Spec finding, fix or explicitly justify each Standards finding):
 
 | Level | Meaning | Action |
 | ------- | --------- | -------- |
@@ -58,11 +55,11 @@ Troubleshooting failures: diagnose via the `tdd` skill workflow → check test i
 | MEDIUM | Maintainability concern | **INFO** - Consider fixing |
 | LOW | Style or minor suggestion | **NOTE** - Optional |
 
-**Reviewer routing:** `code-review` skill (dual-axis Standards + Spec review), `security-reviewer`, `typescript-reviewer`, `python-reviewer`.
+**Reviewer routing:** the mattpocock `code-review` skill (`mattpocock-skills:code-review` on Claude; dual-axis Standards + Spec review, no severity), the `code-reviewer` agent (deep severity-tiered audit, including the security lens).
 
-**Approval:** Approve = no CRITICAL or HIGH; Warning = only HIGH issues (merge with caution); Block = CRITICAL issues found.
+**Approval** (`code-reviewer` output; the single source for approval rules): Approve = no CRITICAL or HIGH; Warning = only HIGH issues (merge with caution); Block = CRITICAL issues found.
 
-> Quality/security checklists live in the coding-style, security, and testing rules; the `code-review` skill carries the detailed review workflow.
+> Quality/security checklists live in the coding-style, security, and testing rules; the mattpocock `code-review` skill and the `code-reviewer` agent carry the detailed review workflows.
 
 ## Completion criterion
 

@@ -1,12 +1,12 @@
 ---
 name: testing-principles
 disable-model-invocation: true
-description: "Cross-stack testing principles — unit/integration/E2E boundaries, sociable vs solitary unit tests, narrow integration tests, isolation rules, F.I.R.S.T, naming, mocking schools, flaky prevention. Reference material consumed by the language development skills."
+description: "Cross-stack testing principles — unit/integration/E2E boundaries, sociable vs solitary unit tests, narrow integration tests, isolation rules, F.I.R.S.T, naming, mocking schools, flaky prevention. Reference material: the language development skills read this file by relative path (`../testing-principles/SKILL.md`)."
 ---
 
 # Testing Principles
 
-Stack-invariant testing principles. Language skills (`java-development`, `python-development`, `typescript-development`) point here for the reasoning and carry only their own syntax. E2E-specific patterns live in the `e2e-testing` skill.
+Stack-invariant testing principles. Language skills (`java-development`, `python-development`, `typescript-development`, `react-development`) point here for the reasoning and carry only their own syntax. E2E-specific patterns: Read `../e2e-testing/SKILL.md`.
 
 ## The Testing Ladder
 
@@ -16,7 +16,7 @@ Stack-invariant testing principles. Language skills (`java-development`, `python
 | Integration | Key collaborators real (DB via testcontainers); external boundaries mocked | Component interface / in-process app | Some |
 | E2E | All real | Public interface (browser UI, running server's HTTP) | Few |
 
-A fully real system behind its public entry point is E2E; mocked dependencies make a suite an integration test. API-level E2E patterns (three-layer assertions, auth fixtures): `~/.agents/skills/e2e-testing/references/backend-api.md`.
+A fully real system behind its public entry point is E2E; mocked dependencies make a suite an integration test. API-level E2E patterns (three-layer assertions, auth fixtures): Read `../e2e-testing/references/backend-api.md`.
 
 ## Unit Tests: Sociable vs Solitary
 

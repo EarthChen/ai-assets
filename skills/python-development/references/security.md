@@ -1,6 +1,6 @@
 # Python Security
 
-Code-level security constraints for Python services. The verification loop (`~/.agents/skills/testing-principles/SKILL.md` + project CI) runs the scanners; this file carries only what to write and what to forbid.
+Code-level security constraints for Python services. Project CI runs the scanners (commands: `patterns.md` → Python Tooling Integration → Essential Commands: `bandit`, `pip-audit`, `safety scan`); this file carries only what to write and what to forbid.
 
 ## When to Use
 
@@ -63,12 +63,12 @@ session.execute(select(User).where(User.name == name))
 
 ## CI Integration
 
-These run automatically in the verification loop; listed here so the constraints above can be wired up.
+These run in project CI; listed here so the constraints above can be wired up.
 
 ### Static Analysis — bandit
 
 ```bash
-bandit -r src/
+uv run bandit -r src/
 ```
 
 High-severity findings fail CI; medium and low are reviewed.
@@ -76,7 +76,7 @@ High-severity findings fail CI; medium and low are reviewed.
 ### Dependency Scanning — pip-audit
 
 ```bash
-pip-audit
+uv run pip-audit
 ```
 
 Flags dependencies with known CVEs. Run in CI before deploy.

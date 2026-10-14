@@ -1,8 +1,6 @@
 
 # React Security
 
-> This file extends [common-security.md](../common/common-security.md) with React specific content.
-
 ## When to Use
 
 - Reviewing React/TSX code that renders user-controlled input or raw HTML (`dangerouslySetInnerHTML`, markdown)
@@ -166,7 +164,7 @@ When using `renderToString` or `renderToPipeableStream`:
 
 ## Third-Party Components
 
-- Audit `npm audit` before adding any UI library
+- Run `pnpm audit` before adding any UI library
 - Check that the library does not internally use `dangerouslySetInnerHTML` on its input (e.g., rich text editors)
 - Pin versions, review changelogs before major upgrades
 - Be wary of components that accept HTML strings as props
@@ -177,5 +175,4 @@ Production builds should ship without source maps, or with sourcemaps uploaded t
 
 ## Agent Support
 
-- Use `security-reviewer` agent for comprehensive security audits across the codebase
-- Use `typescript-reviewer` agent for React/TypeScript specific patterns and the above rules in active code review
+- Use the `code-reviewer` agent (its security lens) for comprehensive security audits and for React/TypeScript patterns and the above rules in active code review; on Claude Code, the built-in `/security-review` command also reviews pending changes

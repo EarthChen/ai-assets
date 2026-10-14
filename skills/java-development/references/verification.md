@@ -36,8 +36,7 @@ Gradle (if configured):
 ## Phase 3: Tests + Coverage
 
 ```bash
-mvn -T 4 test
-mvn jacoco:report   # verify 80%+ coverage
+mvn -T 4 verify   # tests + JaCoCo report + check (fails below 80% line coverage; snippet in tdd.md)
 # or
 ./gradlew test jacocoTestReport
 ```

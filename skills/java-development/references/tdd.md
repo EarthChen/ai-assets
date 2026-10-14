@@ -1,9 +1,9 @@
 
 # Spring Boot TDD Workflow
 
-TDD guidance for Spring Boot services with 80%+ coverage (unit + integration).
+TDD guidance for Spring Boot services (unit + integration).
 
-Cross-stack testing principles (boundaries, sociable/solitary, narrow integration, isolation rules, F.I.R.S.T): `~/.agents/skills/testing-principles/SKILL.md` — this file carries only Spring-specific application.
+Cross-stack testing principles (boundaries, sociable/solitary, narrow integration, isolation rules, F.I.R.S.T): Read `../../testing-principles/SKILL.md` — this file carries only Spring-specific application.
 
 ## When to Use
 
@@ -13,10 +13,7 @@ Cross-stack testing principles (boundaries, sociable/solitary, narrow integratio
 
 ## Workflow
 
-1) Write tests first (they should fail)
-2) Implement minimal code to pass
-3) Refactor with tests green
-4) Enforce coverage (JaCoCo)
+Red-green-refactor loop: the `tdd` skill. Coverage target: the global 80% testing rule, enforced by the JaCoCo `check` execution below.
 
 ## Unit Tests (JUnit 5 + Mockito)
 
@@ -135,6 +132,25 @@ Maven snippet:
       <id>report</id>
       <phase>verify</phase>
       <goals><goal>report</goal></goals>
+    </execution>
+    <execution>
+      <id>check</id>
+      <phase>verify</phase>
+      <goals><goal>check</goal></goals>
+      <configuration>
+        <rules>
+          <rule>
+            <element>BUNDLE</element>
+            <limits>
+              <limit>
+                <counter>LINE</counter>
+                <value>COVEREDRATIO</value>
+                <minimum>0.80</minimum>
+              </limit>
+            </limits>
+          </rule>
+        </rules>
+      </configuration>
     </execution>
   </executions>
 </plugin>

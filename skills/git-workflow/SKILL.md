@@ -20,12 +20,14 @@ Follow GitHub Flow, generalized to the repo's default branch (may be `main` or `
 ## Commit Message Format
 
 ```
-<type>: <description>
+<type>(<scope>)?: <description>
 
 <optional body>
 ```
 
 Types: feat, fix, refactor, docs, test, chore, perf, ci
+
+Scope is optional (e.g. `feat(skills): ...`). Follow the repository's existing convention when one exists (check `git log`).
 
 Keep commits atomic: one commit addresses one concern.
 
