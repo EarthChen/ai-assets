@@ -2,11 +2,7 @@
 
 Unified AI agent assets across Claude Code, Codex, Cursor, and pi. Single source of truth for skills, agents, rules, MCP.
 
-For repo maintenance (deploy pipeline, vendor submodule management, build transforms, diagnostic walkthroughs), see `CONTRIBUTING.md`. For end-user installation and usage, see `README.md`.
-
-## Language rules migration
-
-`rules/{java,python}/` were merged into `skills/java-development/references/` and `skills/python-development/references/` on 2026-09-04. Language-specific content now loads via skill description trigger, not globs auto-mount. `rules/common/` remains the only language-agnostic rule source.
+Read `CONTRIBUTING.md` before touching the deploy pipeline, build transforms, vendor submodules, per-platform update triggers (`build` vs `install`), the pi deploy, or any plugin-loading failure. End-user installation and usage: `README.md`.
 
 ## Architecture
 
@@ -24,56 +20,17 @@ pi/skills/ + pi/agents/ ─────── pi only (install_pi symlinks into 
                                   invisible to Claude/Codex/Cursor)
 ```
 
-`_dist/` holds only what genuinely differs per platform: `mcp.json` (`_platforms` filter), `rules/` (`.mdc` vs `.md`), and the global-instructions deploy (`CLAUDE.md` / `AGENTS.md`). Skills and agents are never copied per platform. Each platform loads self-owned skills from exactly one place: Claude from its plugin root `skills/`; pi, Cursor and Codex from the `~/.agents/skills/` symlinks (the Cursor plugin copy omits `skills/`, and Codex loads no repo plugin), because Cursor and Codex auto-discover a plugin's `skills/` and do not merge same-name skills.
+Each platform loads self-owned skills from exactly one place: Claude from its plugin root `skills/`; pi, Cursor and Codex from the `~/.agents/skills/` symlinks. Cursor and Codex auto-discover a plugin's `skills/` and do not merge same-name skills, so the Cursor plugin copy omits `skills/` and Codex loads no repo plugin.
 
-`install.py` is a thin entrypoint; the code lives in `installer/` (`build.py`, `deploy_{claude,codex,cursor,pi}.py`, `shared_skills.py`, `third_party.py`, `version.py`, `cli.py`; `paths.py` holds every filesystem location). Tests: `uv run pytest` (includes a golden test that fails when the committed `_dist/` is stale).
+Code lives in `installer/`; `install.py` is a thin entrypoint. `uv run pytest` includes a golden test that fails when the committed `_dist/` is stale: run `uv run install.py build` after changing `rules/`, `global-instructions.md`, or `mcp.json`. `install` writes to `~`; run it only with the user's go-ahead.
 
-## pi support (script-only deploy)
+## Gotchas
 
-[pi](https://github.com/badlogic/pi-mono) has no plugin system compatible with this repo, so `install.py install --platform pi` deploys directly to `~/.pi/agent/`:
-
-- **AGENTS.md**: `_dist/pi/AGENTS.md` (global-instructions + common rules, same embed as Codex; pi loads it from `~/.pi/agent/` at startup — no 32KB limit) → `~/.pi/agent/AGENTS.md`, **full overwrite** (repo is the single source of truth; my-pi-agent's own project docs live in that repo's CLAUDE.md)
-- **Skills**: self-owned skills (`skills/*`) symlinked into `~/.agents/skills/` by the shared install step on every `install` run — the Agent Skills standard dir, read by pi, Cursor and Codex; same dir as the third-party links from `install.py manual` (mattpocock, anysearch, ...). Not registered via `settings.json`. `install_pi` removes self-owned links from `~/.pi/agent/skills/` (left by older installs) so pi loads each skill once; vendor links and real directories stay
-- **pi-only skills**: `pi/skills/*` symlinked into `~/.pi/agent/skills/` — pi reads that dir and no other harness does, and it sits outside the plugin-root `skills/`, so these skills load exclusively on pi. Currently: none (`herdr-orchestration` moved to root `skills/` — it went multi-platform: orchestrator AND workers can run on pi, Claude Code, or Codex, mixed pools allowed)
-- **Agents**: `agents/*.md` symlinked into `~/.pi/agent/agents/` — pi-subagents' `discoverAgents()` scans that user dir (alongside its builtins scout/reviewer/worker/...) and loads `*.md` with YAML frontmatter. Repo agent frontmatter only sets `name` + `description`; `model` and `tools` are intentionally omitted so pi-subagents inherits the parent session's model and grants the default tool set. Verify with `/subagents-doctor` + `subagent({ action: "list" })` after install.
-- **pi-only agents**: `pi/agents/*.md` symlinked into the same `~/.pi/agent/agents/` dir — they sit outside the plugin-root `agents/` that Claude auto-scans and outside the `./agents/` path Cursor's manifest declares, so these load exclusively on pi. Currently: `Explore.md`
-- **NOT deployed**: MCP (pi covers playwright etc. via its own extensions — no `mcp.json` sync), separate rules files (embedded in AGENTS.md; language conventions via `skills/<lang>-development` on demand)
-
-## Update Mechanism
-
-| Platform | Method | Trigger |
-| --- | --- | --- |
-| Cursor | `install.py install` (rsync real-dir without `skills/`, `--delete`); skills via `~/.agents/skills` symlinks | Skills: edits instant, new/renamed ones need `install`. Rules/agents/MCP: `install` (+ `build` first if rules/MCP changed) + restart/reload |
-| Codex | `~/.agents/skills` symlinks (no repo plugin; `install` disables a previously registered one); `~/.codex/AGENTS.md` is a copy | Skills: edits instant, new/renamed ones need `install`. AGENTS.md: `build` + `install` |
-| Claude Code | `install.py install` (local-directory marketplace, reinstall = fresh snapshot) | After repo edits: `install` (+ `build` first if `_dist/` inputs changed); bump optional |
-| pi | `install.py install --platform pi` (AGENTS.md copy + skill/agent symlinks under `~/.pi/agent/`) | AGENTS.md: `build` + `install`; skill/agent edits instant, new/renamed ones need `install` |
-
-Headline caveats (full details in `CONTRIBUTING.md`):
-
-- **Claude Code version-gating**: same `plugin.json` version → cached snapshot; reinstall forces fresh snapshot. Bump optional, diagnostic only.
+- **Single source of truth**: this repo is the ONLY source for custom AI configuration. Put skills here, not in `~/.agents/skills/`; skip overlapping third-party plugins; manage every MCP server in `mcp.json`.
 - **Claude manifest declares no `agents`**: Claude auto-scans the plugin-root `agents/`; an `agents` key loads zero agents and `claude plugin validate` still passes (probe-verified on 2.1.285). Check reality with `claude plugin details earthchen-ai-assets@earthchen-ai-assets`.
-- **Cursor local plugin is a real directory** (not symlink); Cursor's scanner skips symlinks in `~/.cursor/plugins/local/`.
-- **Cursor marketplace has a stale-cache problem**; local real-dir wins over remote marketplace.
-- **Cursor "Include third-party Plugins, Skills, and other configs": keep OFF** — recursive scan loads each skill ~11×.
-
-## Single Source of Truth
-
-This repo is the ONLY source for custom AI configuration. Do NOT place skills in `~/.agents/skills/` manually; do NOT install overlapping third-party plugins; all MCP servers managed in this repo's `mcp.json`.
-
-## Rules Deployment Strategy
-
-| Platform | User-level (always loaded) |
-| --- | --- |
-| Cursor | `rules/common/*.mdc` (alwaysApply: true) |
-| Claude Code | `~/.claude/rules/common/` (no frontmatter needed) |
-| Codex | Embedded in `~/.codex/AGENTS.md` (common only, 32KB limit) |
-
-Language conventions are not rules: every platform loads them on demand from `skills/<lang>-development/`.
-
-### Critical Platform Differences
-
-- **Cursor**: uses `globs` field (NOT `paths`); extension must be `.mdc`
-- **Claude Code user-level**: `paths` frontmatter is ignored (Bug #21858); rules always load unconditionally
-- **Claude Code project-level**: `paths` works correctly for conditional loading
-- **Codex**: no frontmatter support; 32KB limit on AGENTS.md; common rules only
-- **Language rules** (Java, Python): migrated to skills on 2026-09-04 — see `skills/java-development/` and `skills/python-development/`. To add new language rules, create a `<lang>-development` skill rather than a `rules/<lang>/` directory.
+- **Claude Code version-gating**: same `plugin.json` version → cached snapshot; reinstall forces a fresh snapshot. A version bump is optional and diagnostic only.
+- **Cursor local plugin is a real directory**: Cursor's scanner skips symlinks in `~/.cursor/plugins/local/`. Local real-dir wins over the remote marketplace (stale cache).
+- **Cursor "Include third-party Plugins, Skills, and other configs": keep OFF** — the recursive scan loads each skill ~11×.
+- **Rules frontmatter differs per platform**: Cursor uses `globs` (NOT `paths`) and the `.mdc` extension. Claude Code user-level ignores `paths` (Bug #21858), so rules always load; project-level `paths` works. Codex has no frontmatter and a 32KB `AGENTS.md` limit; it embeds common rules only.
+- **Language conventions live in skills**: `rules/{java,python}/` moved into `skills/<lang>-development/references/` on 2026-09-04 and load via skill-description trigger. Add a language by creating a `<lang>-development` skill; `rules/common/` stays the only language-agnostic rule source.
+- **pi deploy is script-only** (`install.py install --platform pi`, details in `CONTRIBUTING.md`): `~/.pi/agent/AGENTS.md` is fully overwritten from `_dist/pi/AGENTS.md`; MCP is not deployed.

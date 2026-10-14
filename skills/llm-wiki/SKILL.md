@@ -54,45 +54,11 @@ Four rules govern everything below. If a future instruction contradicts one, fla
 
 ### 1. Divide and conquer
 
-A single concept page should **never** try to cover a complex topic end-to-end. Target: **400–1200 words per page**. When a topic would blow past that:
-
-- Create a subfolder: `wiki/concepts/<topic>/`
-- Put a short index page at `wiki/concepts/<topic>/index.md` — definition, list of sub-pages, one-line summaries
-- Put each aspect in its own file: `wiki/concepts/<topic>/<aspect>.md`
-- In `wiki/index.md`, show the hierarchy via indented bullets
-
-Example layout (from a real wiki):
-
-```
-wiki/tech/claude-code/
-├── index.md                         (overview + links to sub-pages)
-├── Claude_Code_Architecture.md
-├── Claude_Code_Agent_Framework.md
-├── Claude_Code_Bridge_System.md
-├── Claude_Code_Query_Engine.md
-├── Claude_Code_Skills_Plugins.md
-├── Claude_Code_State_Management.md
-└── Claude_Code_Tool_System.md
-```
-
-One fat file covering all seven aspects would be unreadable and unlinkable. Seven focused files + an index page give you navigation, selective reading, clean backlinks, and small audit targets.
+Keep each concept page at **400–1200 words**. A topic that would exceed that becomes a folder `wiki/concepts/<topic>/`: a short `index.md` (definition, sub-page list) plus one file per aspect, shown as indented bullets in `wiki/index.md`. Split procedure and examples: `references/article-guide.md`.
 
 ### 2. Mermaid for diagrams, KaTeX for formulas
 
-- **Any flow, sequence, hierarchy, or state diagram** must be written in mermaid — never ASCII art. ASCII boxes rot fast and are impossible to annotate.
-
-  ````
-  ```mermaid
-  flowchart LR
-      A[raw/article.md] --> B[summary]
-      B --> C[concept page]
-      C --> D[index.md]
-  ```
-  ````
-
-- **Any formula** must be written in KaTeX: inline `$f(x) = \sum_i w_i x_i$` or block `$$...$$`.
-
-Both render in the web viewer (server-side KaTeX, client-side mermaid) and in Obsidian with default settings.
+Write every flow, sequence, hierarchy, or state diagram in mermaid and every formula in KaTeX (`$...$` inline, `$$...$$` block). Syntax and examples: `references/article-guide.md`.
 
 ### 3. Raw file policy
 
@@ -129,179 +95,17 @@ See `references/audit-guide.md` for the full file format and processing workflow
 
 ## The five operations
 
-Every action on the wiki is one of these five. Each appends an entry to the current day's log file (`log/YYYYMMDD.md`).
+Every action on the wiki is one of these five. Read the matching procedure before acting; each appends an entry to the current day's log file (`log/YYYYMMDD.md`).
 
-Scripts run as `uv run <skill-dir>/scripts/<name>.py`, where `<skill-dir>` is the directory containing this SKILL.md — the wiki root has no `scripts/` directory.
+| Op | Run when | Procedure |
+| --- | --- | --- |
+| `compile` | after a big ingest batch, a page past 1200 words, a stale `index.md`, or "clean up the wiki" | `references/op-compile.md` |
+| `ingest` | the user adds a new source | `references/op-ingest.md` |
+| `query` | the user asks a question to answer from the wiki | `references/op-query.md` |
+| `lint` | periodic health check | `references/op-lint.md` |
+| `audit` | `audit/*.md` feedback files are open | `references/op-audit.md` |
 
-### 1. `compile`
-
-(Re)structure wiki content from existing `raw/` material — including splitting oversized pages, merging near-duplicates, and rebuilding `index.md`.
-
-**When to run**: after a big ingest batch, when an existing page has outgrown 1200 words, when `index.md` no longer reflects reality, or when the user says "clean up the wiki".
-
-**Steps**:
-
-1. Read `CLAUDE.md`, `wiki/index.md`, and every file in the target subtree.
-2. For each page over ~1200 words: plan a split into `concepts/<topic>/` with an index + sub-pages. Confirm the plan with the user before writing.
-3. For each pair of near-duplicate pages: propose a merge. Confirm, then rewrite.
-4. Regenerate `wiki/index.md` so every page is listed exactly once.
-5. Log: `## [HH:MM] compile | <what you did — files touched, splits, merges>`
-
-### 2. `ingest`
-
-Add a new source. **One source typically touches 5–15 wiki pages.**
-
-**Steps**:
-
-1. Save source to the right subfolder:
-   - web article → `raw/articles/<slug>.md`
-   - paper → `raw/papers/<slug>.md` (extracted text for big PDFs)
-   - note → `raw/notes/<slug>.md`
-   - large binary → `raw/refs/<slug>.md` pointer file (see raw file policy)
-2. Read the source in full.
-3. Create `wiki/summaries/<slug>.md` (200–400 words — key takeaways, not a rewrite; see `references/article-guide.md`).
-4. Create or update relevant concept pages in `wiki/concepts/`. Respect divide-and-conquer: if a concept page would exceed 1200 words, split instead of cramming.
-5. Create or update entity pages in `wiki/entities/` for any new people / tools / papers / organizations referenced.
-6. Update `wiki/index.md` so the new pages appear under the right category.
-7. Log: `## [HH:MM] ingest | <slug> — <one-line description> (touched N pages)`
-
-### 3. `query`
-
-Answer a question **grounded in the wiki**, not general knowledge.
-
-**Steps**:
-
-1. Read `wiki/index.md`. Scan for relevant pages by category.
-2. Read the identified pages in full; follow one level of wikilinks.
-3. If the wiki doesn't have enough material, say so and suggest what to ingest next instead of making something up.
-4. Synthesize the answer, citing pages inline with `[[Page Name]]`.
-5. Save to `outputs/queries/<YYYY-MM-DD>-<question-slug>.md`.
-6. If the answer is durable (a comparison, analysis, or new synthesis) → promote a cleaned-up version to `wiki/concepts/`, add to `index.md`.
-7. Log: `## [HH:MM] query | <question-slug>` (and a separate `## [HH:MM] promote | ...` line if promoted).
-
-### 4. `lint`
-
-Health check. Run:
-
-```bash
-uv run <skill-dir>/scripts/lint_wiki.py <wiki-root>
-```
-
-The script reports:
-
-- **Dead wikilinks** — `[[Target]]` where `Target.md` doesn't exist
-- **Orphan pages** — pages with no inbound wikilinks
-- **Missing index entries** — pages not listed in `wiki/index.md`
-- **Frequently-linked missing pages** — `[[X]]` referenced 3+ times but no page
-- **log/ shape** — stray files or wrong filenames in `log/`
-- **audit/ shape** — malformed YAML frontmatter in `audit/*.md`
-- **Audit target resolution** — every open audit's `target` file must exist
-
-For each issue, propose a fix, confirm with the user, then apply. Log: `## [HH:MM] lint | <N> issues found, <M> fixed`.
-
-### 5. `audit`
-
-Process human feedback from `audit/`.
-
-**Steps**:
-
-1. Run `uv run <skill-dir>/scripts/audit_review.py <wiki-root> --open` to get a grouped list.
-2. For each open audit, read the file. Use the `anchor_before` / `anchor_text` / `anchor_after` window to locate the exact range in the target file (line numbers may have drifted).
-3. Decide the action:
-   - **Accept**: apply the correction to the target file.
-   - **Partially accept**: apply what makes sense, note the rest in the resolution.
-   - **Reject**: explain why in the resolution — the feedback may be based on a misreading of scope or a contradictory source.
-   - **Defer**: add to `CLAUDE.md` "Open research questions" and leave the audit in place with a comment.
-4. For applied audits, append a `# Resolution` section to the audit file:
-
-   ```markdown
-   # Resolution
-
-   2026-04-10 · accepted.
-   Fixed the file count (was "~1,900", corrected to "~1,800" per commit abc123).
-   Updated: tech/Claude_Code.md lines 47–48.
-   ```
-
-5. Move the file from `audit/` to `audit/resolved/`. Filename unchanged.
-6. Log per resolved audit:
-
-   ```
-   ## [HH:MM] audit | resolved 20260409-143022-a1b2 — <one-line what>
-   ```
-
-7. Never delete audit files. Rejected ones still go to `resolved/` with the rejection rationale in their resolution section — that's valuable history.
-
-See `references/audit-guide.md` for the full audit file format.
-
----
-
-## Tooling
-
-| Tool | Purpose |
-| ------ | --------- |
-| [Obsidian](https://obsidian.md) | IDE for browsing the wiki; graph view shows connections |
-| **`plugins/obsidian-audit/`** | Obsidian plugin — select text → add feedback → writes to `audit/`. **Not bundled in this skill dir** — lives in the upstream llm-wiki repo; install separately if you want UI-based feedback. |
-| **`web/`** | Local Node.js server — preview the wiki with mermaid/math rendered; select → feedback → `audit/`. **Not bundled** — same as above. |
-| `scripts/scaffold.py` | Bootstrap a new wiki directory tree |
-| `scripts/lint_wiki.py` | Seven-pass health check |
-| `scripts/audit_review.py` | Group open/resolved audits by target file |
-| [qmd](https://github.com/tobi/qmd) | Optional local semantic search (useful at >100 pages) |
-
-The Obsidian plugin and the web viewer both write audit files in the **same format** with **the same anchor algorithm**, so feedback filed from either place can be resolved by either place.
-
-## Starting a new wiki
-
-```bash
-uv run <skill-dir>/scripts/scaffold.py <wiki-root> "<Topic Title>"
-```
-
-Creates the full tree (including `log/<today>.md`, `audit/`, `audit/resolved/`), a blank `CLAUDE.md` based on the new template, and a blank `wiki/index.md` with the recommended category layout.
-
-After scaffolding:
-
-1. Fill in `CLAUDE.md` — define scope, naming conventions, initial research questions.
-2. Start ingesting sources.
-3. Ask questions to build up `outputs/queries/`; promote durable answers.
-4. Run `lint` periodically.
-5. Run `audit` whenever new feedback accumulates.
-
-## `wiki/index.md` format
-
-The LLM rebuilds `index.md` on every compile and touches it on every ingest. Format:
-
-```markdown
-# Index — <Topic>
-
-> One-sentence scope of the wiki.
-
-## 🔖 Navigation
-- [[#Concepts]] · [[#Entities]] · [[#Summaries]] · [[#Open Questions]]
-
-## Concepts
-### <Category A>
-- [[concepts/Foo]] — one-line summary
-- [[concepts/Bar/index|Bar]] — (folder-split) one-line summary
-    - [[concepts/Bar/aspect-1]] — ...
-    - [[concepts/Bar/aspect-2]] — ...
-
-### <Category B>
-- ...
-
-## Entities
-- [[entities/Andrej Karpathy]] — AI researcher, author of the llm-wiki pattern
-
-## Summaries (chronological)
-- 2026-04-09 — [[summaries/llm-wiki-gist]] — Karpathy's original Gist
-
-## Open Questions
-- Q1: ...
-```
-
-Rules:
-
-- Every wiki page must appear exactly once in `index.md`. `lint` enforces this.
-- Folder-split concepts show hierarchy via indented bullets.
-- `index.md` + `CLAUDE.md` together are what the AI reads at session start.
+New wiki: `references/new-wiki.md`. `index.md` layout: `references/index-format.md`. Tools and scripts: `references/tooling-tips.md`: Tools overview.
 
 ## `log/` format
 
@@ -313,4 +117,4 @@ See `references/log-guide.md` — file naming, entry format, allowed ops, and gr
 - `references/article-guide.md` — How to write good wiki articles (length, wikilinks, mermaid, math, divide-and-conquer)
 - `references/log-guide.md` — The `log/` folder convention
 - `references/audit-guide.md` — Audit file format, anchor strategy, processing workflow
-- `references/tooling-tips.md` — Obsidian setup, Web Clipper, qmd, plugin + web installation
+- `references/tooling-tips.md` — Tools overview, Obsidian setup, Web Clipper, qmd, plugin + web installation

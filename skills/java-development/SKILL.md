@@ -1,6 +1,6 @@
 ---
 name: java-development
-description: "Java development conventions (Spring Boot / Quarkus) — coding standards, architecture patterns, TDD, code-level security, pre-release verification, build error troubleshooting. Use when writing or reviewing Java code, or when a Java build fails."
+description: "Use when writing, reviewing, or pre-release verifying Java code (Spring Boot / Quarkus), or when a Java build fails."
 ---
 
 # Java

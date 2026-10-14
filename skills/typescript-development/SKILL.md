@@ -1,6 +1,6 @@
 ---
 name: typescript-development
-description: "TypeScript/Node backend development conventions — testing conventions (vitest/jest, supertest, testcontainers-node), mock boundaries. Use when writing or reviewing TypeScript backend code."
+description: "Use when writing or reviewing TypeScript/Node backend code, especially tests (vitest/jest, supertest, testcontainers-node)."
 ---
 
 # TypeScript Backend

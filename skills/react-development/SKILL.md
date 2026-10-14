@@ -1,6 +1,6 @@
 ---
 name: react-development
-description: React/TSX development conventions — coding style, component architecture patterns, security, RTL testing. Use when writing or reviewing React/TSX components or hooks.
+description: "Use when writing or reviewing React/TSX components or hooks."
 ---
 
 # React

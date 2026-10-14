@@ -1,6 +1,6 @@
 ---
 name: python-development
-description: Python development conventions — idioms, type hints, project structure, pytest testing with TDD, FastAPI services, code-level security, editor hooks. Use when writing or reviewing Python code.
+description: "Use when writing or reviewing Python code (pytest, type hints, FastAPI, project structure), or setting up Python editor hooks."
 ---
 
 # Python

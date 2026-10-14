@@ -53,18 +53,11 @@ A feature push rejected as non-fast-forward means the remote feature branch move
 
 ## Conflict resolution
 
-Resolve conflicts yourself by default; hand to the human only the hunks whose intent you cannot distinguish. Gate every conflicting hunk first:
+Every merge conflict (step 4, Feature-branch catch-up, a manifest conflict): read [references/conflict-resolution.md](references/conflict-resolution.md) before touching a hunk. Resolve deterministic hunks yourself; hand ambiguous hunks to the human.
 
-- **Deterministic** — both sides' intent survives mechanically: pure additions with no semantic overlap (keep both), lockfile conflicts (regenerate with the package manager), one side a strict subset of the other (take the superset). Resolve these directly.
-- **Ambiguous** — the sides are incompatible and a choice is required: present both sides' intent plus your suggested resolution, then wait for the human's decision. Anything not clearly deterministic is ambiguous.
+### Conflict overrides
 
-Mechanics for every hunk you keep:
-
-1. **Read the primary sources** — the commit messages, PRs, and tickets behind each side. Resolve two intents, not two text blocks. Never resolve by flag (`--ours`, `--theirs`) or by deleting the block that looks less important.
-2. **Preserve both intents** where they are compatible. Where they are not, keep the side matching the merge's goal and name the dropped intent in the commit message. Invent no new behaviour.
-3. **Finish the operation** — stage everything, then commit. A multi-commit rebase continues until every commit is replayed.
-
-Two overrides apply inside this workflow:
+Two overrides apply to conflict handling in this workflow:
 
 1. Human rejection ends the project: `git merge --abort`, fail the project. Abort is allowed here; the default is to finish the merge.
 2. Skip local build and test checks — the target branch's pipeline validates. The step 1 secret scan still runs.

@@ -142,3 +142,16 @@ Keep large files (PDFs >10 MB, raw images at full resolution, video, model weigh
 
 For complex analyses, the LLM can generate interactive HTML with JavaScript and save to `outputs/`. These can be opened in a browser or embedded in Obsidian with the HTML plugin.
 
+## Tools overview
+
+| Tool | Purpose |
+| ------ | --------- |
+| [Obsidian](https://obsidian.md) | IDE for browsing the wiki; graph view shows connections |
+| **`plugins/obsidian-audit/`** | Obsidian plugin — select text → add feedback → writes to `audit/`. **Not bundled in this skill dir** — lives in the upstream llm-wiki repo; install separately if you want UI-based feedback. |
+| **`web/`** | Local Node.js server — preview the wiki with mermaid/math rendered; select → feedback → `audit/`. **Not bundled** — same as above. |
+| `scripts/scaffold.py` | Bootstrap a new wiki directory tree |
+| `scripts/lint_wiki.py` | Seven-pass health check |
+| `scripts/audit_review.py` | Group open/resolved audits by target file |
+| [qmd](https://github.com/tobi/qmd) | Optional local semantic search (useful at >100 pages) |
+
+The Obsidian plugin and the web viewer both write audit files in the **same format** with **the same anchor algorithm**, so feedback filed from either place can be resolved by either place.
