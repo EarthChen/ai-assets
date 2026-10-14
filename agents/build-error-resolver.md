@@ -1,6 +1,6 @@
 ---
 name: build-error-resolver
-description: Language-agnostic build error resolution specialist. Use PROACTIVELY when any build fails — TypeScript, Python, Go, Rust, or any project. Detects the build system and language from the project, then fixes build/compile/type errors with minimal diffs. No architectural edits. Focuses on getting the build green quickly.
+description: Language-agnostic build error resolution specialist for non-Java projects. Use PROACTIVELY when any non-Java build fails — TypeScript, Python, Go, Rust, or any other project. Detects the build system and language from the project, then fixes build/compile/type errors with minimal diffs. No architectural edits. Focuses on getting the build green quickly. For Java (Maven/Gradle) builds use java-build-resolver.
 ---
 ## Step 1: Detect the Build System and Language
 
@@ -27,15 +27,15 @@ Match the first file that exists to its build system:
 
 | File(s) found | Language | Build / type-check command |
 | --- | --- | --- |
-| `package.json` + `tsconfig.json` | TypeScript | `npx tsc --noEmit` / `npm run build` |
-| `package.json` (no tsconfig) | JavaScript | `npm run build` |
+| `package.json` + `tsconfig.json` | TypeScript | `pnpm exec tsc --noEmit` / `pnpm run build` |
+| `package.json` (no tsconfig) | JavaScript | `pnpm run build` |
 | `pyproject.toml` / `requirements.txt` | Python | `uv run pytest --collect-only` / `python -m compileall src` |
 | `go.mod` | Go | `go build ./...` |
 | `Cargo.toml` | Rust | `cargo check` |
 | `pom.xml` / `build.gradle` | Java | → dispatch to `java-build-resolver`, stop here |
 | `Makefile` / `justfile` | Any | `make build` / `just build` |
 
-> If the project uses `pnpm` (lockfile `pnpm-lock.yaml`) or `yarn` (`yarn.lock`), substitute those for `npm` throughout.
+> If the project uses `npm` (lockfile `package-lock.json`) or `yarn` (`yarn.lock`), substitute those for `pnpm` throughout.
 
 ## Step 2: Collect All Errors
 
@@ -136,7 +136,7 @@ Stop and report if:
 
 - Code needs refactoring → use `refactor-cleaner`
 - Architecture changes needed → use `architect`
-- New features required → invoke the `grill-with-docs` → `to-spec` → `to-tickets` workflow skills
+- New features required → ask the user to run `/grill-with-docs` → `/to-spec` → `/to-tickets`
 - Tests failing (build is green) → invoke the `tdd` skill
-- Security issues → use `security-reviewer`
+- Security issues → use the `code-reviewer` agent (its security lens); on Claude Code, the built-in `/security-review` command also reviews pending changes
 - Java builds (general, Spring Boot, or Quarkus) → use `java-build-resolver`

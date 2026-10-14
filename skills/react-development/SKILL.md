@@ -20,6 +20,7 @@ React/TSX conventions. Load only the reference matching the current task branch.
 
 - Server Components by default; add `'use client'` only for interactivity.
 - React Testing Library for component tests; prefer `getByRole` queries.
+- Test-first via the `tdd` skill; cross-stack testing principles: Read `../testing-principles/SKILL.md`.
 - Validate all Server Action input; sanitize everything reaching `dangerouslySetInnerHTML`.
 - Function components and hooks; class components only when touching legacy code.
 

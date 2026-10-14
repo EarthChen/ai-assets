@@ -2,7 +2,7 @@
 
 Reference for backend E2E testing: testing a service through its public HTTP interface against a running environment with real dependencies. Consumed by the `e2e-testing` skill (backend branch) and the `e2e-runner` agent.
 
-Boundary: mocked dependencies make the suite an integration test, not E2E. Load/performance testing is a separate discipline. Full testing ladder and cross-stack principles: `~/.agents/skills/testing-principles/SKILL.md`.
+Boundary: mocked dependencies make the suite an integration test, not E2E. Load/performance testing is a separate discipline. Full testing ladder and cross-stack principles: Read `../../testing-principles/SKILL.md`.
 
 ## Tool Selection by Stack
 

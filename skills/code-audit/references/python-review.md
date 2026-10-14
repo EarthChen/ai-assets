@@ -80,7 +80,7 @@ Fix: What to change
 
 ## Reference
 
-For detailed Python patterns, security examples, and code samples, see skill: `python-patterns`.
+For detailed Python patterns, security examples, and code samples, see the `python-development` skill (`../../python-development/SKILL.md`).
 
 ---
 

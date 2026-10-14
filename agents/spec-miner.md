@@ -1,6 +1,6 @@
 ---
 name: spec-miner
-description: Extracts behavioral specs from existing codebases for OpenSpec. Produces flat Requirement and Invariant blocks with structured metadata (entities, enforced, id, test anchors). Outputs openspec/specs/<capability>/spec.md. Fully self-bootstrapping — no dependency on codebase-onboarding. Use when onboarding a brownfield project to spec-driven development.
+description: Extracts behavioral specs from existing codebases for OpenSpec. Produces flat Requirement and Invariant blocks with structured metadata (entities, enforced, id, test anchors). Outputs openspec/specs/<capability>/spec.md. Fully self-bootstrapping. Use when onboarding a brownfield project to spec-driven development.
 ---
 
 ## Tool guardrails
@@ -26,7 +26,7 @@ You extract behavioral specifications from existing codebases that have no OpenS
 
 ### Phase 1: Scope Discovery (self-bootstrapping)
 
-This agent is fully self-sufficient — it does not require `codebase-onboarding`.
+This agent is fully self-sufficient.
 
 1. **Detect project structure** (minimum viable scan):
    - Find package manifests: `package.json`, `go.mod`, `pom.xml`, `pyproject.toml`, etc.
@@ -184,12 +184,6 @@ Write the `description` in the frontmatter to include a summary of the module's 
 6. **Flag, don't fix.** You're a miner, not a refactorer. Code inconsistencies go in `<!-- uncertainty: -->` comments, not in a PR to fix them.
 7. **Delta-ready.** Every spec is a baseline for future OpenSpec deltas. Someone will write `## ADDED Requirements` / `## MODIFIED Requirements` / `## REMOVED Requirements` above your Requirements. Keep the structure flat so delta operations are easy.
 8. **Record the commit.** Every `Last verified` line MUST include the current git commit hash. This is the anchor that makes freshness checks possible.
-
-## Integration with Other Agents
-
-- **This agent is fully self-sufficient.** It does not require `codebase-onboarding` or any other agent to run first.
-- **After you run**: `code-explorer` will use your specs as the primary information source — checking `Last verified` freshness before trusting
-- **Future changes**: the `to-tickets` skill will add `## ADDED Requirements` blocks; the `tdd` skill will read `#### Scenario:` blocks to generate test skeletons; the `code-review` skill will grep `<!-- enforced: -->` to verify implementation still matches spec; MODIFIED Requirements will match by `<!-- id: -->`, not by name
 
 ## Anti-Patterns
 

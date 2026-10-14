@@ -37,7 +37,7 @@ tests/
 ## Page Object Model (POM)
 
 ```typescript
-import { Page, Locator } from '@playwright/test'
+import { Page, Locator, expect } from '@playwright/test'
 
 export class ItemsPage {
   readonly page: Page
@@ -54,13 +54,13 @@ export class ItemsPage {
 
   async goto() {
     await this.page.goto('/items')
-    await this.page.waitForLoadState('networkidle')
+    await expect(this.searchInput).toBeVisible()
   }
 
   async search(query: string) {
+    const response = this.page.waitForResponse(resp => resp.url().includes('/api/search'))
     await this.searchInput.fill(query)
-    await this.page.waitForResponse(resp => resp.url().includes('/api/search'))
-    await this.page.waitForLoadState('networkidle')
+    await response
   }
 
   async getItemCount() {
@@ -133,7 +133,7 @@ export default defineConfig({
     { name: 'mobile-chrome', use: { ...devices['Pixel 5'] } },
   ],
   webServer: {
-    command: 'npm run dev',
+    command: 'pnpm dev',
     url: 'http://localhost:3000',
     reuseExistingServer: !process.env.CI,
     timeout: 120000,
@@ -160,8 +160,8 @@ test('conditional skip', async ({ page }) => {
 ### Identify Flakiness
 
 ```bash
-npx playwright test tests/search.spec.ts --repeat-each=10
-npx playwright test tests/search.spec.ts --retries=3
+pnpm exec playwright test tests/search.spec.ts --repeat-each=10
+pnpm exec playwright test tests/search.spec.ts --retries=3
 ```
 
 ### Common Causes & Fixes
@@ -186,15 +186,16 @@ await page.waitForTimeout(5000)
 await page.waitForResponse(resp => resp.url().includes('/api/data'))
 ```
 
+Playwright discourages `waitForLoadState('networkidle')` for testing — wait on a web-first assertion (`await expect(locator).toBeVisible()`) or a specific response instead.
+
 **Animation timing:**
 
 ```typescript
 // Bad: click during animation
 await page.click('[data-testid="menu-item"]')
 
-// Good: wait for stability
-await page.locator('[data-testid="menu-item"]').waitFor({ state: 'visible' })
-await page.waitForLoadState('networkidle')
+// Good: web-first assertion, then click (click auto-waits for a stable element)
+await expect(page.locator('[data-testid="menu-item"]')).toBeVisible()
 await page.locator('[data-testid="menu-item"]').click()
 ```
 
@@ -242,12 +243,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v6   # without `version`, reads package.json "packageManager"
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
-      - run: npm ci
-      - run: npx playwright install --with-deps
-      - run: npx playwright test
+          node-version: lts/*
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec playwright install --with-deps
+      - run: pnpm exec playwright test
         env:
           BASE_URL: ${{ vars.STAGING_URL }}
       - uses: actions/upload-artifact@v4
@@ -283,52 +285,4 @@ jobs:
 - Screenshots: artifacts/*.png
 - Videos: artifacts/videos/*.webm
 - Traces: artifacts/*.zip
-```
-
-## Wallet / Web3 Testing
-
-```typescript
-test('wallet connection', async ({ page, context }) => {
-  // Mock wallet provider
-  await context.addInitScript(() => {
-    window.ethereum = {
-      isMetaMask: true,
-      request: async ({ method }) => {
-        if (method === 'eth_requestAccounts')
-          return ['0x1234567890123456789012345678901234567890']
-        if (method === 'eth_chainId') return '0x1'
-      }
-    }
-  })
-
-  await page.goto('/')
-  await page.locator('[data-testid="connect-wallet"]').click()
-  await expect(page.locator('[data-testid="wallet-address"]')).toContainText('0x1234')
-})
-```
-
-## Financial / Critical Flow Testing
-
-```typescript
-test('trade execution', async ({ page }) => {
-  // Skip on production — real money
-  test.skip(process.env.NODE_ENV === 'production', 'Skip on production')
-
-  await page.goto('/markets/test-market')
-  await page.locator('[data-testid="position-yes"]').click()
-  await page.locator('[data-testid="trade-amount"]').fill('1.0')
-
-  // Verify preview
-  const preview = page.locator('[data-testid="trade-preview"]')
-  await expect(preview).toContainText('1.0')
-
-  // Confirm and wait for blockchain
-  await page.locator('[data-testid="confirm-trade"]').click()
-  await page.waitForResponse(
-    resp => resp.url().includes('/api/trade') && resp.status() === 200,
-    { timeout: 30000 }
-  )
-
-  await expect(page.locator('[data-testid="trade-success"]')).toBeVisible()
-})
 ```

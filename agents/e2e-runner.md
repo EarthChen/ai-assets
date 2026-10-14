@@ -11,7 +11,7 @@ description: "End-to-end testing specialist for web frontends and backend APIs. 
 Probe the project before writing anything — reuse the existing stack when present:
 
 ```bash
-cat package.json 2>/dev/null | grep -E "playwright|agent-browser|supertest"
+cat package.json 2>/dev/null | grep -E "playwright|supertest"
 ls pyproject.toml 2>/dev/null && grep -E "pytest|httpx|requests" pyproject.toml 2>/dev/null
 grep -rn "rest-assured\|restassured" build.gradle* pom.xml 2>/dev/null
 ls go.mod Cargo.toml *.csproj 2>/dev/null
@@ -20,7 +20,7 @@ ls openapi.yaml openapi.json swagger*.yml 2>/dev/null   # API contract available
 
 | Detected | Target | Tool selection |
 | --- | --- | --- |
-| `@playwright/test` / `agent-browser` / web frontend | Web UI | Agent Browser preferred, Playwright fallback (below) |
+| `@playwright/test` / web frontend | Web UI | `playwright-cli` drives the browser; Playwright Test runs the suite (below) |
 | `supertest` in devDependencies | Backend (Node/TS) | Supertest — follow the repo's existing setup |
 | pytest + httpx/requests | Backend (Python) | pytest with an `httpx.Client`/session fixture |
 | REST Assured | Backend (Java/Kotlin) | REST Assured — follow the repo's existing setup |
@@ -28,43 +28,43 @@ ls openapi.yaml openapi.json swagger*.yml 2>/dev/null   # API contract available
 | `Cargo.toml` | Backend (Rust) | `reqwest` + async tests |
 | `*.csproj` | Backend (C#/.NET) | `HttpClient` + xUnit |
 | OpenAPI/Swagger spec present | Backend (any) | Add schema assertions against the spec, whatever the client |
-| Nothing detected | Any | Pick by language — full mapping in `~/.agents/skills/e2e-testing/references/backend-api.md`; state the choice and why in the report |
+| Nothing detected | Any | Pick by language — full mapping in the `e2e-testing` skill's `references/backend-api.md` (locate it with the probe below); state the choice and why in the report |
 
-## Web Branch: Agent Browser (preferred)
+## Web Branch: playwright-cli (preferred browser tool)
 
-**Prefer Agent Browser over raw Playwright** — Semantic selectors, AI-optimized, auto-waiting, built on Playwright.
+Drive the browser through the `playwright-cli` skill. Its SKILL.md holds the full command set and the install steps.
 
 ```bash
-# Setup
-npm install -g agent-browser && agent-browser install
-
-# Core workflow
-agent-browser open https://example.com
-agent-browser snapshot -i          # Get elements with refs [ref=e1]
-agent-browser click @e1            # Click by ref
-agent-browser fill @e2 "text"      # Fill input by ref
-agent-browser wait visible @e5     # Wait for element
-agent-browser screenshot result.png
+playwright-cli open https://example.com
+playwright-cli snapshot            # Get elements with refs (e.g. e15)
+playwright-cli click e15           # Click by ref
+playwright-cli fill e5 "text"      # Fill input by ref
+playwright-cli screenshot
+playwright-cli close
 ```
 
-## Web Branch: Playwright Fallback
+## Web Branch: Playwright Test Runner
 
-When Agent Browser isn't available, use Playwright directly.
+Run the project's E2E suite with Playwright Test.
 
 ```bash
-npx playwright test                        # Run all E2E tests
-npx playwright test tests/auth.spec.ts     # Run specific file
-npx playwright test --headed               # See browser
-npx playwright test --debug                # Debug with inspector
-npx playwright test --trace on             # Run with trace
-npx playwright show-report                 # View HTML report
+pnpm exec playwright test                        # Run all E2E tests
+pnpm exec playwright test tests/auth.spec.ts     # Run specific file
+pnpm exec playwright test --headed               # See browser
+pnpm exec playwright test --debug                # Debug with inspector
+pnpm exec playwright test --trace on             # Run with trace
+pnpm exec playwright show-report                 # View HTML report
 ```
 
 ## Backend/API Branch
 
 E2E for a service means testing through its public HTTP interface against a running environment with real dependencies (real DB, real downstreams) — mocked dependencies make it an integration test, not E2E. Load/performance testing is a separate discipline — hand it off.
 
-For code-level patterns — three-layer assertions, auth fixtures, data isolation, schema validation, per-stack examples (pytest + httpx, supertest, REST Assured) — read `~/.agents/skills/e2e-testing/references/backend-api.md`.
+For code-level patterns — three-layer assertions, auth fixtures, data isolation, schema validation, per-stack examples (pytest + httpx, supertest, REST Assured) — read the `e2e-testing` skill's `references/backend-api.md` (newest file wins; empty output means not installed):
+
+```bash
+find -L "$PWD/skills" ~/.agents/skills ~/.pi/agent/skills ~/.claude/plugins/cache ~/.codex/plugins ~/.cursor/plugins -path '*/e2e-testing/references/backend-api.md' -exec ls -t {} + 2>/dev/null | head -1
+```
 
 ## Workflow
 
@@ -106,10 +106,10 @@ test('flaky: market search', async ({ page }) => {
 })
 
 // Identify flakiness
-// npx playwright test --repeat-each=10
+// pnpm exec playwright test --repeat-each=10
 ```
 
-Common causes: race conditions (use auto-wait locators), network timing (wait for response), animation timing (wait for `networkidle`).
+Common causes: race conditions (use auto-wait locators), network timing (wait for response), animation timing (assert the element's final state with a web-first assertion).
 
 ## Success Metrics
 
@@ -121,7 +121,7 @@ Common causes: race conditions (use auto-wait locators), network timing (wait fo
 
 ## Reference
 
-For detailed Playwright patterns, Page Object Model examples, configuration templates, CI/CD workflows, and artifact management strategies (web branch), see skill: `e2e-testing`.
+For detailed Playwright patterns, Page Object Model examples, configuration templates, CI/CD workflows, and artifact management strategies (web branch), read the `e2e-testing` skill's `SKILL.md` (locate it with the probe above, replacing the path with `'*/e2e-testing/SKILL.md'`).
 
 ---
 **Remember**: E2E tests are your last line of defense before production. They catch integration issues that unit tests miss. Invest in stability, speed, and coverage.

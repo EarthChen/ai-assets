@@ -15,7 +15,8 @@ Conventions for Node/TypeScript backend services. Minimal by design: branches ar
 
 ## Always
 
-- Testing principles (boundaries, sociable/solitary, narrow integration, isolation rules) live once in `~/.agents/skills/testing-principles/SKILL.md`; this skill carries only TypeScript specifics.
+- Testing principles (boundaries, sociable/solitary, narrow integration, isolation rules) live once in `../testing-principles/SKILL.md` (Read it); this skill carries only TypeScript specifics.
+- Test-first via the `tdd` skill.
 - Every endpoint has at least one integration test asserting the persisted side effect — a status code alone proves nothing.
 
 ## Completion criterion

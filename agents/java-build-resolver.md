@@ -16,7 +16,13 @@ cat pom.xml 2>/dev/null || cat build.gradle 2>/dev/null || cat build.gradle.kts 
 ## Resolution Workflow
 
 1. Detect framework (above)
-2. Read `~/.agents/skills/java-development/references/build-troubleshooting.md` — apply the section matching the detected framework (general / [SPRING] / [QUARKUS]) and its Principles. It holds the error→fix pattern tables and the non-obvious diagnostic commands (`dependency:tree -Dverbose`, `help:effective-pom`, annotation-processor and augmentation debugging).
+2. Locate and read the `java-development` skill's `references/build-troubleshooting.md` (newest file wins; empty output means not installed):
+
+   ```bash
+   find -L "$PWD/skills" ~/.agents/skills ~/.pi/agent/skills ~/.claude/plugins/cache ~/.codex/plugins ~/.cursor/plugins -path '*/java-development/references/build-troubleshooting.md' -exec ls -t {} + 2>/dev/null | head -1
+   ```
+
+   Apply the section matching the detected framework (general / [SPRING] / [QUARKUS]) and its Principles. It holds the error→fix pattern tables and the non-obvious diagnostic commands (`dependency:tree -Dverbose`, `help:effective-pom`, annotation-processor and augmentation debugging).
 3. Run `./mvnw compile` or `./gradlew build` — capture **all** errors at once; group errors sharing a root cause before fixing (one missing dependency surfaces as many errors).
 4. Apply the minimal fix per root-cause cluster; re-run the build to verify each fix introduces no new errors.
 5. Run the test suite once at the end (`./mvnw test` / `./gradlew test`) to confirm nothing broke.

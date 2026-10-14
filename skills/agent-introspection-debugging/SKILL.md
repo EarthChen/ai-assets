@@ -1,144 +1,63 @@
 ---
 name: agent-introspection-debugging
-description: Structured self-debugging workflow for AI agent failures using capture, diagnosis, contained recovery, and introspection reports.
+description: Structured self-debugging workflow for AI agent failures using capture, diagnosis, contained recovery, and introspection reports. Use when the same tool call fails 2+ times, a loop or tool-call limit is hit, or context bloat degrades output.
 ---
 
 # Agent Introspection Debugging
 
-Use this skill when an agent run is failing repeatedly, consuming tokens without progress, looping on the same tools, or drifting away from the intended task.
+A workflow, not a runtime: debug your own failing run systematically before you retry or escalate. Not for framework-specific debugging, and never claim a recovery action (e.g. "reset agent state") that you did not perform with a real tool.
 
-This is a workflow skill, not a hidden runtime. It teaches the agent to debug itself systematically before escalating to a human.
+## Phase 1: Capture
 
-## When to Activate
-
-- Maximum tool call / loop-limit failures
-- Repeated retries with no forward progress
-- Context growth or prompt drift that starts degrading output quality
-- File-system or environment state mismatch between expectation and reality
-- Tool failures that are likely recoverable with diagnosis and a smaller corrective action
-
-## Scope Boundaries
-
-Activate this skill for:
-- capturing failure state before retrying blindly
-- diagnosing common agent-specific failure patterns
-- applying contained recovery actions
-- producing a structured human-readable debug report
-
-Do not use this skill as the primary source for:
-- framework-specific debugging when a narrower ECC skill already exists
-- runtime promises the current harness cannot enforce automatically
-
-## Four-Phase Loop
-
-### Phase 1: Failure Capture
-
-Before trying to recover, record the failure precisely.
-
-Capture:
-- error type, message, and stack trace when available
-- last meaningful tool call sequence
-- what the agent was trying to do
-- current context pressure: repeated prompts, oversized pasted logs, duplicated plans, or runaway notes
-- current environment assumptions: cwd, branch, relevant service state, expected files
-
-Minimum capture template:
+Record the failure before any retry:
 
 ```markdown
 ## Failure Capture
-- Session / task:
 - Goal in progress:
-- Error:
+- Error (type, message, stack trace if any):
 - Last successful step:
 - Last failed tool / command:
 - Repeated pattern seen:
-- Environment assumptions to verify:
+- Environment assumptions to verify (cwd, branch, service state, expected files):
 ```
 
-### Phase 2: Root-Cause Diagnosis
+## Phase 2: Diagnose
 
-Match the failure to a known pattern before changing anything.
+Match the failure to a pattern before you change anything.
 
-| Pattern | Likely Cause | Check |
+| Pattern | Likely cause | Check |
 | --- | --- | --- |
-| Maximum tool calls / repeated same command | loop or no-exit observer path | inspect the last N tool calls for repetition |
-| Context overflow / degraded reasoning | unbounded notes, repeated plans, oversized logs | inspect recent context for duplication and low-signal bulk |
-| `ECONNREFUSED` / timeout | service unavailable or wrong port | verify service health, URL, and port assumptions |
-| `429` / quota exhaustion | retry storm or missing backoff | count repeated calls and inspect retry spacing |
-| file missing after write / stale diff | race, wrong cwd, or branch drift | re-check path, cwd, git status, and actual file existence |
-| tests still failing after “fix” | wrong hypothesis | isolate the exact failing test and re-derive the bug |
+| Tool-call limit / same command repeated | loop with no exit condition | last N tool calls for repetition |
+| Context overflow / degraded reasoning | repeated plans, oversized logs | recent context for duplication and low-signal bulk |
+| `ECONNREFUSED` / timeout | service down or wrong port | service health, URL, port |
+| `429` / quota exhaustion | retry storm, no backoff | count of repeated calls, retry spacing |
+| File missing after write / stale diff | wrong cwd or branch drift | path, cwd, `git status`, file existence |
+| Tests still fail after "fix" | wrong hypothesis | isolate the exact failing test, re-derive the bug |
 
-Diagnosis questions:
-- is this a logic failure, state failure, environment failure, or policy failure?
-- did the agent lose the real objective and start optimizing the wrong subtask?
-- is the failure deterministic or transient?
-- what is the smallest reversible action that would validate the diagnosis?
+Classify: logic, state, environment, or policy failure? Deterministic or transient? Did you drift from the real objective?
 
-### Phase 3: Contained Recovery
+## Phase 3: Contained Recovery
 
-Recover with the smallest action that changes the diagnosis surface.
+Take the smallest reversible action that tests the diagnosis, in this order:
 
-Safe recovery actions:
-- stop repeated retries and restate the hypothesis
-- trim low-signal context and keep only the active goal, blockers, and evidence
-- re-check the actual filesystem / branch / process state
-- narrow the task to one failing command, one file, or one test
-- switch from speculative reasoning to direct observation
-- escalate to a human when the failure is high-risk or externally blocked
+1. Restate the real objective in one sentence.
+2. Verify the world state (files, branch, processes) instead of trusting memory.
+3. Shrink the failing scope to one command, one file, or one test.
+4. Run one discriminating check.
+5. Only then retry. Escalate to the human when the failure is high-risk or externally blocked.
 
-Do not claim unsupported auto-healing actions like “reset agent state” or “update harness config” unless you are actually doing them through real tools in the current environment.
+Never retry the same action with slightly different wording.
 
-Contained recovery checklist:
+## Phase 4: Report
 
-```markdown
-## Recovery Action
-- Diagnosis chosen:
-- Smallest action taken:
-- Why this is safe:
-- What evidence would prove the fix worked:
-```
-
-### Phase 4: Introspection Report
-
-End with a report that makes the recovery legible to the next agent or human.
+Do not end with "I fixed it" alone:
 
 ```markdown
 ## Agent Self-Debug Report
-- Session / task:
 - Failure:
 - Root cause:
-- Recovery action:
+- Recovery action (and why it is safe):
+- Evidence the situation is better or still blocked:
 - Result: success | partial | blocked
-- Token / time burn risk:
-- Follow-up needed:
-- Preventive change to encode later:
+- Follow-up / preventive change:
 ```
-
-## Recovery Heuristics
-
-Prefer these interventions in order:
-
-1. Restate the real objective in one sentence.
-2. Verify the world state instead of trusting memory.
-3. Shrink the failing scope.
-4. Run one discriminating check.
-5. Only then retry.
-
-Bad pattern:
-- retrying the same action three times with slightly different wording
-
-Good pattern:
-- capture failure
-- classify the pattern
-- run one direct check
-- change the plan only if the check supports it
-
-## Output Standard
-
-When this skill is active, do not end with “I fixed it” alone.
-
-Always provide:
-- the failure pattern
-- the root-cause hypothesis
-- the recovery action
-- the evidence that the situation is now better or still blocked

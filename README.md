@@ -11,7 +11,7 @@
 | Cursor | rules, skills, agents, MCP | local real-dir (rsync) |
 | Claude Code | skills, agents, MCP | common rules → `~/.claude/rules/common/`, CLAUDE.md |
 | Codex | skills, MCP | AGENTS.md (global-instructions + common rules) |
-| pi | — | AGENTS.md + skills → `~/.agents/skills/` + pi/{skills,agents} → `~/.pi/agent/{skills,agents}/` (pi 专属) + agents → `~/.pi/agent/agents/` |
+| pi | — | AGENTS.md + skills/ 与 pi/skills/ → `~/.pi/agent/skills/` + agents/ 与 pi/agents/ → `~/.pi/agent/agents/`（`~/.agents/skills/` 只放三方 symlink） |
 
 ## 目录结构
 
@@ -24,7 +24,7 @@ ai-assets/
 │       ├── KarpathyGuide.md
 │       └── ...
 │   ├── (历史：java/、python/ 已合并到 skills/java-development/references/ 与 skills/python-development/references/)
-├── skills/                    # 共享技能 (18 个自有实目录；vendor skills 由 install.py symlink 安装)
+├── skills/                    # 共享技能 (19 个自有实目录；vendor skills 由 install.py symlink 安装)
 ├── agents/                    # Subagent 定义 (Cursor + Claude + pi，12 个)
 ├── pi/                        # pi 专属资源: skills/ + agents/ → ~/.pi/agent/ (仅 pi 加载)
 ├── docs/                      # 团队分享文档（能力、设计依据与工作流）
@@ -47,6 +47,8 @@ ai-assets/
 ├── .claude-plugin/plugin.json
 ├── .codex-plugin/plugin.json
 ├── install.py                 # 一键安装脚本
+├── installer/                 # install.py 的实现（按阶段/平台分模块）
+├── tests/                     # pytest（uv run pytest；含 _dist/ golden 测试）
 ├── AGENTS.md                  # 本项目开发指令
 └── third-party.json           # 三方插件清单
 ```
@@ -69,7 +71,7 @@ uv run install.py --dry-run
 ### 子命令
 
 ```bash
-# 仅重建 _dist/（修改 rules/skills/mcp.json 后）
+# 仅重建 _dist/（修改 rules/global-instructions.md/mcp.json 后）
 uv run install.py build
 
 # 仅安装 symlinks（新机器 / _dist/ 已是最新）
@@ -85,18 +87,18 @@ uv run install.py version --bump patch # 递增版本号 (major/minor/patch)
 ```
 
 > `_dist/` 已提交到 git，clone 后插件可直接使用，无需先运行脚本。
-> 修改 `rules/`、`skills/`、`agents/` 或 `mcp.json` 后运行 `uv run install.py build` 重新生成。
+> 修改 `rules/`、`global-instructions.md` 或 `mcp.json` 后运行 `uv run install.py build` 重新生成（`skills/`、`agents/` 不经过 build）；`uv run pytest` 会在 `_dist/` 过期时失败。
 
 ## 更新机制
 
 | 平台 | 方法 | 触发 |
 | -------- | ------ | -------- |
 | Cursor | `install.py install`（rsync real-dir） | 修改后 + 重启 |
-| Codex | 符号链接（即时） | build 后生效 |
+| Codex | 插件符号链接（skills 即时）；`~/.codex/AGENTS.md` 为副本 | skills 无需操作；AGENTS.md 需 build + install |
 | Claude Code | `install.py install` (local-directory marketplace, reinstall) | 无需 bump，reinstall 即刷新 |
 | pi | `install.py install --platform pi` | build + install |
 
-> 详见 [AGENTS.md - Update Mechanism](AGENTS.md)：Claude version-gating、
+> 详见 [CONTRIBUTING.md - Update Mechanism — Detailed](CONTRIBUTING.md#update-mechanism--detailed)：Claude version-gating、
 > Cursor marketplace stale-cache 等踩坑记录。
 
 ## 架构原则
@@ -105,7 +107,7 @@ uv run install.py version --bump patch # 递增版本号 (major/minor/patch)
 
 | 平台 | 插件系统管理 | 脚本补充 |
 | ------ | ------------- | --------- |
-| Cursor | rules, skills, agents, MCP | 仅创建 symlink |
+| Cursor | rules, skills, agents, MCP | 复制仓库为 real-dir 本地插件（非 symlink） |
 | Claude Code | skills, agents, MCP | common rules, CLAUDE.md |
 | Codex | skills, MCP | AGENTS.md (含 common rules) |
 | pi | —（无兼容插件系统） | AGENTS.md, skills/agents symlink 直接部署 |
@@ -189,7 +191,7 @@ git submodule update --remote vendor/mattpocock-skills
 | 平台 | 安装 | 更新 |
 | ------ | ------ | ------ |
 | Cursor | `install.py install`（local real-dir） | rsync `--delete` 重建，修改后重启 |
-| Codex | `~/.codex/plugins/local/` symlink + config.toml | symlink 即时跟踪 repo，build 后生效 |
+| Codex | `~/.codex/plugins/local/` symlink + config.toml | skills 经 symlink 即时跟踪 repo；AGENTS.md 需 build + install |
 | Claude Code | `install.py install`（`marketplace_source: "local"` → `marketplace add <REPO_ROOT>` + reinstall） | `install.py install` reinstall 即刷新；bump version 可选（诊断用） |
 | pi | `install.py install --platform pi` | build + install |
 
@@ -234,7 +236,8 @@ platforms: [cursor, claude]      # 平台过滤 (build-time, 不进入输出)
 | 规则类型 | Cursor | Claude Code | Codex |
 | --------- | -------- | ------------- | ------- |
 | **common/** (alwaysApply: true) | 始终加载 | 用户级始终加载 | 嵌入 AGENTS.md |
-| **java/** / **python/** (历史) | 已合并到 skills，参见各 skill 描述触发加载 | 同上 (项目级规则依然有效) | 通过 skills 提供 |
+
+语言规范不属于 rules：各平台按需从 `skills/<lang>-development/` 加载。
 
 ### 重要限制
 
@@ -313,7 +316,7 @@ MCP 配置中使用 `_platforms` 字段：
 | context-mode | 仅溯源登记 | 不经本仓库分发；各平台原生插件/npm 安装（Claude 由 install.py 自动装） |
 
 > symlink 安装绕过插件缓存，运行时文件（`runtime.conf`、生成的图谱等）得以跨 session 留存。
-> 详细机制与踩坑记录见 [AGENTS.md - third-party skills](AGENTS.md)。
+> 详细机制与踩坑记录见 [CONTRIBUTING.md - Third-Party Skills](CONTRIBUTING.md#third-party-skills-symlink-installed)。
 
 ## 文档站点
 

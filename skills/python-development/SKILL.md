@@ -21,7 +21,7 @@ Python conventions. Load only the reference matching the current task branch.
 
 - EAFP over LBYL; explicit over implicit.
 - Type hints on public functions.
-- Red-green-refactor via the `tdd` skill; fix the implementation, not the failing test.
+- Test-first via the `tdd` skill; coverage target is the global 80% testing rule; fix the implementation, not the failing test.
 
 ## Completion criterion
 

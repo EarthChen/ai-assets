@@ -55,4 +55,4 @@ disable-model-invocation: true
 
 ## 边界
 
-整体上线文档、发布顺序、SQL/Kafka/Cube → `release-doc-generator`。
+整体上线文档、发布顺序、SQL/Kafka/Cube 不在本 skill 范围内。

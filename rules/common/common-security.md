@@ -9,12 +9,15 @@ alwaysApply: true
 Before ANY commit:
 
 - [ ] No hardcoded secrets (API keys, passwords, tokens)
+
+Before committing code that handles requests, user input, or data access, check the items that apply:
+
 - [ ] All user inputs validated
 - [ ] SQL injection prevention (parameterized queries)
 - [ ] XSS prevention (sanitized HTML)
 - [ ] CSRF protection enabled
 - [ ] Authentication/authorization verified
-- [ ] Rate limiting on all endpoints
+- [ ] Rate limiting on public endpoints
 - [ ] Error messages don't leak sensitive data
 
 ## Secret Management

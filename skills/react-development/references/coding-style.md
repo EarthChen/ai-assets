@@ -1,8 +1,6 @@
 
 # React Coding Style
 
-> This file extends [common-coding-style.md](../common/common-coding-style.md) with React specific content.
-
 ## When to Use
 
 - Writing or reviewing React/TSX component or hook files (`.tsx`, `.jsx`, `components/`, `hooks/`)
@@ -79,7 +77,7 @@ return <h1>{user.isAdmin ? "Welcome, admin" : `Hello ${user.name}`}</h1>;
 
 ## Hooks Discipline
 
-See [hooks.md](./hooks.md) for the full ruleset. Style highlights:
+See the Hooks section of [patterns.md](./patterns.md) for the full ruleset. Style highlights:
 
 - Custom hooks must start with `use` — enforced by `eslint-plugin-react-hooks`
 - Group all hook calls at the top of the component, before any conditional logic

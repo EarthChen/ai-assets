@@ -1,8 +1,6 @@
 
 # React Testing
 
-> This file extends [common-testing.md](../common/common-testing.md) with React specific content.
-
 ## When to Use
 
 - Writing or reviewing React/TSX tests (`.test.tsx`, `.spec.tsx`, `__tests__/`)
@@ -183,7 +181,7 @@ Component test with RTL + JSDOM cannot:
 - Test browser-native animation, CSS transitions
 - Test cross-frame interactions (iframes, popups)
 
-For those, use Playwright Component Testing or end-to-end Playwright/Cypress runs. See [e2e-testing skill](../../skills/e2e-testing/SKILL.md).
+For those, use Playwright Component Testing or end-to-end Playwright/Cypress runs. Read [e2e-testing](../../e2e-testing/SKILL.md).
 
 ## Coverage Targets
 
@@ -192,7 +190,7 @@ For those, use Playwright Component Testing or end-to-end Playwright/Cypress run
 | Pure utility functions | ≥90% |
 | Custom hooks | ≥85% |
 | Components (presentational) | ≥80% — behavior, not lines |
-| Container components | ≥70% — golden paths + error states |
+| Container components | ≥80% — golden paths + error states |
 | Pages (E2E covered separately) | Smoke test per route minimum |
 
 ## Anti-Patterns

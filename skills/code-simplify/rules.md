@@ -54,7 +54,7 @@ Latinate vocabulary (reconcile, coalesce, normalize) sounds technical and abstra
 
 1. **One word per concept, one concept per word.** If `sync` names "pulling remote changes," it cannot also name "flushing edits to disk;" rename one of them.
 2. **Cut words the context already carries.** A module named `workspaceWatcher` does not need `startNativeWorkspaceWatcher`; `watchWorkspace` says the same thing.
-3. **A compound name is usually a hedge:** ❌ `lastObservedDiskContent` is a specification to defend; ✅ `baseline` is a readable description.
+3. **A compound name is usually a hedge:** Bad: `lastObservedDiskContent` is a specification to defend; Good: `baseline` is a readable description.
 4. **Generic names describe nothing.** `data`, `result`, `temp`, `val` → name the content: `userProfile`, `validationErrors`.
 5. **Use full words unless the abbreviation is universal** (`id`, `url`, `api`): `usr`, `cfg`, `btn` → `user`, `config`, `button`.
 6. **Names must match behavior.** A function named `get` that also mutates is a lie — rename to reflect what it actually does.
@@ -63,11 +63,11 @@ Latinate vocabulary (reconcile, coalesce, normalize) sounds technical and abstra
 
 State, in plain English, the constraint the code cannot show: why the **non-obvious** exists.
 
-- ✅ If code is complex and the implementation is non-obvious, add a comment.
-- ✅ If a function contains complex behaviors or side effects, add a doc comment.
-- ✅ Keep why-comments the code cannot carry: `// Retry because the API is flaky`.
-- 🗑️ If a comment narrates change history from the conversation, delete it.
-- 🗑️ If a comment restates code whose behavior is self-evident (`// increment counter` above `count++`), delete it.
+- Good: If code is complex and the implementation is non-obvious, add a comment.
+- Good: If a function contains complex behaviors or side effects, add a doc comment.
+- Good: Keep why-comments the code cannot carry: `// Retry because the API is flaky`.
+- Delete: If a comment narrates change history from the conversation, delete it.
+- Delete: If a comment restates code whose behavior is self-evident (`// increment counter` above `count++`), delete it.
 
 ### Structure
 

@@ -7,7 +7,7 @@ argument-hint: "[branch]  test-environment branch to merge into (default: test)"
 
 # Ship to Test
 
-Pushing the target branch triggers the test environment's CI/CD — the whole point of this workflow. Two consequences: the pushed pipeline is the only validator (no local checks, no watching the run — a project ends when its push and artifact deploy, if any, succeed), and a target branch with nothing new stays unpushed.
+Pushing the target branch triggers the test environment's CI/CD — the whole point of this workflow. Two consequences: the pushed pipeline is the only validator (no local build or test checks, no watching the run — a project ends when its push and artifact deploy, if any, succeed), and a target branch with nothing new stays unpushed.
 
 ## Discovery
 
@@ -36,7 +36,7 @@ An inter-service dependency is an artifact one workspace project publishes and a
 
 The project's current branch is its feature branch; the **target branch** is the one named in the invocation argument (`test` when none is given). Every step ends on its stated criterion.
 
-1. **Commit the working tree** — skip when the tree is already clean; otherwise analyze the diff and create conventional, atomic commits per the `git-workflow` skill (one concern per commit), committing directly, without confirmation. Done when the tree is clean.
+1. **Commit the working tree** — skip when the tree is already clean; otherwise analyze the diff and create conventional, atomic commits per the `git-workflow` skill (one concern per commit), committing directly, without confirmation. Before each `git commit`, scan the staged diff for secrets: `gitleaks git --staged` when gitleaks is installed (v8.19+; older versions: `gitleaks protect --staged`), else grep the added lines of the staged diff for common key/token patterns: `git diff --cached -U0 | grep '^+' | grep -iE 'BEGIN [A-Z ]*PRIVATE KEY|AKIA[0-9A-Z]{16}|(api[_-]?key|secret|token|password)["'\'']?[[:space:]]*[:=][[:space:]]*["'\''][^"'\'']{8,}'`. A hit fails the project and hands off: unstage, leave the working tree untouched, and report the hit. Done when the tree is clean.
 2. **Push the feature branch** — add `-u` when upstream is missing. Rejected because the remote branch moved → **Feature-branch catch-up**. Done when the branch is on the remote.
 3. **Switch to the target branch** — fetch, create a local target branch tracking `origin/<target>` when missing (remote has no target branch → fail the project), then sync the local target branch with its remote counterpart merge-style: the target is a shared branch, so it moves by merge only. Done when sitting on a target branch even with its remote counterpart.
 4. **Merge the feature branch** — default merge commit, keeping full history on the shared branch. `Already up to date` → record "nothing to merge" and go to step 5. Conflicts → **Conflict resolution**. Done when the merge commit exists.
@@ -67,13 +67,13 @@ Mechanics for every hunk you keep:
 Two overrides apply inside this workflow:
 
 1. Human rejection ends the project: `git merge --abort`, fail the project. Abort is allowed here; the default is to finish the merge.
-2. Skip local checks — the target branch's pipeline validates.
+2. Skip local build and test checks — the target branch's pipeline validates. The step 1 secret scan still runs.
 
 ## Failure & isolation
 
 - A remote rejection is a hand-off to the human: fail the project as-is — rebase, force-push, and retry stay the human's call. One exception recovers in-workflow: a feature push rejected because the remote branch moved goes through **Feature-branch catch-up** first.
 - A deploy failure after a successful target push is a hand-off to the human: the target stays pushed, the project fails with reason "deploy failed", and every not-yet-shipped consumer is reported with a stale-artifact warning.
-- Every failure path restores the project to a clean feature branch before moving on (`git merge --abort` + switch back when mid-merge). One project's failure stays inside that project.
+- Every failure path restores the project to a clean feature branch before moving on (`git merge --abort` + switch back when mid-merge). Exception: a step 1 secret-scan hit keeps the uncommitted changes in the working tree — never discard the user's work. One project's failure stays inside that project.
 
 ## Final report
 

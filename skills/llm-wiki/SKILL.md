@@ -2,19 +2,9 @@
 name: llm-wiki
 disable-model-invocation: true
 description: >-
-  Build and maintain a Karpathy-style LLM knowledge base — a self-compiling
-  Obsidian markdown wiki where an Agent ingests raw sources, compiles
-  cross-linked concept/entity/summary pages, answers queries against the
-  corpus, lints the graph for health, and audits in-context human feedback
-  filed from Obsidian or the local web viewer. Use when (1) scaffolding a
-  new knowledge base for any research topic, (2) ingesting
-  articles/papers/PDFs/web pages into raw/, (3) compiling or restructuring
-  wiki articles from existing raw material, (4) answering questions
-  against the wiki and filing durable answers back, (5) running lint
-  passes for dead links / orphan pages / coverage gaps / audit shape,
-  (6) processing human feedback from the audit/ directory and applying
-  corrections. Not for general note-taking, daily journals, or non-wiki
-  Obsidian use.
+  Build and maintain a Karpathy-style LLM knowledge base, an Obsidian markdown
+  wiki that an agent compiles from raw sources, queries, lints, and corrects
+  from human audit feedback.
 ---
 
 # LLM Wiki — Karpathy Knowledge Base Pattern
@@ -141,6 +131,8 @@ See `references/audit-guide.md` for the full file format and processing workflow
 
 Every action on the wiki is one of these five. Each appends an entry to the current day's log file (`log/YYYYMMDD.md`).
 
+Scripts run as `uv run <skill-dir>/scripts/<name>.py`, where `<skill-dir>` is the directory containing this SKILL.md — the wiki root has no `scripts/` directory.
+
 ### 1. `compile`
 
 (Re)structure wiki content from existing `raw/` material — including splitting oversized pages, merging near-duplicates, and rebuilding `index.md`.
@@ -192,7 +184,7 @@ Answer a question **grounded in the wiki**, not general knowledge.
 Health check. Run:
 
 ```bash
-python3 scripts/lint_wiki.py <wiki-root>
+uv run <skill-dir>/scripts/lint_wiki.py <wiki-root>
 ```
 
 The script reports:
@@ -213,7 +205,7 @@ Process human feedback from `audit/`.
 
 **Steps**:
 
-1. Run `python3 scripts/audit_review.py <wiki-root> --open` to get a grouped list.
+1. Run `uv run <skill-dir>/scripts/audit_review.py <wiki-root> --open` to get a grouped list.
 2. For each open audit, read the file. Use the `anchor_before` / `anchor_text` / `anchor_after` window to locate the exact range in the target file (line numbers may have drifted).
 3. Decide the action:
    - **Accept**: apply the correction to the target file.
@@ -260,7 +252,7 @@ The Obsidian plugin and the web viewer both write audit files in the **same form
 ## Starting a new wiki
 
 ```bash
-python3 scripts/scaffold.py <wiki-root> "<Topic Title>"
+uv run <skill-dir>/scripts/scaffold.py <wiki-root> "<Topic Title>"
 ```
 
 Creates the full tree (including `log/<today>.md`, `audit/`, `audit/resolved/`), a blank `CLAUDE.md` based on the new template, and a blank `wiki/index.md` with the recommended category layout.
@@ -313,20 +305,7 @@ Rules:
 
 ## `log/` format
 
-See `references/log-guide.md` for full details. Minimum:
-
-- One file per day: `log/YYYYMMDD.md`
-- H1 = the date; H2 per entry with `## [HH:MM] <op> | <one-line description>`
-- Ops: `compile`, `ingest`, `query`, `lint`, `audit`, `promote`, `split`, `scaffold`
-
-Quick grep across history: `grep -rh "^## \[" log/ | tail -20`.
-
-## Use cases
-
-- **Research deep-dive** — reading papers/articles on a topic over weeks; the wiki evolves with your understanding, and the audit trail keeps AI mistakes from silently accumulating
-- **Personal wiki** — journal entries, notes, ideas compiled into a personal encyclopedia; comment on anything you disagree with later, the AI corrects it
-- **Team knowledge base** — fed by Slack threads, meeting notes, docs; team members file corrections through the web viewer
-- **Reading companion** — filing each book chapter as you go; builds a rich companion wiki by the end
+See `references/log-guide.md` — file naming, entry format, allowed ops, and grep recipes.
 
 ## References
 

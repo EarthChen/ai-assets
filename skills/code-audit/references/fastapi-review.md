@@ -15,7 +15,7 @@ Finding Priorities checklist for FastAPI applications. Loaded by `skills/code-au
 ## Out of Scope
 
 - Non-FastAPI frameworks unless they directly interact with the FastAPI app.
-- Broad Python style review already covered by `python-reviewer`.
+- Broad Python style review already covered by `python-review.md`.
 - Dependency additions without a concrete problem and maintenance rationale.
 
 ## Review Workflow

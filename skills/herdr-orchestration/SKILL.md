@@ -10,7 +10,7 @@ You are the **orchestrator** — the swarm's sole scheduler and integration poin
 
 Workers run on any agent platform herdr supports — **pi (default), Claude Code (`claude`), Codex CLI (`codex`)** — and one pool may mix kinds. You yourself may run on any of them too. Every kind-specific fact (spawn args, autonomy, thinking level, compaction, telemetry pattern, skill-invocation syntax) lives in [references/platforms.md](references/platforms.md); this protocol keeps all of it in that one lookup.
 
-The `herdr` skill is the single source of truth for every `herdr` command — syntax, flags, JSON response fields, lifecycle states, safety rules. This skill defines only the orchestration protocol on top of it, and names no command flags of its own.
+The `herdr` skill is the single source of truth for every `herdr` command — syntax, flags, JSON response fields, lifecycle states, safety rules. This skill defines only the orchestration protocol on top of it.
 
 ## Invocation arguments
 
@@ -33,6 +33,7 @@ You were invoked manually, but **invocation is not justification** — before Se
 - Do NOT proceed for read-only exploration, a single review, or anything your platform's built-in sub-agent tool can finish — Herdr workers are heavyweight: full agent processes, visible panes, real API cost.
 - Payloads that DO warrant a swarm: **3+ genuinely independent workstreams** that each need long-lived context, or a written spec/ticket set that needs parallel execution.
 - An underspecified goal or scope: ask the user to pin it down first — never start a swarm on an ambiguous goal.
+- Before Setup, tell the user that workers run without permission prompts (claude `--dangerously-skip-permissions`, codex `--ask-for-approval never` — see platforms.md) and so execute commands unattended.
 
 ## Preflight (mandatory, in order)
 
@@ -110,8 +111,6 @@ Three sources, one pipeline. Full procedure, triage criteria, and the brief temp
 
 Every task passes the **triage gate** before queueing. Verdicts: `ready` (file-disjoint scope expressible, inputs as paths, checkable definition of done), `needs-contract` (write `<swarm>/contracts/<name>.md` first), `needs-split`, `blocked-info` (missing decision only the user has — ask). Only `ready` tasks are dispatched.
 
-**Size gate (heuristic):** a brief estimated to touch >15 files or carry >3 independent sub-goals is `needs-split`. Homogeneous bulk work may pass at your judgment — record the reason in plan.md so the decision survives compaction.
-
 **Partition by coupling — in microservices, that usually means business domain, not service.** Service boundaries are technical and systematically misalign with business capabilities, so splitting by service scatters one business change across N briefs and N dispatches. Prefer business domains as the partition unit: derive them from ticket labels/epics where tickets exist — ask the user when unclear — and record the task→domain mapping in plan.md. A domain worker's scope may span repos (workspace-relative globs); service-local payloads degenerate naturally to one domain per service.
 
 Parallel builders get **file-disjoint scopes**; where domains touch, write the shared interface into `<swarm>/contracts/<name>.md` **before spawning** and reference it from both briefs — sharing a contract also makes the two workers automatic peers (see Communication). Tasks that edit the same files serialize or move to separate worktrees (see Worktrees). Shared manifest and migration files (pom.xml / go.mod / package.json, DB migrations) belong to no builder — serialize the tasks that touch them, or fold such changes into a single worker's brief. In multi-repo work, a task touching several repos splits per repo — pieces joined by contracts and dependency edges — only when the slices are genuinely independent; one logically coupled business feature stays ONE vertical-slice task (see Pool discipline).
@@ -137,14 +136,16 @@ Execute the task graph as a **stream**, not as waves.
 
 ```bash
 watch="pay-wk-frontend pay-wk-backend pay-wk-payments"
+deadline=$(( $(date +%s) + 1800 ))   # 30 min backstop (step "wait timeout" below)
 while :; do
   settled=$(herdr agent list | jq -r --arg w "$watch" '
     ($w | split(" ")) as $names
     | .result.agents[]
     | select((.agent as $a | $names | index($a))
-        and (.agent_status=="idle" or .agent_status=="done" or .agent_status=="blocked"))
+        and (.agent_status=="idle" or .agent_status=="done" or .agent_status=="blocked" or .agent_status=="unknown"))
     | "\(.agent) \(.agent_status)"')
   [ -n "$settled" ] && break
+  [ "$(date +%s)" -ge "$deadline" ] && { settled="TIMEOUT"; break; }
   sleep 20
 done
 echo "$settled"
@@ -263,7 +264,7 @@ Record the latest value in the ledger `ctx` column. Mid-task rises become visibl
 - Concurrent editors each get **one git worktree** (herdr skill: worktree create) in the repo their task touches — pass the plan's checkout of that repo as `--cwd` (the base checkout, or the plan worktree when exiled) — branch `swarm/<slug>-<task-id>`, worktree directory named `<repo-name>--swarm-<slug>-<task-id>` (in a multi-repo workspace many repos' worktrees share one directory and must stay distinguishable), with an explicit `--path` pointing at a **sibling of the source checkout** — outside every working tree. A relative path would nest the new worktree inside the current working tree and be swallowed by `git add .`. The worker's pane cwd sits at the worktree. Two workers on one branch never run at once.
 - A task that must continue the current branch of the plan's checkout for that repo runs **in place** there (base worktree, or the plan worktree when exiled), serialized against any other in-place task; that checkout counts as one worktree slot. Route a task here too when it is too small to amortize its own worktree — same-project parallelism pays off only when each parallel task outweighs the create/merge/remove overhead.
 - Workspace-root files (compose files, workspace-level makefiles) live in no repo: edit them in place, serialized, like shared manifests — no worktree protection, never two tasks touching them at once.
-- Merge each branch as soon as its task completes (see Scheduling step 3); run the brief's verification before marking the task integrated.
+- Merge each branch as soon as its task completes (see Scheduling: On each settle); run the brief's verification before marking the task integrated.
 - **Worktrees are single-use.** Create at dispatch, from the current branch of the plan's checkout — which by then contains every merged dependency — and remove after integration (herdr skill: worktree remove). Never reuse a finished task's worktree for a later task: it is a pre-merge snapshot, and reusing it silently builds on stale code.
 
 ## Failure modes

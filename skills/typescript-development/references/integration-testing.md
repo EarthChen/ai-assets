@@ -1,6 +1,6 @@
 # Integration Testing (TypeScript Backend)
 
-Principles (boundaries, sociable/solitary, narrow integration, isolation rules): `~/.agents/skills/testing-principles/SKILL.md`. Three-layer assertions for API tests: `~/.agents/skills/e2e-testing/references/backend-api.md`. This file carries only the TypeScript stack specifics.
+Principles (boundaries, sociable/solitary, narrow integration, isolation rules): Read `../../testing-principles/SKILL.md`. Three-layer assertions for API tests: Read `../../e2e-testing/references/backend-api.md`. This file carries only the TypeScript stack specifics.
 
 ## Stack
 
@@ -32,14 +32,15 @@ export async function teardownDatabase() {
 
 ## Integration Test Shape
 
+Strict E2E against a running server instead of the in-process app: Read `../../e2e-testing/references/backend-api.md`.
+
 ```typescript
 import request from 'supertest'
 import { app } from '../src/app'
 import { pool } from './testcontainers.setup'
 
 // supertest imports the app IN-PROCESS — convenient, but strictly speaking
-// that is integration territory. For strict E2E, point at a running server:
-// see ~/.agents/skills/e2e-testing/references/backend-api.md
+// that is integration territory. For strict E2E, point at a running server.
 const api = () => request(app)
 
 it('creates an order and persists it', async () => {
@@ -59,9 +60,7 @@ it('creates an order and persists it', async () => {
 
 ## What to Mock
 
-- **Real**: database, cache, message broker — all via testcontainers
-- **Mocked**: third-party HTTP boundaries — nock intercepts outbound calls; msw when shared with frontend tests
-- **Never mock**: the code under test, the auth layer
+Policy: Read `../../testing-principles/SKILL.md` (What to Mock). TypeScript tools: testcontainers-node for the real database, cache, and message broker; nock intercepts outbound third-party HTTP calls; msw when shared with frontend tests.
 
 ## Isolation
 

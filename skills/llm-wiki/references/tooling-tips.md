@@ -31,12 +31,12 @@ Installs into a local Obsidian vault. Workflow:
 1. Build the plugin once:
    ```bash
    cd plugins/obsidian-audit
-   npm install
-   npm run build
+   pnpm install
+   pnpm run build
    ```
 2. Symlink (or copy) the plugin folder into your vault:
    ```bash
-   npm run link -- "/path/to/your/vault"
+   pnpm run link "/path/to/your/vault"
    ```
 3. In Obsidian, enable Community Plugins, then enable "LLM Wiki Audit".
 4. In the plugin settings, set:
@@ -57,9 +57,9 @@ Local Node.js server that renders the wiki with mermaid, KaTeX, and wikilinks, a
 
 ```bash
 cd web
-npm install
-npm run build
-npm start -- --wiki "/path/to/wiki-root" --port 4175
+pnpm install
+pnpm run build
+pnpm start --wiki "/path/to/wiki-root" --port 4175
 ```
 
 Then open `http://127.0.0.1:4175`. Features:

@@ -5,108 +5,14 @@ Comprehensive testing strategies for Python applications using pytest, TDD metho
 
 ## When to Activate
 
-- Writing new Python code (follow TDD: red, green, refactor)
+- Writing new Python code (test-first via the `tdd` skill)
 - Designing test suites for Python projects
 - Reviewing Python test coverage
 - Setting up testing infrastructure
 
-## Core Testing Philosophy
+## Coverage
 
-### Test-Driven Development (TDD)
-
-Always follow the TDD cycle:
-
-1. **RED**: Write a failing test for the desired behavior
-2. **GREEN**: Write minimal code to make the test pass
-3. **REFACTOR**: Improve code while keeping tests green
-
-```python
-# Step 1: Write failing test (RED)
-def test_add_numbers():
-    result = add(2, 3)
-    assert result == 5
-
-# Step 2: Write minimal implementation (GREEN)
-def add(a, b):
-    return a + b
-
-# Step 3: Refactor if needed (REFACTOR)
-```
-
-### Coverage Requirements
-
-- **Target**: 80%+ code coverage
-- **Critical paths**: 100% coverage required
-- Use `pytest --cov` to measure coverage
-
-```bash
-pytest --cov=mypackage --cov-report=term-missing --cov-report=html
-```
-
-## pytest Fundamentals
-
-### Basic Test Structure
-
-```python
-import pytest
-
-def test_addition():
-    """Test basic addition."""
-    assert 2 + 2 == 4
-
-def test_string_uppercase():
-    """Test string uppercasing."""
-    text = "hello"
-    assert text.upper() == "HELLO"
-
-def test_list_append():
-    """Test list append."""
-    items = [1, 2, 3]
-    items.append(4)
-    assert 4 in items
-    assert len(items) == 4
-```
-
-### Assertions
-
-```python
-# Equality
-assert result == expected
-
-# Inequality
-assert result != unexpected
-
-# Truthiness
-assert result  # Truthy
-assert not result  # Falsy
-assert result is True  # Exactly True
-assert result is False  # Exactly False
-assert result is None  # Exactly None
-
-# Membership
-assert item in collection
-assert item not in collection
-
-# Comparisons
-assert result > 0
-assert 0 <= result <= 100
-
-# Type checking
-assert isinstance(result, str)
-
-# Exception testing (preferred approach)
-with pytest.raises(ValueError):
-    raise ValueError("error message")
-
-# Check exception message
-with pytest.raises(ValueError, match="invalid input"):
-    raise ValueError("invalid input provided")
-
-# Check exception attributes
-with pytest.raises(ValueError) as exc_info:
-    raise ValueError("error message")
-assert str(exc_info.value) == "error message"
-```
+Test-first loop: the `tdd` skill. Coverage target: the global 80% rule; critical paths 100%. Measure: `uv run pytest --cov=mypackage --cov-report=term-missing`.
 
 ## Fixtures
 
@@ -187,22 +93,6 @@ def test_numbers(number):
     assert number > 0
 ```
 
-### Using Multiple Fixtures
-
-```python
-@pytest.fixture
-def user():
-    return User(id=1, name="Alice")
-
-@pytest.fixture
-def admin():
-    return User(id=2, name="Admin", role="admin")
-
-def test_user_admin_interaction(user, admin):
-    """Test using multiple fixtures."""
-    assert admin.can_manage(user)
-```
-
 ### Autouse Fixtures
 
 ```python
@@ -255,20 +145,6 @@ def auth_headers(client):
 def test_uppercase(input, expected):
     """Test runs 3 times with different inputs."""
     assert input.upper() == expected
-```
-
-### Multiple Parameters
-
-```python
-@pytest.mark.parametrize("a,b,expected", [
-    (2, 3, 5),
-    (0, 0, 0),
-    (-1, 1, 0),
-    (100, 200, 300),
-])
-def test_add(a, b, expected):
-    """Test addition with multiple inputs."""
-    assert add(a, b) == expected
 ```
 
 ### Parametrize with IDs
@@ -368,20 +244,6 @@ def test_with_mock(api_call_mock):
 
     api_call_mock.assert_called_once()
     assert result["status"] == "success"
-```
-
-### Mocking Return Values
-
-```python
-@patch("mypackage.Database.connect")
-def test_database_connection(connect_mock):
-    """Test with mocked database connection."""
-    connect_mock.return_value = MockConnection()
-
-    db = Database()
-    db.connect()
-
-    connect_mock.assert_called_once_with("localhost")
 ```
 
 ### Mocking Exceptions
@@ -510,54 +372,7 @@ async def test_async_mock(api_call_mock):
     assert result["status"] == "ok"
 ```
 
-## Testing Exceptions
-
-### Testing Expected Exceptions
-
-```python
-def test_divide_by_zero():
-    """Test that dividing by zero raises ZeroDivisionError."""
-    with pytest.raises(ZeroDivisionError):
-        divide(10, 0)
-
-def test_custom_exception():
-    """Test custom exception with message."""
-    with pytest.raises(ValueError, match="invalid input"):
-        validate_input("invalid")
-```
-
-### Testing Exception Attributes
-
-```python
-def test_exception_with_details():
-    """Test exception with custom attributes."""
-    with pytest.raises(CustomError) as exc_info:
-        raise CustomError("error", code=400)
-
-    assert exc_info.value.code == 400
-    assert "error" in str(exc_info.value)
-```
-
 ## Testing Side Effects
-
-### Testing File Operations
-
-```python
-import tempfile
-import os
-
-def test_file_processing():
-    """Test file processing with temp file."""
-    with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.txt') as f:
-        f.write("test content")
-        temp_path = f.name
-
-    try:
-        result = process_file(temp_path)
-        assert result == "processed: test content"
-    finally:
-        os.unlink(temp_path)
-```
 
 ### Testing with pytest's tmp_path Fixture
 
@@ -572,21 +387,9 @@ def test_with_tmp_path(tmp_path):
     # tmp_path automatically cleaned up
 ```
 
-### Testing with tmpdir Fixture
-
-```python
-def test_with_tmpdir(tmpdir):
-    """Test using pytest's tmpdir fixture."""
-    test_file = tmpdir.join("test.txt")
-    test_file.write("data")
-
-    result = process_file(str(test_file))
-    assert result == "data"
-```
-
 ## Integration Testing
 
-Principles (boundaries, sociable/solitary, narrow integration, isolation rules): `~/.agents/skills/testing-principles/SKILL.md`. This section carries only the Python stack specifics.
+Principles (boundaries, sociable/solitary, narrow integration, isolation rules): Read `../../testing-principles/SKILL.md`. This section carries only the Python stack specifics.
 
 ### Real Database via Testcontainers
 
@@ -632,9 +435,7 @@ def test_create_user_persists(client, db_session):
 
 ### What to Mock
 
-- **Real**: database, cache, message broker — all via testcontainers
-- **Mocked**: third-party HTTP boundaries (`respx` for httpx, `responses` for requests) — slow, flaky, rate-limited
-- **Never mock**: the code under test, the auth layer
+Policy: Read `../../testing-principles/SKILL.md` (What to Mock). Python tools: testcontainers for the real database, cache, and message broker; `respx` (httpx) and `responses` (requests) for third-party HTTP boundaries.
 
 ## Test Organization
 
@@ -681,30 +482,6 @@ class TestUserService:
         assert not self.service.user_exists(1)
 ```
 
-## Best Practices
-
-### DO
-
-- **Follow TDD**: Write tests before code (red-green-refactor)
-- **Test one thing**: Each test should verify a single behavior
-- **Use descriptive names**: `test_user_login_with_invalid_credentials_fails`
-- **Use fixtures**: Eliminate duplication with fixtures
-- **Mock external dependencies**: Don't depend on external services
-- **Test edge cases**: Empty inputs, None values, boundary conditions
-- **Aim for 80%+ coverage**: Focus on critical paths
-- **Keep tests fast**: Use marks to separate slow tests
-
-### DON'T
-
-- **Don't test implementation**: Test behavior, not internals
-- **Don't use complex conditionals in tests**: Keep tests simple
-- **Don't ignore test failures**: All tests must pass
-- **Don't test third-party code**: Trust libraries to work
-- **Don't share state between tests**: Tests should be independent
-- **Don't catch exceptions in tests**: Use `pytest.raises`
-- **Don't use print statements**: Use assertions and pytest output
-- **Don't write tests that are too brittle**: Avoid over-specific mocks
-
 ## Common Patterns
 
 ### Testing API Endpoints (FastAPI/Flask)
@@ -750,22 +527,6 @@ def test_create_user(db_session):
     assert retrieved.email == "alice@example.com"
 ```
 
-### Testing Class Methods
-
-```python
-class TestCalculator:
-    @pytest.fixture
-    def calculator(self):
-        return Calculator()
-
-    def test_add(self, calculator):
-        assert calculator.add(2, 3) == 5
-
-    def test_divide_by_zero(self, calculator):
-        with pytest.raises(ZeroDivisionError):
-            calculator.divide(10, 0)
-```
-
 ## pytest Configuration
 
 ### pytest.ini
@@ -808,56 +569,5 @@ markers = [
     "unit: marks tests as unit tests",
 ]
 ```
-
-## Running Tests
-
-```bash
-# Run all tests
-pytest
-
-# Run specific file
-pytest tests/test_utils.py
-
-# Run specific test
-pytest tests/test_utils.py::test_function
-
-# Run with verbose output
-pytest -v
-
-# Run with coverage
-pytest --cov=mypackage --cov-report=html
-
-# Run only fast tests
-pytest -m "not slow"
-
-# Run until first failure
-pytest -x
-
-# Run and stop on N failures
-pytest --maxfail=3
-
-# Run last failed tests
-pytest --lf
-
-# Run tests with pattern
-pytest -k "test_user"
-
-# Run with debugger on failure
-pytest --pdb
-```
-
-## Quick Reference
-
-| Pattern | Usage |
-| --------- | ------- |
-| `pytest.raises()` | Test expected exceptions |
-| `@pytest.fixture()` | Create reusable test fixtures |
-| `@pytest.mark.parametrize()` | Run tests with multiple inputs |
-| `@pytest.mark.slow` | Mark slow tests |
-| `pytest -m "not slow"` | Skip slow tests |
-| `@patch()` | Mock functions and classes |
-| `tmp_path` fixture | Automatic temp directory |
-| `pytest --cov` | Generate coverage report |
-| `assert` | Simple and readable assertions |
 
 **Remember**: Tests are code too. Keep them clean, readable, and maintainable. Good tests catch bugs; great tests prevent them.

@@ -536,8 +536,8 @@ from fastapi import FastAPI
 from mypackage.models import User
 from mypackage.utils import format_name
 
-# Good: Use isort for automatic import sorting
-# pip install isort
+# Good: Use ruff's isort rules for automatic import sorting
+# uv add --dev ruff && uv run ruff check --select I --fix .
 ```
 
 ### __init__.py for Package Exports
@@ -614,27 +614,29 @@ result = buffer.getvalue()
 
 ### Essential Commands
 
+Install the tools as dev dependencies: `uv add --dev ruff pylint mypy pytest pytest-cov bandit pip-audit safety`.
+
 ```bash
-# Code formatting
-black .
-isort .
+# Code formatting (ruff replaces black + isort)
+uv run ruff format .
+uv run ruff check --select I --fix .
 
 # Linting
-ruff check .
-pylint mypackage/
+uv run ruff check .
+uv run pylint mypackage/
 
 # Type checking
-mypy .
+uv run mypy .
 
 # Testing
-pytest --cov=mypackage --cov-report=html
+uv run pytest --cov=mypackage --cov-report=html
 
 # Security scanning
-bandit -r .
+uv run bandit -r .
 
 # Dependency management
-pip-audit
-safety check
+uv run pip-audit
+uv run safety scan
 ```
 
 ### pyproject.toml Configuration
@@ -643,31 +645,29 @@ safety check
 [project]
 name = "mypackage"
 version = "1.0.0"
-requires-python = ">=3.9"
+requires-python = ">=3.12"
 dependencies = [
     "requests>=2.31.0",
     "pydantic>=2.0.0",
 ]
 
-[project.optional-dependencies]
+[dependency-groups]  # written by `uv add --dev`
 dev = [
     "pytest>=7.4.0",
     "pytest-cov>=4.1.0",
-    "black>=23.0.0",
     "ruff>=0.1.0",
     "mypy>=1.5.0",
 ]
 
-[tool.black]
-line-length = 88
-target-version = ['py39']
-
 [tool.ruff]
 line-length = 88
+target-version = "py312"
+
+[tool.ruff.lint]
 select = ["E", "F", "I", "N", "W"]
 
 [tool.mypy]
-python_version = "3.9"
+python_version = "3.12"
 warn_return_any = true
 warn_unused_configs = true
 disallow_untyped_defs = true
