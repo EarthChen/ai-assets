@@ -37,3 +37,30 @@ Allowed, inside guardrails:
 - **Round cap**: `PEER_ROUND_CAP` (3) exchanges per topic. Still unresolved → both stop and escalate to the orchestrator with the exchange log.
 - **Audit**: every exchange is logged in both workers' result.md (who, when, question, answer). No off-the-books coordination.
 - State etiquette above applies fully — peers check each other's state before prompting; a busy peer gets an inbox drop.
+
+## Topology diagram
+
+```mermaid
+flowchart TB
+  O["Orchestrator — sole scheduler & integrator"]
+  subgraph pool["worker pool (≤ MAX_WORKERS)"]
+    W1["pay-wk-frontend"]
+    W2["pay-wk-backend"]
+    W4["pay-wk-payments"]
+    W3["pay-wk-reviewer (aux)"]
+  end
+  FS[(".herdr-swarm/&lt;plan-id&gt;/<br/>plan · ledger · tasks<br/>contracts · state · inbox")]
+  O <-->|"control plane: herdr prompts (idle only)"| W1
+  O <-->|"control plane"| W2
+  O <-->|"control plane"| W4
+  O <-->|"control plane"| W3
+  W1 <-->|"peer: shared contract, ≤ 3 rounds, logged"| W2
+  W2 <-->|"peer: shared contract"| W4
+  O ---|"data plane"| FS
+  W1 ---|"brief in, result out"| FS
+  W2 ---|"brief in, result out"| FS
+  W4 ---|"brief in, result out"| FS
+  W3 ---|"brief in, result out"| FS
+```
+
+Worker names here are illustrative — the pool may be homogeneous (e.g. all backend: `pay-wk-payments`, `pay-wk-auth`, `pay-wk-orders`). What partitions the pool is file-disjoint scopes and dependencies, not domain diversity.

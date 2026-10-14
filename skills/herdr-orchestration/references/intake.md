@@ -77,3 +77,7 @@ spec: <spec path(s), if any>
 ```
 
 Update verdicts and notes as triage and execution proceed. `plan.md` + `ledger.md` together must let a fresh orchestrator session resume cold.
+
+## Assigning by coupling
+
+Work confined to one service: spawn `<slug>-wk-<service>` with its pane cwd at that repo, route same-service tasks to it by affinity, hot services get `<slug>-wk-<service>-<n>`. A cross-cutting business feature spanning many repos is ONE workstream, not N: assign it to one worker as a vertical slice, executed sequentially across repos — splitting it per repo manufactures N-way dispatch and coordination cost for one semantic change; split per repo only when contracts make the slices genuinely independent. A homogeneous mechanical sweep (dependency bump, mass rename, config sweep) is likewise ONE generic worker (`<slug>-wk-<change>`, workspace cwd) — script the change once, apply it across repos, handle the exceptions; batch into a few slices only when N is large, the work resists scripting, and wall time matters; never one worker per service. Cross-repo workers hold one active repo at a time. A worker whose next task lies in another repo cold-respawns under the same name at the new repo's cwd — pane cwd is fixed at spawn, and cross-repo warmth is worthless (see Retire below).

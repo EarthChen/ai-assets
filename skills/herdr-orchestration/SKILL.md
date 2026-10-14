@@ -75,7 +75,7 @@ State layout — `.herdr-swarm/` holds **one directory per plan**; `<plan-id>` i
 
 Add `.herdr-swarm/` to `.git/info/exclude`. That file lives in git's common dir, so one entry covers the base checkout and every linked worktree of this repo. Never edit the repo's committed `.gitignore` for it. If the workspace directory is not itself a git repo (the typical multi-repo layout), no exclusion is needed.
 
-**Concurrent plans.** One working directory may host several plans at once — state stays apart because each plan has its own directory, and names stay apart because each plan's workers carry its slug prefix. A repo already claimed by an unfinished plan is off-limits to a new plan's working tree: the new plan works that repo from its own linked worktree (Worktrees), or the user arbitrates the overlap.
+**Concurrent plans.** Several plans may share one working directory; each has its own directory and slug-prefixed worker names. A repo already claimed by an unfinished plan is off-limits to a new plan's working tree: see [references/concurrent-plans.md](references/concurrent-plans.md).
 
 ## Platforms
 
@@ -159,30 +159,7 @@ echo "$settled"
 
 Topology is hub-and-spoke: you are the integration point, and every task result flows back to you. Messages travel on two planes:
 
-```mermaid
-flowchart TB
-  O["Orchestrator — sole scheduler & integrator"]
-  subgraph pool["worker pool (≤ MAX_WORKERS)"]
-    W1["pay-wk-frontend"]
-    W2["pay-wk-backend"]
-    W4["pay-wk-payments"]
-    W3["pay-wk-reviewer (aux)"]
-  end
-  FS[(".herdr-swarm/&lt;plan-id&gt;/<br/>plan · ledger · tasks<br/>contracts · state · inbox")]
-  O <-->|"control plane: herdr prompts (idle only)"| W1
-  O <-->|"control plane"| W2
-  O <-->|"control plane"| W4
-  O <-->|"control plane"| W3
-  W1 <-->|"peer: shared contract, ≤ 3 rounds, logged"| W2
-  W2 <-->|"peer: shared contract"| W4
-  O ---|"data plane"| FS
-  W1 ---|"brief in, result out"| FS
-  W2 ---|"brief in, result out"| FS
-  W4 ---|"brief in, result out"| FS
-  W3 ---|"brief in, result out"| FS
-```
-
-Worker names here are illustrative — the pool may be homogeneous (e.g. all backend: `pay-wk-payments`, `pay-wk-auth`, `pay-wk-orders`). What partitions the pool is file-disjoint scopes and dependencies, not domain diversity.
+Topology diagram and worker-naming note: [references/comms.md](references/comms.md): Topology diagram. Worker names in the diagram are illustrative — what partitions the pool is file-disjoint scopes and dependencies, not domain diversity.
 
 - **Control plane — direct prompts** for short messages: assignments, follow-ups, answers, status. **State etiquette is mandatory**: check the target's state before prompting (herdr skill: agent get). `idle` → prompt. `working` → never prompt; drop a file into `<swarm>/inbox/<name>/` instead — the recipient clears its inbox at task boundaries. `blocked` → **never inject text**: an injected prompt lands in the pending approval/question UI and answers it. Inspect and unblock it yourself, or take the task back.
 - **Data plane — files.** Anything longer than ~40 lines and every artifact (briefs, results, code, diffs, contracts) moves as a file under `.herdr-swarm/`; messages carry the path, not the content. Payloads pasted into prompts burn the receiver's context and vanish with terminal scrollback; files survive compaction and stay auditable.
@@ -199,30 +176,13 @@ Standing rules:
 
 ## Broker (worker-requested dispatch)
 
-Workers never spawn. When a task outgrows one worker, the worker writes sub-briefs and requests dispatch; you stay the sole scheduler.
-
-1. The worker writes `<swarm>/tasks/<parent-id>/<sub-id>.md` (hierarchical ids: T1a, T1b, …) and sends ONE line: `DISPATCH-REQ <sub-id> BLOCKED|PREFETCH`.
-2. Review the sub-brief. **Reject** when it breaks scope rules or is too small to amortize a spawn (rule of thumb: under ~15 minutes of work stays with the requester) — state the reason; the requester may appeal once.
-3. Approved: `BLOCKED` jumps the queue; `PREFETCH` ranks by normal priority. Dispatch to an idle same-domain worker first (reuse), else spawn under the pool cap.
-4. Sub-workers report to **you** (single-scheduler invariant); you relay their `result.md` path to the requester as a one-line pointer.
-5. When the requester's subtree completes, its sub-workers rejoin the domain pool by affinity or retire — never orphaned.
+Workers never spawn. A worker line `DISPATCH-REQ <sub-id> BLOCKED|PREFETCH` means the task outgrew it: read [references/broker.md](references/broker.md) before replying. You stay the sole scheduler; you approve or reject, and sub-workers report to you.
 
 ## Context management
 
 Context is the swarm's scarcest resource. Every supported platform auto-compacts on overflow (lossy, mid-task; the worker recovers and retries), so this protocol makes compaction deterministic at task boundaries and recovery mechanical when it is not.
 
-**Telemetry — you pull, workers don't push.** Each kind renders context usage in its TUI footer in its own format (platforms.md: Telemetry). Read it with `herdr agent read <name> --source detection` and parse with the worker's kind pattern — inline this into the polling gate loop so it costs no LLM turns:
-
-```bash
-# pattern per worker kind — copy it from platforms.md: Telemetry; mixed pools
-# look up each worker's kind in the ledger. pi pattern shown
-for a in $watch; do
-  ctx=$(herdr agent read "$a" --source detection --lines 15 2>/dev/null \
-        | grep -oE 'ctx [0-9]+(\.[0-9]+)?%/[0-9]+[kKmM]?' | head -1)
-  echo "$a: ${ctx:-ctx=?}"
-done
-```
-
+**Telemetry — you pull, workers don't push.** Each kind renders context usage in its TUI footer (platforms.md: Telemetry). Read it with `herdr agent read <name> --source detection --lines 15`, parse with the worker's kind pattern, and inline the read into the polling gate loop so it costs no LLM turns. Loop template: [references/context.md](references/context.md).
 Record the latest value in the ledger `ctx` column. Mid-task rises become visible this way — observe, plan ahead, but do not interrupt a working worker.
 
 **Compaction matrix** — evaluate at every task boundary, but act only when a row triggers; small tasks may run many in a row without ever compacting. Rows evaluate top-down, first match wins:
@@ -243,23 +203,19 @@ Record the latest value in the ledger `ctx` column. Mid-task rises become visibl
 
 **Your own context**: compact proactively at phase boundaries (a wave collected and merged) rather than mid-flow, then re-read `plan.md` + `ledger.md`. Keep your reads thin: result.md summaries, never worker terminals.
 
-**Telemetry degradation chain** (footer formats drift between agent versions, and per kind):
-
-1. **Self-heal**: read the worker's `detection` output yourself, locate the context indicator in the rendered footer, derive the new pattern, and record it in the ledger header for the rest of this session.
-2. **Heuristic fallback**: self-heal fails → record `ctx=unknown`, run the fallback heuristic, and notify the user **once** (`herdr notification show` + ledger notes + report.md). Never block the swarm on telemetry.
-3. **Worker self-report escape hatch** (only on your explicit instruction): workers append `ctx=<totalTokens>` to their done/blocked line, read from their platform's session storage (platforms.md: Session JSONL) — the latest usage/`token_count` record, a storage-format source independent of the TUI.
+**Telemetry degradation.** When the footer pattern stops matching or a kind's footer drifts, read [references/context.md](references/context.md): self-heal, then heuristic fallback (`ctx=unknown`, one user notice), then worker self-report on your explicit instruction. Never block the swarm on telemetry.
 
 ## Pool discipline
 
 - **Reuse the warm worker.** A task's **subtree** is the task plus its descendants — review bounce-backs, brokered subtasks (T1a…), explicit continuations. Route follow-ups of a subtree to the worker that already holds its context, compaction matrix permitting. New tickets in the same domain also go to the domain's worker — cold-respawn is reserved for domain switches, not ticket switches.
-- **Assign by coupling, not by repo.** Work confined to one service: spawn `<slug>-wk-<service>` with its pane cwd at that repo, route same-service tasks to it by affinity, hot services get `<slug>-wk-<service>-<n>`. A cross-cutting business feature spanning many repos is ONE workstream, not N: assign it to one worker as a vertical slice, executed sequentially across repos — splitting it per repo manufactures N-way dispatch and coordination cost for one semantic change; split per repo only when contracts make the slices genuinely independent. A homogeneous mechanical sweep (dependency bump, mass rename, config sweep) is likewise ONE generic worker (`<slug>-wk-<change>`, workspace cwd) — script the change once, apply it across repos, handle the exceptions; batch into a few slices only when N is large, the work resists scripting, and wall time matters; never one worker per service. Cross-repo workers hold one active repo at a time. A worker whose next task lies in another repo cold-respawns under the same name at the new repo's cwd — pane cwd is fixed at spawn, and cross-repo warmth is worthless (see Retire below).
+- **Assign by coupling, not by repo.** Read [references/intake.md](references/intake.md): Assigning by coupling before routing multi-repo work, a cross-cutting feature, or a mechanical sweep. Default: one business workstream = one worker; cross-repo workers hold one active repo at a time and cold-respawn under the same name when the next task lies in another repo.
 - **Retire** a worker (and note why in the ledger) when: its domain's work is exhausted — even if work may return later (review bounce-backs, late dependencies), respawning from files costs less than an idle pane occupying supervisory bandwidth — it has done ≥ `MAX_TASKS_PER_WORKER` tasks, it hits repeated `blocked`/`unknown` states, or the user asks. Retire = close its pane (only panes you created). A worker whose next task lies in another domain does NOT retire: it cold-respawns under the same name with a fresh preamble and updated state card — a new session is the point, dropping now-worthless context; repo familiarity re-acquires from the environment in minutes. Fresh context is cheap because state lives in files.
 - The pool stays at `MAX_WORKERS` or below; excess tasks wait in the queue.
 
 ## Worktrees
 
 - Read-only roles (researcher, reviewer, planner) share the orchestrator's cwd.
-- **Concurrent plans sharing a repo.** If this plan shares a repo with another unfinished plan (Setup step 1), exile this plan from the repo's base checkout: create a linked worktree `<repo-name>--plan-<slug>` (sibling directory, exactly like task worktrees below) on a plan branch `swarm-plan/<slug>` cut from the base branch. Every edit this plan makes in that repo — base work included — happens there; its task worktrees are created from it (`--cwd`) and merge into the plan branch as usual. The plan branch merges into the base checkout serialized across plans: one plan merges at a time — merge, run verification, report clear before another plan attempts its merge. A merge that conflicts with already-merged work of another plan: rebase the plan branch on the new base, re-run verification, merge again. Never overwrite another plan's merged commits; two unfinished plans never edit one working tree.
+- **Concurrent plans sharing a repo.** When Setup step 1 finds another unfinished plan on a repo this plan edits, read [references/concurrent-plans.md](references/concurrent-plans.md) before creating any worktree in that repo: this plan works it from a plan worktree, never the base checkout.
 - Each repo's own checkout is that repo's **base** — its integration point — even when it is itself a linked worktree of another checkout. Merges and verifications happen there. Single-repo work: the base is the orchestrator's cwd. Multi-repo work: one base per service repo, and the orchestrator's cwd is the workspace directory containing them.
 - Concurrent editors each get **one git worktree** (herdr skill: worktree create) in the repo their task touches — pass the plan's checkout of that repo as `--cwd` (the base checkout, or the plan worktree when exiled) — branch `swarm/<slug>-<task-id>`, worktree directory named `<repo-name>--swarm-<slug>-<task-id>` (in a multi-repo workspace many repos' worktrees share one directory and must stay distinguishable), with an explicit `--path` pointing at a **sibling of the source checkout** — outside every working tree. A relative path would nest the new worktree inside the current working tree and be swallowed by `git add .`. The worker's pane cwd sits at the worktree. Two workers on one branch never run at once.
 - A task that must continue the current branch of the plan's checkout for that repo runs **in place** there (base worktree, or the plan worktree when exiled), serialized against any other in-place task; that checkout counts as one worktree slot. Route a task here too when it is too small to amortize its own worktree — same-project parallelism pays off only when each parallel task outweighs the create/merge/remove overhead.
