@@ -1,6 +1,3 @@
-# Scaffold：本项目内开发验证，成型后整目录迁至 ~/.agents/skills/
-# （pi 发现 ~/.agents/skills/ 与 .agents/skills/；.cursor/skills/ 仅 cursor 使用）
-
 interface:
   display_name: 上线配套文档生成器
   short_description: 基于分支 diff 生成后门 bsh 测试文档、动态配置变更清单、多语言文案变更清单、Melon 配置变更说明。

@@ -14,6 +14,8 @@ Single source of truth for both inline and dispatched execution. Read end-to-end
 
 Three sub-agents run independently, dispatched at the same level — direct children of this session, never nested inside an intermediary agent. A change can pass one and fail the others; findings never merge or re-rank across axes.
 
+**Sub-agent rule:** when you execute these rules as a sub-agent (for example the `code-reviewer` agent), spawn nothing: run the eligible axes sequentially in your own context, each with its own checklist and its own findings section, and keep the same aggregation rules.
+
 - **Standards axis** (diff scope only) — does the code conform to documented repo standards plus a Fowler smell baseline? Prompt template comes from the mattpocock `code-review` skill's SKILL.md (located at install time — the path differs across harnesses and plugin caches).
 - **Spec axis** (diff scope only) — does the code faithfully implement the originating issue/spec? Same prompt source.
 - **Lang+Lens axis** — one sub-agent runs both checklists: the matching `references/<lang>-review.md` (language-specific traps: framework mismatches, async correctness, type-safety holes, query-plan killers) and `references/lens-review.md` (cross-language review lenses: silent failure, type design, security). Each finding tags its origin `[lang]` or `[lens]` so the aggregator can split reports. The two are orthogonal: Lang asks language-specific rule questions ("is this Java catch written correctly?"); Lens asks pattern-level questions ("is this error swallowed?"). Both may fire on the same code — the aggregator flags overlaps, it does not dedupe.
@@ -25,10 +27,10 @@ Three sub-agents run independently, dispatched at the same level — direct chil
 Preparation happens in this session; the two sub-agents are plain workers. Locate the mattpocock `code-review` SKILL.md and read it (do not invoke it as a Skill tool — it is a process document, read for its prompt templates):
 
 ```bash
-find -L "$PWD/skills" ~/.agents/skills ~/.pi/agent/skills ~/.claude/plugins/cache ~/.cursor/plugins -path '*code-review/SKILL.md' 2>/dev/null | head -1
+find -L "$PWD/skills" ~/.agents/skills ~/.pi/agent/skills ~/.claude/plugins/cache ~/.codex/plugins ~/.cursor/plugins -path '*/code-review/SKILL.md' -exec ls -t {} + 2>/dev/null | head -1
 ```
 
-If several hits remain (multiple cached plugin versions), prefer the newest. Then, in this session:
+The newest file wins; empty output means the skill is not installed. Then, in this session:
 
 1. The fixed point is already pinned (Establish The Scope) — reuse it.
 2. Identify the spec source per code-review's Process step 2 (commit-message issue refs → user-supplied path → spec files under `docs/`, `specs/`, `.scratch/`). Nothing found → skip the Spec sub-agent and say so in the report.
@@ -42,13 +44,9 @@ Spawn one sub-agent for both checklists. Pass it the diff/file scope and the loa
 
 If the detected language has no reference file, the sub-agent runs only `references/lens-review.md` and reports "no lang checklist for <lang>".
 
-Each finding classifies:
+Each finding carries a severity on the scale the reference checklists use: **CRITICAL**, **HIGH**, **MEDIUM**, or **LOW**.
 
-- **SAFE** — no dynamic references, no public-API or persisted-format impact.
-- **CAREFUL** — reached via dynamic imports, string-based dispatch, or reflection.
-- **RISKY** — part of a public API surface, persisted format, or compatibility path.
-
-State the evidence per finding: which rule fired, where in the diff or file, and why the class holds.
+State the evidence per finding: which rule fired, where in the diff or file, and why the severity holds.
 
 ## Aggregate
 
@@ -57,8 +55,8 @@ Present the reports under `## Standards`, `## Spec`, `## Lang (<language>)`, and
 Audit output uses this compact record per finding:
 
 ```plaintext
-[axis / confidence / risk] finding
-evidence: rule fired; location; dynamic/public/compatibility checks
+[axis / confidence / severity] finding
+evidence: rule fired; location; public-API/compatibility impact of the fix
 fix: exact change proposed
 tradeoff: observable capability or behavior affected
 verify: smallest decisive check
@@ -67,5 +65,13 @@ verify: smallest decisive check
 ## Report
 
 - **Done when** every finding in scope has exited Execute proved or rejected with reason, and each axis has a worst-issue line (or "none").
-- If applying (not audit-only), each approved finding passes one-change-at-a-time with a verify step that re-runs the smallest decisive check; revert on failure.
-- Keep or downgrade a finding when dynamic reachability or compatibility cannot be ruled out. Never delete a finding the proof did not cover — report it as "kept, proof incomplete".
+- Keep or downgrade a finding when its impact cannot be confirmed. Never delete a finding the proof did not cover — report it as "kept, proof incomplete".
+
+## Apply
+
+Fix mode only; audit mode stops at Report.
+
+1. Apply only the findings the user selected from the report. Re-prove each against the current code first; drop it with reason when the proof fails.
+2. One finding at a time: make the `fix:` change, then run the project's tests plus the finding's `verify:` check.
+3. A failing check reverts that finding's own edit before the next finding starts. Never restore or checkout a whole file that holds other uncommitted changes — never discard unrelated user changes.
+4. Report per finding: applied, reverted (with the failing check), or dropped (with the reason).

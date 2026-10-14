@@ -103,8 +103,8 @@ cat pom.xml 2>/dev/null | head -20 || cat build.gradle 2>/dev/null | head -20
 
 | Language | Dependency audit command | Static security linter |
 | --- | --- | --- |
-| TypeScript / JavaScript | `npm audit --audit-level=high` (or `pnpm audit` / `yarn audit`) | `npx eslint . --plugin security` |
-| Python | `uv run pip-audit` or `pip-audit` / `safety check` | `ruff check --select S` (bandit also valid) |
+| TypeScript / JavaScript | `pnpm audit --audit-level high` (or `yarn audit` when the lockfile says so) | `pnpm exec eslint . --plugin security` |
+| Python | `uv run pip-audit` or `pip-audit` / `safety scan` | `ruff check --select S` (bandit also valid) |
 | Go | `govulncheck ./...` | `gosec ./...` |
 | Rust | `cargo audit` | `cargo audit` |
 | Java (Maven) | `./mvnw org.owasp:dependency-check:check` | SpotBugs with find-sec-bugs |

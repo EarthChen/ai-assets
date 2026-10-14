@@ -125,7 +125,7 @@ Sources to ingest:
 
 ## Audit backlog
 
-*(none — run `python3 scripts/audit_review.py <wiki-root> --open` to refresh)*
+*(none — run `uv run <llm-wiki skill dir>/scripts/audit_review.py <wiki-root> --open` to refresh)*
 
 ## Notes for the LLM
 
@@ -183,8 +183,8 @@ Next steps:
   2. Add sources to raw/ (use Obsidian Web Clipper for web articles)
   3. Run ingest: tell your LLM agent "ingest raw/<file>.md"
   4. Ask questions: "what does the wiki say about X?"
-  5. Run lint periodically:  python3 scripts/lint_wiki.py {root}
-  6. Process feedback:       python3 scripts/audit_review.py {root} --open
+  5. Run lint periodically:  uv run <llm-wiki skill dir>/scripts/lint_wiki.py {root}
+  6. Process feedback:       uv run <llm-wiki skill dir>/scripts/audit_review.py {root} --open
 """)
 
 

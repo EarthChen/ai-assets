@@ -24,7 +24,7 @@ Before writing anything, read the codebase for structural facts — the factual 
 - Existing README/AGENTS content — intent reference, not a fact source
 - Any project-specific manifest the tree reveals (e.g. `marketplace.json`, `third-party.json`) — read it; missing such a file is how **drift** starts
 
-**Completion criterion:** every probe item either resolved from code or marked `[缺]` (missing — skip, do not guess). No item asked of the user.
+**Completion criterion:** every probe item either resolved from code or listed as `[缺]` in the report to the user (missing — skip, do not guess). No item asked of the user.
 
 A probe item the code cannot resolve is not your cue to invent — it becomes a **grill** point (see below).
 
@@ -46,14 +46,14 @@ Aim well under 190; 190 is the wall.
 
 | Section | Source |
 | --- | --- |
-| `## Project` (or project-language equivalent) — one-line what-it-is | factual + `[推断]` (library/app/monorepo inferred from structure; the positioning phrase, if you can't pin it, is a grill point) |
+| `## Project` (or project-language equivalent) — one-line what-it-is | factual + inferred (library/app/monorepo inferred from structure, listed as `[推论]` in the report; the positioning phrase, if you can't pin it, is a grill point) |
 | `## Stack` — language, framework, DB, test runner | factual (manifests) |
 | `## Commands` — build/test/lint, in code blocks | factual (scripts/Makefile/justfile) |
 | `## Architecture` — what each key dir is for, no full tree | factual (tree) |
-| `## Conventions` — falsifiable rules observable in code | `[推断]` (read patterns from existing code: naming, export style, error handling) |
+| `## Conventions` — falsifiable rules observable in code | inferred (read patterns from existing code: naming, export style, error handling; listed as `[推论]` in the report) |
 | `## Rules` — don'ts / boundaries / security gotchas / PR & commit conventions | ask intent (team "never do X" is not in the code) |
 
-No `[待填]` placeholders in AGENTS.md — they cost lines and the agent reads them as incomplete. For a light intent item you can't resolve, infer it and tag `[推断]` so the user can correct in review; for a real boundary rule the code can't yield, grill.
+No `[待填]` placeholders in AGENTS.md — they cost lines and the agent reads them as incomplete. For a light intent item you can't resolve, infer it, write it untagged, and list it as `[推论]` in the report so the user can correct it in review; for a real boundary rule the code can't yield, grill. Epistemic tags (`[推论]`, `[缺]`) appear only in the report to the user, never in the AGENTS.md or README.md body.
 
 After generating, count lines. Over 190: self-tighten with no semantic loss — apply the pruning levers from the `writing-for-agents` skill. Still over: leave a `<!-- TODO: over 190 lines, trim X -->` marker and tell the user which section resists compression and what you'd cut. Do not silently truncate mid-sentence; do not silently axe content the code can't rebuild.
 
@@ -72,7 +72,7 @@ After generating, count lines. Over 190: self-tighten with no semantic loss — 
 
 No `## Contributing` section unless the user asks.
 
-**Completion criterion:** AGENTS.md ≤190 lines (counted); README contains only `[待填]` gaps the code genuinely can't fill; both bodies match the dominant language; every `[推断]` / `[缺]` tag is present for the user to review.
+**Completion criterion:** AGENTS.md ≤190 lines (counted); README contains only `[待填]` gaps the code genuinely can't fill; both bodies match the dominant language; every `[推论]` / `[缺]` item is listed in the report for the user to review, and neither body carries such a tag.
 
 ## Symlink
 
@@ -96,7 +96,7 @@ When you hit intent the code cannot yield — a positioning phrase you can't pin
 
 Only grill on what the code can't resolve. Everything probed from code (structure, commands, stack, language) never becomes a question — you already have the answer. The grill fires for intent and for destructive changes (deleting or heavily rewriting existing content) — never for pure additions, dedup, or correcting obviously stale facts, which you do directly.
 
-**Completion criterion:** every grill point either resolved by the user's answer, or left as a `[待填]`/`[推断]`/TODO marker with the unresolved point named in the report. No intent fabricated to fill a gap.
+**Completion criterion:** every grill point either resolved by the user's answer, or left as a `[待填]`/TODO marker or a `[推论]` report item, with the unresolved point named in the report. No intent fabricated to fill a gap.
 
 ## Verify
 
@@ -105,7 +105,7 @@ Before reporting done, run this checklist. All green → report complete. Any re
 - [ ] AGENTS.md ≤190 lines (counted this run)
 - [ ] CLAUDE.md state matches the symlink argument (or conflict was surfaced+confirmed)
 - [ ] Cross-check leaves no unresolved doc-vs-code contradiction (every drift surfaced, none silently overwritten)
-- [ ] Every `[推断]` / `[缺]` / `[待填]` marker listed in the report for the user to review
+- [ ] Every `[推论]` / `[缺]` / `[待填]` item listed in the report for the user to review
 - [ ] Every grill point resolved or explicitly left as a named TODO
 - [ ] Any destructive change (delete / heavy rewrite) shown as a diff the user confirmed
 - [ ] Both file bodies follow the project's dominant language

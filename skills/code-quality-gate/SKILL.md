@@ -51,13 +51,13 @@ Troubleshooting failures: diagnose via the `tdd` skill workflow → check test i
 | Level | Meaning | Action |
 | ------- | --------- | -------- |
 | CRITICAL | Security vulnerability or data loss risk | **BLOCK** - Must fix before merge |
-| HIGH | Bug or significant quality issue | **WARN** - Should fix before merge |
-| MEDIUM | Maintainability concern | **INFO** - Consider fixing |
+| HIGH | Bug or significant quality issue | **BLOCK** - Must fix before merge |
+| MEDIUM | Maintainability concern | **WARN** - Consider fixing |
 | LOW | Style or minor suggestion | **NOTE** - Optional |
 
 **Reviewer routing:** the mattpocock `code-review` skill (`mattpocock-skills:code-review` on Claude; dual-axis Standards + Spec review, no severity), the `code-reviewer` agent (deep severity-tiered audit, including the security lens).
 
-**Approval** (`code-reviewer` output; the single source for approval rules): Approve = no CRITICAL or HIGH; Warning = only HIGH issues (merge with caution); Block = CRITICAL issues found.
+**Approval** (`code-reviewer` output; the single source for approval rules): Approve = no CRITICAL or HIGH; Warning = MEDIUM issues only (merge with caution); Block = CRITICAL or HIGH issues found. The code-audit language checklists use the same rule.
 
 > Quality/security checklists live in the coding-style, security, and testing rules; the mattpocock `code-review` skill and the `code-reviewer` agent carry the detailed review workflows.
 

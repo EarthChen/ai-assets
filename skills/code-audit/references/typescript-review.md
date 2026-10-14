@@ -69,11 +69,11 @@ Review Priorities checklist for TypeScript/JavaScript, Node.js, and React/Next.j
 ## Diagnostic Commands
 
 ```bash
-npm run typecheck --if-present       # Canonical TypeScript check when the project defines one
+pnpm run --if-present typecheck     # Canonical TypeScript check when the project defines one
 tsc --noEmit -p <relevant-config>    # Fallback type check for the tsconfig that owns the changed files
 eslint . --ext .ts,.tsx,.js,.jsx    # Linting
 prettier --check .                  # Format check
-npm audit                           # Dependency vulnerabilities (or the equivalent yarn/pnpm/bun audit command)
+pnpm audit                          # Dependency vulnerabilities (or the equivalent yarn/bun audit command when the lockfile says so)
 vitest run                          # Tests (Vitest)
 jest --ci                           # Tests (Jest)
 ```
@@ -86,7 +86,7 @@ jest --ci                           # Tests (Jest)
 
 ## Reference
 
-This repo does not yet ship a dedicated `typescript-patterns` skill. For detailed TypeScript and JavaScript patterns, use `coding-standards` plus `frontend-patterns` or `backend-patterns` based on the code being reviewed.
+For detailed TypeScript and JavaScript patterns, use the `typescript-development` skill (`../../typescript-development/SKILL.md`) for backend code or the `react-development` skill (`../../react-development/SKILL.md`) for React/TSX code.
 
 ---
 

@@ -1,7 +1,6 @@
 ---
 name: loop-operator
-description: Operate autonomous agent loops, monitor progress, and intervene safely when loops stall.
-color: orange
+description: Operate autonomous agent loops, monitor progress, and intervene safely when loops stall. Use when an autonomous multi-iteration agent loop needs progress checkpoints, stall or retry-storm detection, and safe pause/resume.
 ---
 ## Mission
 
