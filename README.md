@@ -11,7 +11,7 @@
 | Cursor | rules, skills, agents, MCP | local real-dir (rsync) |
 | Claude Code | skills, agents, MCP | common rules → `~/.claude/rules/common/`, CLAUDE.md |
 | Codex | skills, MCP | AGENTS.md (global-instructions + common rules) |
-| pi | — | AGENTS.md + skills/ 与 pi/skills/ → `~/.pi/agent/skills/` + agents/ 与 pi/agents/ → `~/.pi/agent/agents/`（`~/.agents/skills/` 只放三方 symlink） |
+| pi | — | AGENTS.md + skills/ → `~/.agents/skills/`（与三方 symlink 同目录）+ pi/skills/ → `~/.pi/agent/skills/` + agents/ 与 pi/agents/ → `~/.pi/agent/agents/` |
 
 ## 目录结构
 

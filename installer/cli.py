@@ -13,7 +13,7 @@ from .common import log, log_section
 from .deploy_claude import install_claude
 from .deploy_codex import install_codex
 from .deploy_cursor import install_cursor
-from .deploy_pi import _remove_legacy_agents_skill_links, install_pi
+from .deploy_pi import install_pi
 from .third_party import install_manual_skills
 from .version import _bump_version, _get_current_version, set_version
 
@@ -101,15 +101,6 @@ def _do_install(platform: str, dry_run: bool) -> None:
 
     detection = detect_platforms()
     detected = {name for name, (ok, _reason) in detection.items() if ok}
-
-    # The legacy links make Codex double-load self-owned skills, so they go
-    # even where pi is no longer detected. While pi is detected they are its
-    # only skill source until install_pi relinks into ~/.pi/agent/skills, so
-    # a run that skips pi keeps them.
-    if "pi" not in detected or platform in ("all", "pi"):
-        _remove_legacy_agents_skill_links(dry_run)
-    else:
-        log("[keep] legacy ~/.agents/skills links: pi is detected but not in this run")
 
     log_section("Platform detection")
     for name, (ok, reason) in detection.items():

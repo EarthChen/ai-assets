@@ -24,16 +24,13 @@ def _symlink_target_under(entry: Path, source_real: Path) -> Path | None:
     return target
 
 
-def _remove_legacy_agents_skill_links(dry_run: bool = False) -> None:
-    """Remove ~/.agents/skills symlinks into this repo's skills/.
+def _remove_self_owned_skill_links(link_dir: Path, dry_run: bool = False) -> None:
+    """Remove symlinks in link_dir that resolve into this repo's skills/.
 
-    install_pi used to link self-owned skills into ~/.agents/skills. Codex
-    also scans that dir, so each self-owned skill loaded twice on Codex
-    (plugin + user dir). pi now gets them in ~/.pi/agent/skills, so every
-    link there resolving under REPO_ROOT/skills/ is legacy, live or dead.
-    Third-party links (vendor/) and real directories are left alone.
+    Self-owned skills link into ~/.agents/skills. A link to one of them in
+    ~/.pi/agent/skills (left by an older install) makes pi load it twice.
+    Links into pi/skills/, third-party links and real directories stay.
     """
-    link_dir = paths.AGENTS_HOME / "skills"
     if not link_dir.is_dir():
         return
     source_real = (paths.REPO_ROOT / "skills").resolve()
@@ -42,23 +39,22 @@ def _remove_legacy_agents_skill_links(dry_run: bool = False) -> None:
         if _symlink_target_under(entry, source_real) is None:
             continue
         if dry_run:
-            log(f"[DRY-RUN] rm legacy self-owned skill symlink {entry}")
+            log(f"[DRY-RUN] rm self-owned skill symlink {entry}")
             count += 1
             continue
         # pi-lens-ignore: ast-grep:unchecked-throwing-call-python
         entry.unlink()
         count += 1
     if count and not dry_run:
-        log(f"{link_dir}: legacy self-owned skill symlinks removed ({count}); "
-            f"pi now reads them from {paths.PI_AGENT_HOME / 'skills'}")
+        log(f"{link_dir}: self-owned skill symlinks removed ({count})")
 
 
 def _clean_stale_skill_symlinks(link_dir: Path, source_root: Path, dry_run: bool = False) -> None:
     """Remove stale skill symlinks in link_dir that point into source_root.
 
     All local skills install from this repo: install_pi symlinks every
-    skills/<name> and pi/skills/<name> dir into ~/.pi/agent/skills/. Both
-    sources share that dir, so each call cleans only links into its own
+    skills/<name> dir into ~/.agents/skills/ and every pi/skills/<name> dir
+    into ~/.pi/agent/skills/. Each call cleans only links into its own
     source_root. When a skill dir is renamed or
     removed in the repo, its link outlives it — every platform scanning the
     dir then loads a ghost or trips on a broken link. Any symlink whose
@@ -127,14 +123,13 @@ def install_pi(dry_run: bool = False) -> None:
     directly:
     - AGENTS.md (global instructions + common rules) -> ~/.pi/agent/AGENTS.md
       (full overwrite, same as the Codex deploy)
-    - self-owned skills (skills/*) symlinked into ~/.pi/agent/skills/ —
-      scanned by pi only (recursive SKILL.md discovery). Not
-      ~/.agents/skills/: Codex also scans that dir and already gets these
-      skills from its plugin, so links there loaded them twice. Third-party
-      manual installs (mattpocock, anysearch, ...) stay in ~/.agents/skills/,
-      which pi also scans
-    - pi-only skills (pi/skills/*) symlinked into the same ~/.pi/agent/skills/
-      — outside the plugin-root skills/, so they never reach
+    - self-owned skills (skills/*) symlinked into ~/.agents/skills/ — the
+      Agent Skills standard dir that pi and other compliant harnesses scan,
+      next to the third-party manual installs (mattpocock, anysearch, ...).
+      Codex and Cursor also scan it and get the same skills from their
+      plugin, so they may list each skill twice (accepted trade-off)
+    - pi-only skills (pi/skills/*) symlinked into ~/.pi/agent/skills/ — read
+      by pi only, outside the plugin-root skills/, so they never reach
       Claude/Codex/Cursor
     - pi-only agents (pi/agents/*.md) symlinked into ~/.pi/agent/agents/
       alongside agents/*.md (step 3b) — outside the plugin-root agents/ that
@@ -165,22 +160,23 @@ def install_pi(dry_run: bool = False) -> None:
             shutil.copy2(dist_agents, dst_agents)
             log(f"_dist/pi/AGENTS.md -> {dst_agents}")
 
-    # 2. Skills: symlink self-owned skills into ~/.pi/agent/skills/, which
-    # pi scans and no other harness reads. ~/.agents/skills/ is NOT used:
-    # Codex also scans it, so self-owned skills there loaded twice on Codex.
-    pi_skills_dst = paths.PI_AGENT_HOME / "skills"
-    _clean_stale_skill_symlinks(pi_skills_dst, paths.REPO_ROOT / "skills", dry_run)
+    # 2. Skills: symlink self-owned skills into ~/.agents/skills/, the
+    # Agent Skills standard dir pi scans natively.
+    shared_skills = paths.AGENTS_HOME / "skills"
+    _clean_stale_skill_symlinks(shared_skills, paths.REPO_ROOT / "skills", dry_run)
     count = 0
     for skill_dir in sorted((paths.REPO_ROOT / "skills").iterdir()):
         if not skill_dir.is_dir() or not (skill_dir / "SKILL.md").exists():
             continue
-        create_symlink(skill_dir, pi_skills_dst / skill_dir.name, dry_run)
+        create_symlink(skill_dir, shared_skills / skill_dir.name, dry_run)
         count += 1
-    log(f"{count} self-owned skills -> {pi_skills_dst}")
+    log(f"{count} self-owned skills -> {shared_skills}")
 
-    # 2b. pi-only skills: symlink pi/skills/*/ into the same dir. They live
-    # outside the plugin-root skills/ every other platform reads, so they
-    # load on pi only.
+    # 2b. pi-only skills: symlink pi/skills/*/ into ~/.pi/agent/skills/,
+    # which only pi reads. Self-owned links there (older installs) would
+    # make pi load those skills twice, so they go.
+    pi_skills_dst = paths.PI_AGENT_HOME / "skills"
+    _remove_self_owned_skill_links(pi_skills_dst, dry_run)
     pi_skills_src = paths.REPO_ROOT / "pi" / "skills"
     _clean_stale_skill_symlinks(pi_skills_dst, pi_skills_src, dry_run)
     count = 0
