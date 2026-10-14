@@ -29,10 +29,12 @@ _PLUGIN_COPY_IGNORE = shutil.ignore_patterns(
 )
 
 
-# Local working state at the repo root only: .claude/ (settings.local.json,
-# plans), .agents/ and notes/. Matched only at the root, because a skill may
-# legitimately ship a subdir with one of these generic names.
-_PLUGIN_COPY_IGNORE_ROOT_ONLY = frozenset({".claude", ".agents", "notes"})
+# Matched only at the repo root, because a skill may legitimately ship a
+# subdir with one of these generic names: local working state (.claude/
+# settings.local.json and plans, .agents/, notes/) and skills/. Cursor reads
+# self-owned skills from ~/.agents/skills; a root skills/ in the plugin
+# copy is auto-discovered (no manifest field needed) and loads them twice.
+_PLUGIN_COPY_IGNORE_ROOT_ONLY = frozenset({".claude", ".agents", "notes", "skills"})
 
 
 def _plugin_copy_ignore(src_root: Path):
@@ -104,9 +106,10 @@ def install_cursor(dry_run: bool = False) -> None:
     #    marketplace plugin itself — `cursor` CLI has no `plugin` subcommand
     #    (only editor-launch flags), so marketplace install is a UI-only action
     #    (Settings → Customize → add URL). Offered here as the parallel option.
-    #    Local + marketplace under the same plugin name would double-load
-    #    (duplicate skills); pick one.
-    log("Plugin provides: rules, skills, agents, MCP")
+    #    Local + marketplace under the same plugin name would double-load;
+    #    pick one. A marketplace install also ships skills/, which duplicates
+    #    the ~/.agents/skills links, so the local copy is the supported path.
+    log("Plugin provides: rules, agents, MCP (skills come from ~/.agents/skills)")
     log("Marketplace alternative: Settings → Customize → add URL")
     log("  https://github.com/EarthChen/ai-assets")
     log("  (local + marketplace same-name double-loads; use one)")

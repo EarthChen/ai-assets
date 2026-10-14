@@ -14,6 +14,7 @@ from .deploy_claude import install_claude
 from .deploy_codex import install_codex
 from .deploy_cursor import install_cursor
 from .deploy_pi import install_pi
+from .shared_skills import link_self_owned_skills
 from .third_party import install_manual_skills
 from .version import _bump_version, _get_current_version, set_version
 
@@ -127,6 +128,9 @@ def _do_install(platform: str, dry_run: bool) -> None:
                 f"Install it, or omit --platform to default to detected platforms only."
             )
         platforms[platform](dry_run)
+    # pi, Cursor and Codex read self-owned skills only from ~/.agents/skills,
+    # so the links go in on every run, whatever platforms were deployed.
+    link_self_owned_skills(dry_run)
     # Install all third-party manual skills once (not per-platform — they
     # link into shared user-level dirs). Same third-party.json source as
     # `install.py manual`, so this is the single source of truth for

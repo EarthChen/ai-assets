@@ -12,28 +12,28 @@ For repo maintenance (deploy pipeline, vendor submodule management, build transf
 
 ```text
 Source (single truth)     →  _dist/ (only platform-specific)  →  Plugin loads / Script deploys
-rules/common/*.md              _dist/cursor/rules/**/*.mdc       .cursor-plugin (skills→./skills/, agents→./agents/, rules+mcp→_dist/cursor/)
+rules/common/*.md              _dist/cursor/rules/**/*.mdc       .cursor-plugin (agents→./agents/, rules+mcp→_dist/cursor/; no skills)
 rules/common/                  _dist/claude/rules/**/*.md        .claude-plugin (skills/agents 均省略→Claude 自动扫根, mcp→.mcp.json)
-mcp.json (_platforms tag)      _dist/claude/mcp.json  ◄── .mcp.json symlink, read by Claude AND Codex
-global-instructions.md         _dist/codex/AGENTS.md             .codex-plugin (skills→./skills/, mcpServers→./.mcp.json)
+mcp.json (_platforms tag)      _dist/claude/mcp.json  ◄── .mcp.json symlink, read by Claude
+global-instructions.md         _dist/codex/AGENTS.md             Codex: AGENTS.md copy only (no plugin)
                                _dist/codex/mcp.json              (generated; no consumer)
-skills/      ──────────────────┐  (Cursor/Claude/Codex read repo-root skills/ directly; pi via
-agents/*.md  ──────────────────┘   symlinks in ~/.agents/skills/ + ~/.pi/agent/agents/. NOT copied into _dist/ —
-                                  root is committed real files only, no vendor symlinks to break)
+skills/      ──────────────────┐  Claude: plugin-root skills/. pi/Cursor/Codex: symlinks in ~/.agents/skills/
+agents/*.md  ──────────────────┘  (one source per platform). Agents: Claude/Cursor plugin, pi ~/.pi/agent/agents/.
+                                  NOT copied into _dist/ — root is committed real files only
 pi/skills/ + pi/agents/ ─────── pi only (install_pi symlinks into ~/.pi/agent/{skills,agents}/;
                                   invisible to Claude/Codex/Cursor)
 ```
 
-`_dist/` holds only what genuinely differs per platform: `mcp.json` (`_platforms` filter), `rules/` (`.mdc` vs `.md`), and the global-instructions deploy (`CLAUDE.md` / `AGENTS.md`). Skills and agents are read directly from the repo root by all four platforms (pi through symlinks) — no per-platform copy. Codex has no MCP file of its own: its manifest points at `./.mcp.json`, the same `_dist/claude/mcp.json` Claude reads (see `CONTRIBUTING.md`).
+`_dist/` holds only what genuinely differs per platform: `mcp.json` (`_platforms` filter), `rules/` (`.mdc` vs `.md`), and the global-instructions deploy (`CLAUDE.md` / `AGENTS.md`). Skills and agents are never copied per platform. Each platform loads self-owned skills from exactly one place: Claude from its plugin root `skills/`; pi, Cursor and Codex from the `~/.agents/skills/` symlinks (the Cursor plugin copy omits `skills/`, and Codex loads no repo plugin), because Cursor and Codex auto-discover a plugin's `skills/` and do not merge same-name skills.
 
-`install.py` is a thin entrypoint; the code lives in `installer/` (`build.py`, `deploy_{claude,codex,cursor,pi}.py`, `third_party.py`, `version.py`, `cli.py`; `paths.py` holds every filesystem location). Tests: `uv run pytest` (includes a golden test that fails when the committed `_dist/` is stale).
+`install.py` is a thin entrypoint; the code lives in `installer/` (`build.py`, `deploy_{claude,codex,cursor,pi}.py`, `shared_skills.py`, `third_party.py`, `version.py`, `cli.py`; `paths.py` holds every filesystem location). Tests: `uv run pytest` (includes a golden test that fails when the committed `_dist/` is stale).
 
 ## pi support (script-only deploy)
 
 [pi](https://github.com/badlogic/pi-mono) has no plugin system compatible with this repo, so `install.py install --platform pi` deploys directly to `~/.pi/agent/`:
 
 - **AGENTS.md**: `_dist/pi/AGENTS.md` (global-instructions + common rules, same embed as Codex; pi loads it from `~/.pi/agent/` at startup — no 32KB limit) → `~/.pi/agent/AGENTS.md`, **full overwrite** (repo is the single source of truth; my-pi-agent's own project docs live in that repo's CLAUDE.md)
-- **Skills**: self-owned skills (`skills/*`) symlinked into `~/.agents/skills/` — the Agent Skills standard dir, so pi and any other compliant harness pick them up; same dir as the third-party links from `install.py manual` (mattpocock, anysearch, ...). Not registered via `settings.json`. Trade-off: Codex and Cursor also scan that dir and get the same skills from their plugin, so they may list each self-owned skill twice (Codex documents that same-name skills are not merged). `install_pi` removes self-owned links from `~/.pi/agent/skills/` (left by older installs) so pi loads each skill once; vendor links and real directories stay
+- **Skills**: self-owned skills (`skills/*`) symlinked into `~/.agents/skills/` by the shared install step on every `install` run — the Agent Skills standard dir, read by pi, Cursor and Codex; same dir as the third-party links from `install.py manual` (mattpocock, anysearch, ...). Not registered via `settings.json`. `install_pi` removes self-owned links from `~/.pi/agent/skills/` (left by older installs) so pi loads each skill once; vendor links and real directories stay
 - **pi-only skills**: `pi/skills/*` symlinked into `~/.pi/agent/skills/` — pi reads that dir and no other harness does, and it sits outside the plugin-root `skills/`, so these skills load exclusively on pi. Currently: none (`herdr-orchestration` moved to root `skills/` — it went multi-platform: orchestrator AND workers can run on pi, Claude Code, or Codex, mixed pools allowed)
 - **Agents**: `agents/*.md` symlinked into `~/.pi/agent/agents/` — pi-subagents' `discoverAgents()` scans that user dir (alongside its builtins scout/reviewer/worker/...) and loads `*.md` with YAML frontmatter. Repo agent frontmatter only sets `name` + `description`; `model` and `tools` are intentionally omitted so pi-subagents inherits the parent session's model and grants the default tool set. Verify with `/subagents-doctor` + `subagent({ action: "list" })` after install.
 - **pi-only agents**: `pi/agents/*.md` symlinked into the same `~/.pi/agent/agents/` dir — they sit outside the plugin-root `agents/` that Claude auto-scans and outside the `./agents/` path Cursor's manifest declares, so these load exclusively on pi. Currently: `Explore.md`
@@ -43,8 +43,8 @@ pi/skills/ + pi/agents/ ─────── pi only (install_pi symlinks into 
 
 | Platform | Method | Trigger |
 | --- | --- | --- |
-| Cursor | `install.py install` (rsync real-dir, `--delete`) | After repo edits: `install` (+ `build` first if rules/MCP changed) + restart/reload |
-| Codex | Plugin symlink (skills instant, tracks repo); `~/.codex/AGENTS.md` is a copy | Skills: none. AGENTS.md: `build` + `install` |
+| Cursor | `install.py install` (rsync real-dir without `skills/`, `--delete`); skills via `~/.agents/skills` symlinks | Skills: edits instant, new/renamed ones need `install`. Rules/agents/MCP: `install` (+ `build` first if rules/MCP changed) + restart/reload |
+| Codex | `~/.agents/skills` symlinks (no repo plugin; `install` disables a previously registered one); `~/.codex/AGENTS.md` is a copy | Skills: edits instant, new/renamed ones need `install`. AGENTS.md: `build` + `install` |
 | Claude Code | `install.py install` (local-directory marketplace, reinstall = fresh snapshot) | After repo edits: `install` (+ `build` first if `_dist/` inputs changed); bump optional |
 | pi | `install.py install --platform pi` (AGENTS.md copy + skill/agent symlinks under `~/.pi/agent/`) | AGENTS.md: `build` + `install`; skill/agent edits instant, new/renamed ones need `install` |
 

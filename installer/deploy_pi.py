@@ -123,11 +123,8 @@ def install_pi(dry_run: bool = False) -> None:
     directly:
     - AGENTS.md (global instructions + common rules) -> ~/.pi/agent/AGENTS.md
       (full overwrite, same as the Codex deploy)
-    - self-owned skills (skills/*) symlinked into ~/.agents/skills/ — the
-      Agent Skills standard dir that pi and other compliant harnesses scan,
-      next to the third-party manual installs (mattpocock, anysearch, ...).
-      Codex and Cursor also scan it and get the same skills from their
-      plugin, so they may list each skill twice (accepted trade-off)
+    - self-owned skills (skills/*) come from ~/.agents/skills/, linked by
+      the shared install step for every platform (see shared_skills)
     - pi-only skills (pi/skills/*) symlinked into ~/.pi/agent/skills/ — read
       by pi only, outside the plugin-root skills/, so they never reach
       Claude/Codex/Cursor
@@ -160,19 +157,9 @@ def install_pi(dry_run: bool = False) -> None:
             shutil.copy2(dist_agents, dst_agents)
             log(f"_dist/pi/AGENTS.md -> {dst_agents}")
 
-    # 2. Skills: symlink self-owned skills into ~/.agents/skills/, the
-    # Agent Skills standard dir pi scans natively.
-    shared_skills = paths.AGENTS_HOME / "skills"
-    _clean_stale_skill_symlinks(shared_skills, paths.REPO_ROOT / "skills", dry_run)
-    count = 0
-    for skill_dir in sorted((paths.REPO_ROOT / "skills").iterdir()):
-        if not skill_dir.is_dir() or not (skill_dir / "SKILL.md").exists():
-            continue
-        create_symlink(skill_dir, shared_skills / skill_dir.name, dry_run)
-        count += 1
-    log(f"{count} self-owned skills -> {shared_skills}")
-
-    # 2b. pi-only skills: symlink pi/skills/*/ into ~/.pi/agent/skills/,
+    # 2. Self-owned skills reach pi through ~/.agents/skills/, linked by the
+    # shared install step (shared_skills.link_self_owned_skills).
+    # pi-only skills: symlink pi/skills/*/ into ~/.pi/agent/skills/,
     # which only pi reads. Self-owned links there (older installs) would
     # make pi load those skills twice, so they go.
     pi_skills_dst = paths.PI_AGENT_HOME / "skills"

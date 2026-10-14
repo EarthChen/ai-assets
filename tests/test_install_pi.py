@@ -12,7 +12,7 @@ import sys
 
 from conftest import link, make_agent, make_skill
 
-from installer import cli, deploy_pi
+from installer import cli, deploy_pi, shared_skills
 
 
 def _repo_with_pi_sources(repo):
@@ -29,20 +29,47 @@ def _links(directory):
     return {p.name: p.resolve() for p in directory.iterdir() if p.is_symlink()}
 
 
-def test_self_owned_skills_link_into_agents_skills_and_pi_only_into_pi_dir(sandbox):
+def test_install_pi_links_only_pi_only_skills(sandbox):
     repo = sandbox.repo
     _repo_with_pi_sources(repo)
 
     deploy_pi.install_pi()
 
-    assert _links(sandbox.home / ".agents" / "skills") == {
-        "alpha": (repo / "skills" / "alpha").resolve(),
-        "beta": (repo / "skills" / "beta").resolve(),
-    }
+    assert not (sandbox.home / ".agents" / "skills").exists()
     assert _links(sandbox.home / ".pi" / "agent" / "skills") == {
         "pi-only": (repo / "pi" / "skills" / "pi-only").resolve(),
     }
     assert (sandbox.home / ".pi" / "agent" / "AGENTS.md").read_text(encoding="utf-8") == "agents\n"
+
+
+def test_self_owned_skills_link_into_agents_skills(sandbox):
+    repo = sandbox.repo
+    _repo_with_pi_sources(repo)
+
+    shared_skills.link_self_owned_skills()
+
+    assert _links(sandbox.home / ".agents" / "skills") == {
+        "alpha": (repo / "skills" / "alpha").resolve(),
+        "beta": (repo / "skills" / "beta").resolve(),
+    }
+
+
+def test_cursor_only_install_links_self_owned_skills(sandbox, empty_path, monkeypatch):
+    # Cursor and Codex read self-owned skills only from ~/.agents/skills, so
+    # the links must exist on machines without pi.
+    monkeypatch.setattr(sys, "platform", "linux")
+    monkeypatch.setattr(cli, "install_cursor", lambda dry_run: None)
+    monkeypatch.setattr(cli, "install_manual_skills", lambda name, dry_run: None)
+    repo = sandbox.repo
+    make_skill(repo / "skills", "alpha")
+    vendor = repo / "vendor" / "mattpocock-skills"
+    vendor.mkdir(parents=True)
+    (vendor / ".placeholder").write_text("", encoding="utf-8")
+    (sandbox.home / ".cursor").mkdir()
+
+    cli._do_install("cursor", dry_run=False)
+
+    assert (sandbox.home / ".agents" / "skills" / "alpha").is_symlink()
 
 
 def test_install_pi_removes_self_owned_links_from_pi_skills_dir(sandbox):
@@ -67,7 +94,7 @@ def test_agents_skills_cleanup_keeps_third_party_links_and_real_dirs(sandbox):
     link(shared / "anysearch", repo / "vendor" / "anysearch-skill")  # third-party, dead
     hand_made = make_skill(shared, "ccbaga-network")           # user's real dir
 
-    deploy_pi.install_pi()
+    shared_skills.link_self_owned_skills()
 
     assert sorted(p.name for p in shared.iterdir()) == [
         "alpha", "anysearch", "beta", "ccbaga-network", "tdd"]
@@ -99,6 +126,7 @@ def test_install_pi_removes_stale_links_from_both_skill_sources(sandbox):
     link(shared / "old-root", repo / "skills" / "old-root")
     link(pi_skills / "old-pi", repo / "pi" / "skills" / "old-pi")
 
+    shared_skills.link_self_owned_skills()
     deploy_pi.install_pi()
 
     assert sorted(_links(shared)) == ["alpha", "beta"]

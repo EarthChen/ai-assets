@@ -23,7 +23,6 @@ THIRD_PARTY_JSON = REPO_ROOT / "third-party.json"
 PLUGIN_JSONS = [
     REPO_ROOT / ".cursor-plugin" / "plugin.json",
     REPO_ROOT / ".claude-plugin" / "plugin.json",
-    REPO_ROOT / ".codex-plugin" / "plugin.json",
 ]
 
 MARKETPLACE_JSON = REPO_ROOT / ".claude-plugin" / "marketplace.json"

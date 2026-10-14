@@ -88,8 +88,22 @@ def test_cursor_copy_skips_local_state_and_tool_caches(sandbox):
     dst = sandbox.home / ".cursor" / "plugins" / "local" / "p"
     deploy_cursor.copy_plugin_tree(repo, dst)
 
-    assert sorted(p.name for p in dst.iterdir()) == ["skills"]
-    assert sorted(p.name for p in (dst / "skills" / "alpha").iterdir()) == ["SKILL.md", "notes"]
+    assert sorted(p.name for p in dst.iterdir()) == []
+
+
+def test_cursor_copy_excludes_root_skills_but_keeps_nested_skills_dirs(sandbox):
+    # Cursor gets self-owned skills from ~/.agents/skills; a root skills/ in
+    # the plugin copy would be auto-discovered and load each skill twice.
+    repo = sandbox.repo
+    make_skill(repo / "skills", "alpha")
+    (repo / "docs" / "skills").mkdir(parents=True)
+    (repo / "docs" / "skills" / "f").write_text("x", encoding="utf-8")
+
+    dst = sandbox.home / ".cursor" / "plugins" / "local" / "p"
+    deploy_cursor.copy_plugin_tree(repo, dst)
+
+    assert not (dst / "skills").exists()
+    assert (dst / "docs" / "skills" / "f").is_file()
 
 
 def test_cursor_copy_rebuilds_destination(sandbox):
