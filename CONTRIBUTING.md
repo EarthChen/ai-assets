@@ -51,7 +51,7 @@ After adding or removing an agent, commit `agents/<name>.md` and nothing else �
 
 ## Codex AGENTS.md 32KB Limit
 
-Codex reads `~/.codex/AGENTS.md` under a 32KB ceiling (`project_doc_max_bytes`). `install.py build` composes that file from **`global-instructions.md` + every `rules/common/*.md` that passes the codex platform filter** (frontmatter stripped) → `_dist/codex/AGENTS.md` → deployed on install. Current size: 12.6KB (well under).
+Codex reads `~/.codex/AGENTS.md` under a 32KB ceiling (`project_doc_max_bytes`). `install.py build` composes that file from **`global-instructions.md` + every `rules/common/*.md` that passes the codex platform filter** (frontmatter stripped) → `_dist/codex/AGENTS.md` → deployed on install. Current size: 11.5KB (well under).
 
 Repo-root `AGENTS.md` is **not** part of the embed — it is maintainer documentation only, so its length never touches the Codex budget. Moving text between `global-instructions.md` and `rules/common/` is likewise a no-op for size: both are embedded.
 
@@ -61,7 +61,7 @@ If you approach the limit, in order of preference:
 2. Demote an always-on `rules/common/*.md` into a skill reference, so it loads on demand instead of every turn — the same move the java/python rules just made
 3. As last resort: raise `project_doc_max_bytes` in `~/.codex/config.toml`
 
-pi has no such limit (`_dist/pi/AGENTS.md` is built the same way and is also 12.6KB currently).
+pi has no such limit (`_dist/pi/AGENTS.md` is built the same way and is also 11.5KB currently).
 
 ## Update Mechanism — Detailed
 
@@ -103,6 +103,17 @@ Cursor resolves a marketplace to a commit SHA on first import and caches it — 
 ### Cursor "Include third-party Plugins, Skills, and other configs" — Keep OFF
 
 Settings → Rules, Skills, Subagents: when ON, Cursor recursively scans `~/.claude/plugins/cache/*` (every version of this repo's Claude clone, each with full `skills/`), `~/.codex/skills/`, `~/.agents/skills/` with no de-duplication → every skill (e.g. `tdd`) loads ~11×. Known Cursor bug, no ETA. OFF avoids the plugin-cache and `~/.claude/skills` / `~/.codex/skills` scans. Cursor's docs (Skill directories, checked 2026-10-14) list `~/.agents/skills/` as a default user-level dir, so it loads regardless of this toggle. `install` links self-owned skills there, which is why the Cursor plugin copy ships no `skills/`. A Cursor **marketplace** install of this repo would ship `skills/` again and duplicate them, so use the local copy only.
+
+## pi Deploy (script-only)
+
+[pi](https://github.com/badlogic/pi-mono) has no plugin system compatible with this repo, so `install.py install --platform pi` deploys directly to `~/.pi/agent/`:
+
+- **AGENTS.md**: `_dist/pi/AGENTS.md` (global-instructions + common rules, same embed as Codex; pi loads it from `~/.pi/agent/` at startup — no 32KB limit) → `~/.pi/agent/AGENTS.md`, **full overwrite** (repo is the single source of truth; my-pi-agent's own project docs live in that repo's CLAUDE.md)
+- **Skills**: self-owned skills (`skills/*`) symlinked into `~/.agents/skills/` by the shared install step on every `install` run — the Agent Skills standard dir, read by pi, Cursor and Codex; same dir as the third-party links from `install.py manual` (mattpocock, anysearch, ...). Not registered via `settings.json`. `install_pi` removes self-owned links from `~/.pi/agent/skills/` (left by older installs) so pi loads each skill once; vendor links and real directories stay
+- **pi-only skills**: `pi/skills/*` symlinked into `~/.pi/agent/skills/` — pi reads that dir and no other harness does, and it sits outside the plugin-root `skills/`, so these skills load exclusively on pi. Currently: none (`herdr-orchestration` moved to root `skills/` — it went multi-platform: orchestrator AND workers can run on pi, Claude Code, or Codex, mixed pools allowed)
+- **Agents**: `agents/*.md` symlinked into `~/.pi/agent/agents/` — pi-subagents' `discoverAgents()` scans that user dir (alongside its builtins scout/reviewer/worker/...) and loads `*.md` with YAML frontmatter. Repo agent frontmatter only sets `name` + `description`; `model` and `tools` are intentionally omitted so pi-subagents inherits the parent session's model and grants the default tool set. Verify with `/subagents-doctor` + `subagent({ action: "list" })` after install.
+- **pi-only agents**: `pi/agents/*.md` symlinked into the same `~/.pi/agent/agents/` dir — they sit outside the plugin-root `agents/` that Claude auto-scans and outside the `./agents/` path Cursor's manifest declares, so these load exclusively on pi. Currently: `Explore.md`
+- **NOT deployed**: MCP (pi covers playwright etc. via its own extensions — no `mcp.json` sync), separate rules files (embedded in AGENTS.md; language conventions via `skills/<lang>-development` on demand)
 
 ## Cursor Plugin "Error loading plugin" — Diagnosis
 
