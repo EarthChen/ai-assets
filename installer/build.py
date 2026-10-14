@@ -185,9 +185,8 @@ def build_dist(dry_run: bool = False) -> None:
         mcp_servers = {} if platform == "pi" else filter_mcp_for_platform(platform)
         if platform != "pi":
             # Always write the file, even with zero servers. Repo-root .mcp.json
-            # is a symlink to _dist/claude/mcp.json and .codex-plugin/plugin.json
-            # declares `mcpServers: "./.mcp.json"`, so skipping the write on an
-            # empty filter leaves both dangling (hit 2026-10-08: the only server
+            # is a symlink to _dist/claude/mcp.json, so skipping the write on an
+            # empty filter leaves it dangling (hit 2026-10-08: the only server
             # is tagged _platforms: cursor, so _dist/claude/mcp.json never
             # existed). Claude accepts an empty {"mcpServers": {}} plugin file.
             mcp_out = platform_dir / "mcp.json"

@@ -8,10 +8,10 @@
 
 | 平台 | 插件加载 | 脚本补充 |
 | ------ | --------- | --------- |
-| Cursor | rules, skills, agents, MCP | local real-dir (rsync) |
+| Cursor | rules, agents, MCP | local real-dir (rsync，不含 `skills/`) + skills/ → `~/.agents/skills/` |
 | Claude Code | skills, agents, MCP | common rules → `~/.claude/rules/common/`, CLAUDE.md |
-| Codex | skills, MCP | AGENTS.md (global-instructions + common rules) |
-| pi | — | AGENTS.md + skills/ 与 pi/skills/ → `~/.pi/agent/skills/` + agents/ 与 pi/agents/ → `~/.pi/agent/agents/`（`~/.agents/skills/` 只放三方 symlink） |
+| Codex | — | AGENTS.md (global-instructions + common rules) + skills/ → `~/.agents/skills/` |
+| pi | — | AGENTS.md + skills/ → `~/.agents/skills/`（与三方 symlink 同目录）+ pi/skills/ → `~/.pi/agent/skills/` + agents/ 与 pi/agents/ → `~/.pi/agent/agents/` |
 
 ## 目录结构
 
@@ -45,7 +45,6 @@ ai-assets/
 │   └── pi/                    # AGENTS.md
 ├── .cursor-plugin/plugin.json
 ├── .claude-plugin/plugin.json
-├── .codex-plugin/plugin.json
 ├── install.py                 # 一键安装脚本
 ├── installer/                 # install.py 的实现（按阶段/平台分模块）
 ├── tests/                     # pytest（uv run pytest；含 _dist/ golden 测试）
@@ -190,8 +189,8 @@ git submodule update --remote vendor/mattpocock-skills
 
 | 平台 | 安装 | 更新 |
 | ------ | ------ | ------ |
-| Cursor | `install.py install`（local real-dir） | rsync `--delete` 重建，修改后重启 |
-| Codex | `~/.codex/plugins/local/` symlink + config.toml | skills 经 symlink 即时跟踪 repo；AGENTS.md 需 build + install |
+| Cursor | `install.py install`（local real-dir，不含 `skills/`；skills 经 `~/.agents/skills/` symlink） | rsync `--delete` 重建，修改后重启 |
+| Codex | `~/.agents/skills/` symlink + AGENTS.md（不再注册 repo 插件，install 会禁用旧注册） | skills 经 symlink 即时跟踪 repo；AGENTS.md 需 build + install |
 | Claude Code | `install.py install`（`marketplace_source: "local"` → `marketplace add <REPO_ROOT>` + reinstall） | `install.py install` reinstall 即刷新；bump version 可选（诊断用） |
 | pi | `install.py install --platform pi` | build + install |
 
@@ -283,9 +282,8 @@ MCP 配置中使用 `_platforms` 字段：
 
 | 插件 | 组件 | 原因 |
 | ------ | ------ | ------ |
-| `.cursor-plugin` | rules, skills, agents, mcp | 全功能原生支持 |
+| `.cursor-plugin` | rules, agents, mcp | skills 走 `~/.agents/skills/`，插件不重复提供 |
 | `.claude-plugin` | skills, agents, mcp | rules 需脚本部署 |
-| `.codex-plugin` | skills, mcp | agents/rules 不支持 |
 
 ## 新增规则
 

@@ -43,7 +43,7 @@ def test_explicit_platform_that_is_not_detected_fails_loud(sandbox, empty_path, 
 
 
 def _write_manifests(repo, ver):
-    for d in (".cursor-plugin", ".claude-plugin", ".codex-plugin"):
+    for d in (".cursor-plugin", ".claude-plugin"):
         (repo / d).mkdir(exist_ok=True)
         (repo / d / "plugin.json").write_text(json.dumps({"version": ver}), encoding="utf-8")
     (repo / ".claude-plugin" / "marketplace.json").write_text(json.dumps(
@@ -57,7 +57,7 @@ def test_version_bump_updates_every_manifest_and_marketplace(sandbox, monkeypatc
 
     cli.main()
 
-    for d in (".cursor-plugin", ".claude-plugin", ".codex-plugin"):
+    for d in (".cursor-plugin", ".claude-plugin"):
         assert json.loads((repo / d / "plugin.json").read_text())["version"] == "1.4.0"
     market = json.loads((repo / ".claude-plugin" / "marketplace.json").read_text())
     assert market["plugins"][0]["version"] == "1.4.0"

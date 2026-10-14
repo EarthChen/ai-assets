@@ -33,7 +33,6 @@ def _point_installer_at(monkeypatch: pytest.MonkeyPatch, repo: Path, home: Path)
     monkeypatch.setattr(paths, "PLUGIN_JSONS", [
         repo / ".cursor-plugin" / "plugin.json",
         repo / ".claude-plugin" / "plugin.json",
-        repo / ".codex-plugin" / "plugin.json",
     ])
     monkeypatch.setattr(paths, "MARKETPLACE_JSON", repo / ".claude-plugin" / "marketplace.json")
 

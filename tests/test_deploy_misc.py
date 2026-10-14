@@ -4,12 +4,14 @@ from __future__ import annotations
 
 import json
 
-from conftest import make_skill
+from conftest import link, make_skill
 
 from installer import deploy_claude, deploy_codex, third_party
 
 
-def test_codex_links_plugin_registers_once_and_copies_agents_md(sandbox):
+def test_codex_copies_agents_md_without_registering_a_plugin(sandbox):
+    # Codex gets self-owned skills from ~/.agents/skills; the repo plugin
+    # carried only skills (+ an empty MCP file) and loaded them twice.
     repo = sandbox.repo
     (repo / "_dist" / "codex").mkdir(parents=True)
     (repo / "_dist" / "codex" / "AGENTS.md").write_text("codex\n", encoding="utf-8")
@@ -18,12 +20,30 @@ def test_codex_links_plugin_registers_once_and_copies_agents_md(sandbox):
     (codex / "config.toml").write_text("model = 'x'\n", encoding="utf-8")
 
     deploy_codex.install_codex()
-    deploy_codex.install_codex()  # idempotent: no duplicate registration
 
-    plugin = codex / "plugins" / "local" / "earthchen-ai-assets"
-    assert plugin.is_symlink() and plugin.resolve() == repo.resolve()
-    assert (codex / "config.toml").read_text().count("[marketplaces.earthchen-ai-assets]") == 1
+    assert not (codex / "plugins" / "local" / "earthchen-ai-assets").exists()
+    assert (codex / "config.toml").read_text(encoding="utf-8") == "model = 'x'\n"
     assert (codex / "AGENTS.md").read_text(encoding="utf-8") == "codex\n"
+
+
+def test_codex_disables_previously_registered_plugin_and_removes_its_link(sandbox):
+    repo = sandbox.repo
+    codex = sandbox.home / ".codex"
+    link(codex / "plugins" / "local" / "earthchen-ai-assets", repo)
+    config = (
+        "model = 'x'\n"
+        "\n[plugins.\"earthchen-ai-assets@earthchen-ai-assets\"]\n"
+        "enabled = true\n"
+        "\n[plugins.\"other@market\"]\n"
+        "enabled = true\n"
+    )
+    (codex / "config.toml").write_text(config, encoding="utf-8")
+
+    deploy_codex.install_codex()
+
+    assert not (codex / "plugins" / "local" / "earthchen-ai-assets").is_symlink()
+    assert (codex / "config.toml").read_text(encoding="utf-8") == config.replace(
+        "earthchen-ai-assets\"]\nenabled = true", "earthchen-ai-assets\"]\nenabled = false")
 
 
 def test_manual_skills_link_into_user_dirs(sandbox):

@@ -39,7 +39,7 @@ def test_bump_version(current, part, expected):
 
 def test_get_current_version_uses_highest_manifest_version(sandbox):
     # Drifted manifests must not let a bump re-issue an existing version.
-    versions = {".cursor-plugin": "1.3.0", ".claude-plugin": "1.3.10", ".codex-plugin": "1.3.2"}
+    versions = {".cursor-plugin": "1.3.0", ".claude-plugin": "1.3.10"}
     for d, ver in versions.items():
         (sandbox.repo / d).mkdir()
         (sandbox.repo / d / "plugin.json").write_text(json.dumps({"version": ver}), encoding="utf-8")

@@ -13,7 +13,8 @@ from .common import log, log_section
 from .deploy_claude import install_claude
 from .deploy_codex import install_codex
 from .deploy_cursor import install_cursor
-from .deploy_pi import _remove_legacy_agents_skill_links, install_pi
+from .deploy_pi import install_pi
+from .shared_skills import link_self_owned_skills
 from .third_party import install_manual_skills
 from .version import _bump_version, _get_current_version, set_version
 
@@ -102,15 +103,6 @@ def _do_install(platform: str, dry_run: bool) -> None:
     detection = detect_platforms()
     detected = {name for name, (ok, _reason) in detection.items() if ok}
 
-    # The legacy links make Codex double-load self-owned skills, so they go
-    # even where pi is no longer detected. While pi is detected they are its
-    # only skill source until install_pi relinks into ~/.pi/agent/skills, so
-    # a run that skips pi keeps them.
-    if "pi" not in detected or platform in ("all", "pi"):
-        _remove_legacy_agents_skill_links(dry_run)
-    else:
-        log("[keep] legacy ~/.agents/skills links: pi is detected but not in this run")
-
     log_section("Platform detection")
     for name, (ok, reason) in detection.items():
         marker = "✓" if ok else "✗"
@@ -136,6 +128,9 @@ def _do_install(platform: str, dry_run: bool) -> None:
                 f"Install it, or omit --platform to default to detected platforms only."
             )
         platforms[platform](dry_run)
+    # pi, Cursor and Codex read self-owned skills only from ~/.agents/skills,
+    # so the links go in on every run, whatever platforms were deployed.
+    link_self_owned_skills(dry_run)
     # Install all third-party manual skills once (not per-platform — they
     # link into shared user-level dirs). Same third-party.json source as
     # `install.py manual`, so this is the single source of truth for
