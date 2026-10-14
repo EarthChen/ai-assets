@@ -31,9 +31,9 @@ MANY SMALL FILES > FEW LARGE FILES:
 
 ## Error Handling
 
-ALWAYS handle errors comprehensively:
+ALWAYS handle every error that can actually occur:
 
-- Handle errors explicitly at every level
+- Handle each error explicitly at the level that can act on it; add no handlers for impossible states
 - Provide user-friendly error messages in UI-facing code
 - Log detailed error context on the server side
 - Never silently swallow errors

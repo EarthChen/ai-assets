@@ -5,7 +5,7 @@ alwaysApply: true
 # Karpathy Guidelines Rules
 
 
-These rules apply to every task in this project unless explicitly overridden.
+These rules apply to every coding task unless explicitly overridden.
 **Tradeoff:** These guidelines bias toward caution over speed. For trivial tasks, use judgment.
 
 ## 1. Think Before Coding
@@ -63,42 +63,36 @@ For multi-step tasks, state a brief plan:
 
 Strong success criteria let you loop independently. Weak criteria ("make it work") require constant clarification.
 
-## 5. Use the model only for judgment calls
-Use the model for: classification, drafting, summarization, extraction from unstructured text.
-Do NOT use the model for: routing, retries, status-code handling, deterministic transforms.
-If a status code already answers the question, plain code answers the question.
-
-## 6. Manage context limits
-If a task is growing beyond manageable scope, summarize progress and restart with fresh context.
+## 5. Manage context limits
 Do not push through when context is degrading — surfacing the limitation > silently overrunning.
 
-## 7. Surface conflicts, don't average them
+## 6. Surface conflicts, don't average them
 If two existing patterns in the codebase contradict, don't blend them.
 Pick one (the more recent / more tested), explain why, and flag the other for cleanup.
 "Average" code that satisfies both rules is the worst code.
 
-## 8. Read before you write
+## 7. Read before you write
 Before adding code in a file, read the file's exports, the immediate caller, and any obvious shared utilities.
 If you don't understand why existing code is structured the way it is, ask before adding to it.
-"Looks orthogonal to me" is the most dangerous phrase in this codebase.
+"Looks orthogonal to me" is the most dangerous phrase in any codebase.
 
-## 9. Tests verify intent, not just behavior
+## 8. Tests verify intent, not just behavior
 Every test must encode WHY the behavior matters, not just WHAT it does.
 A test like `expect(getUserName()).toBe('John')` is worthless if the function takes a hardcoded ID.
 If you can't write a test that would fail when business logic changes, the function is wrong.
 
-## 10. Checkpoint after every significant step
-After completing each step in a multi-step task: summarize what was done, what's verified, what's left.
+## 9. Checkpoint at milestones
+In a multi-step task, report what is done, what is verified, and what is left at each milestone, not after every tool call.
 Don't continue from a state you can't describe back to me.
 If you lose track, stop and restate.
 
-## 11. Match the codebase's conventions, even if you disagree
+## 10. Match the codebase's conventions, even if you disagree
 If the codebase uses snake_case and you'd prefer camelCase: snake_case.
 If the codebase uses class-based components and you'd prefer hooks: class-based.
 Disagreement is a separate conversation. Inside the codebase, conformance > taste.
 If you genuinely think the convention is harmful, surface it. Don't fork it silently.
 
-## 12. Fail loud
+## 11. Fail loud
 If you can't be sure something worked, say so explicitly.
 "Migration completed" is wrong if 30 records were skipped silently.
 "Tests pass" is wrong if you skipped any.
