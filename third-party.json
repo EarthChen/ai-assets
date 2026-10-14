@@ -29,7 +29,7 @@
         "claude": {
           "marketplace_ref": "mattpocock/skills",
           "plugin_id": "mattpocock-skills@mattpocock",
-          "note": "Native plugin is the sole source of mattpocock skills on Claude; this repo's build excludes them from its Claude distribution. NOT installed by `install.py manual` on Claude."
+          "note": "Native plugin is the sole source of mattpocock skills on Claude; this repo's plugin does not ship them (its root skills/ holds only self-owned skills). NOT installed by `install.py manual` on Claude."
         },
         "codex": {
           "note": "Installed by `install.py manual mattpocock-skills` — generates 27 symlinks into ~/.agents/skills/ (Codex standard user path) from the upstream plugin.json skill list. Codex follows symlinks per loader.rs (User scope = Follow). `install.py` does not prune stale links, so an upstream skill deletion leaves a dangling symlink to delete by hand."
@@ -41,7 +41,7 @@
     },
     {
       "name": "understand-anything",
-      "description": "AI-powered codebase understanding by EarthChen/Understand-Anything — analyze, visualize, and explain any project via an interactive knowledge graph. Multi-skill repo (11 skills) under understand-anything-plugin/skills/. Its plugin.json carries no `skills` list, so `install.py manual` discovers skills by scanning scan_dir for subdirs with a SKILL.md. Submodule at vendor/understand-anything stays out of build/_dist — no skills/ symlink, no _deep_copy_skills entry.",
+      "description": "AI-powered codebase understanding by EarthChen/Understand-Anything — analyze, visualize, and explain any project via an interactive knowledge graph. Multi-skill repo (11 skills) under understand-anything-plugin/skills/. Its plugin.json carries no `skills` list, so `install.py manual` discovers skills by scanning scan_dir for subdirs with a SKILL.md. Submodule at vendor/understand-anything stays out of build/_dist — no skills/ symlink.",
       "install": {
         "source": "vendor/understand-anything",
         "generate": {
@@ -77,7 +77,7 @@
       },
       "platforms": {
         "claude": {
-          "note": "ONLY user-level path Claude scans (Claude does NOT read ~/.agents/skills/). Submodule at vendor/anysearch-skill (pinned v2.1.0) stays out of build/_dist — no skills/ symlink, no _deep_copy_skills entry."
+          "note": "ONLY user-level path Claude scans (Claude does NOT read ~/.agents/skills/). Submodule at vendor/anysearch-skill stays out of build/_dist — no skills/ symlink."
         },
         "codex": {
           "note": "Codex follows symlinks per loader.rs (User scope = Follow). ~/.codex/skills is deprecated legacy; ~/.agents/skills is the standard."
@@ -115,7 +115,7 @@
     },
     {
       "name": "playwright-cli",
-      "description": "Microsoft's official browser-automation skill for coding agents (microsoft/playwright-cli). Single skill (skills/playwright-cli/SKILL.md + references/) teaching agents to drive @playwright/cli — a CLI alternative to Playwright MCP with zero tool-schema context cost (snapshot + refs interaction model). Requires the CLI itself at runtime: pnpm add -g @playwright/cli. Submodule pinned to upstream release tag v0.1.18; upgrade via git submodule update --remote vendor/playwright-cli + re-pin to a tag. Submodule stays out of build/_dist.",
+      "description": "Microsoft's official browser-automation skill for coding agents (microsoft/playwright-cli). Single skill (skills/playwright-cli/SKILL.md + references/) teaching agents to drive @playwright/cli — a CLI alternative to Playwright MCP with zero tool-schema context cost (snapshot + refs interaction model). Requires the CLI itself at runtime: pnpm add -g @playwright/cli. Submodule pinned to an upstream release tag (`git submodule status` shows which); upgrade via git submodule update --remote vendor/playwright-cli + re-pin to a tag. Submodule stays out of build/_dist.",
       "install": {
         "source": "vendor/playwright-cli",
         "generate": {
@@ -227,7 +227,7 @@
         },
         "codex": {
           "install_cmd": "codex plugin marketplace add mksglu/context-mode  # then enable [features] plugin_hooks=true and hooks=true in ~/.codex/config.toml",
-          "note": "Codex native plugin (.codex-plugin/mcp.json + hooks.json + skills/). Plugin hooks are gated behind the plugin_hooks feature flag until Codex enables them by default; review and trust hooks when Codex prompts. Manual fallback (builds without plugin_hooks): npm install -g context-mode + [mcp_servers.context-mode] in ~/.codex/config.toml + ~/.codex/hooks.json — see README Codex CLI section."
+          "note": "Codex native plugin (.codex-plugin/mcp.json + hooks.json + skills/). Plugin hooks are gated behind the plugin_hooks feature flag until Codex enables them by default; review and trust hooks when Codex prompts. Manual fallback (builds without plugin_hooks): pnpm add -g context-mode + [mcp_servers.context-mode] in ~/.codex/config.toml + ~/.codex/hooks.json — see README Codex CLI section."
         },
         "cursor": {
           "note": "Installed via Cursor marketplace (user-managed, not installed by this repo). Plugin auto-registers MCP + hooks (preToolUse/postToolUse/sessionStart/stop/afterAgentResponse) + rules + skills. Upstream README still lists marketplace as 'awaiting Cursor team review' (#485) with local-folder fallback, but install completed successfully via marketplace on this machine."

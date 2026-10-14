@@ -6,6 +6,7 @@ Thumbs.db
 __pycache__/
 *.pyc
 .venv/
+.pytest_cache/
 
 # IDE
 .idea/
@@ -24,34 +25,10 @@ dist/
 # Claude Code lock files
 .in_use/
 
-# mattpocock skill symlinks under skills/ are never committed. They no longer
-# belong here (mattpocock is NOT build-distributed anymore — Claude uses the
-# native plugin, Codex/Cursor install via `install.py manual` into
-# ~/.agents/skills/). build runs _clean_mattpocock_skill_symlinks to remove
-# any stale ones; these ignore rules guard against accidentally recreating
-# and committing them (which breaks Cursor marketplace clones: broken
-# ../vendor links Cursor's safety scan rejects as "unsafe source path").
-skills/ask-matt
-skills/code-review
-skills/codebase-design
-skills/diagnosing-bugs
-skills/domain-modeling
-skills/grill-me
-skills/grill-with-docs
-skills/grilling
-skills/handoff
-skills/implement
-skills/improve-codebase-architecture
-skills/prototype
-skills/research
-skills/setup-matt-pocock-skills
-skills/tdd
-skills/teach
-skills/to-spec
-skills/to-tickets
-skills/triage
-skills/wayfinder
-skills/writing-great-skills
+# No ignore rules for mattpocock names under skills/: nothing creates
+# skills/<name> vendor symlinks anymore, and build/install remove leftovers
+# (_clean_mattpocock_skill_symlinks). A name list here drifted from upstream
+# and would silently hide a self-owned skill that reuses an upstream name.
 
 # Playwright MCP runtime artifacts
 .playwright-mcp/
@@ -60,3 +37,4 @@ skills/writing-great-skills
 node_modules/
 site/.vitepress/dist/
 site/.vitepress/cache/
+.coverage

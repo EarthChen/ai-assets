@@ -15,16 +15,18 @@ Maintenance guide for the ai-assets repo itself. End-user product documentation 
 
 The repo has two layers:
 
-1. **Source (single truth)** — `rules/`, `skills/`, `agents/`, `mcp.json`, `global-instructions.md`, `install.py`, `.claude-plugin/`, `.codex-plugin/`, `.cursor-plugin/`, `third-party.json`
+1. **Source (single truth)** — `rules/`, `skills/`, `agents/`, `mcp.json`, `global-instructions.md`, `install.py` + `installer/`, `.claude-plugin/`, `.codex-plugin/`, `.cursor-plugin/`, `third-party.json`
 2. **`_dist/` (per-platform outputs, committed)** — `cursor/`, `claude/`, `codex/`, `pi/`
 
-`install.py build` regenerates `_dist/` from source. Skills and agents are **not** copied into `_dist/` — all three platforms scan the repo root `skills/`/`agents/` directly. `_dist/` holds only what genuinely differs per platform:
+`install.py build` regenerates `_dist/` from source. Skills and agents are **not** copied into `_dist/` — Cursor, Claude Code and Codex scan the repo root `skills/`/`agents/` directly, and pi gets symlinks to them. `build` does not read `skills/` or `agents/` at all. `_dist/` holds only what genuinely differs per platform:
 
 - `mcp.json` (`_platforms` filter) — written even when the filter yields zero servers: repo-root `.mcp.json` symlinks to `_dist/claude/mcp.json` and `.codex-plugin/plugin.json` declares `mcpServers: "./.mcp.json"`, so skipping the write dangles both (that was the state until 2026-10-08). Claude accepts an empty `{"mcpServers": {}}` plugin file.
 - `rules/` (`.mdc` vs `.md` + frontmatter transform)
 - `global-instructions.md` deploy (becomes `CLAUDE.md` / `AGENTS.md`)
 
-Why commit `_dist/`? Fresh clones work without running the install script. Cursor and Codex don't need a build step; Claude Code users run `install.py install` to refresh from the committed `_dist/claude/`.
+Latent risk: `_dist/codex/mcp.json` is generated but nothing reads it. `.codex-plugin/plugin.json` points at `./.mcp.json`, so Codex gets the Claude-filtered server list; a server tagged `_platforms: ["codex"]` only would never reach Codex. Both files are empty today, and the manifest path stays as-is until a test shows Codex accepts a subdirectory path.
+
+Why commit `_dist/`? Marketplace installs (Cursor marketplace, Claude remote marketplace) clone the repo and read `_dist/` as committed; they never run `build`. Local deploys still need `install.py install` after `build`: Cursor reads a real-dir copy, Codex reads `~/.codex/AGENTS.md` (a copy; only its skills track the repo through the plugin symlink), Claude Code reads a reinstalled snapshot, and pi reads `~/.pi/agent/AGENTS.md`. `uv run pytest` fails when the committed `_dist/` differs from a fresh build.
 
 ### Claude Plugin Manifest (`.claude-plugin/plugin.json`) — No `agents`, No `skills`
 
@@ -67,10 +69,10 @@ pi has no such limit (`_dist/pi/AGENTS.md` is built the same way and is also 12.
 
 | Platform | Method | Trigger |
 | --- | --- | --- |
-| Cursor | `install.py install` (rsync real-dir, `--delete`) | After repo edits + restart/reload |
-| Codex | Local symlink (instant, tracks repo) | After `build` |
-| Claude Code | `install.py install` (local-directory marketplace, reinstall = fresh snapshot) | After `build` (when `_dist/` changed); bump optional |
-| pi | `install.py install --platform pi` (direct deploy to `~/.pi/agent/`) | After `build` + install |
+| Cursor | `install.py install` (rsync real-dir, `--delete`) | After repo edits: `install` (+ `build` first if rules/MCP changed) + restart/reload |
+| Codex | Plugin symlink (skills instant, tracks repo); `~/.codex/AGENTS.md` is a copy | Skills: none. AGENTS.md: `build` + `install` |
+| Claude Code | `install.py install` (local-directory marketplace, reinstall = fresh snapshot) | After repo edits: `install` (+ `build` first if `_dist/` inputs changed); bump optional |
+| pi | `install.py install --platform pi` (AGENTS.md copy + skill/agent symlinks under `~/.pi/agent/`) | AGENTS.md: `build` + `install`; skill/agent edits instant, new/renamed ones need `install` |
 
 ### Claude Code Version-Gating
 
@@ -80,11 +82,11 @@ But the version check is unchanged: Claude compares `plugin.json`'s `version` fi
 
 **Update flow**: edit → `build` (if `_dist/claude/` changed) → `install.py install --platform claude`.
 
-**Snapshot accumulation**: every reinstall writes a fresh `~/.claude/plugins/cache/earthchen-ai-assets/earthchen-ai-assets/<version>/`, and Claude's own sweep is unreliable — a stale `.in_use` lock pinned a 2026-07 snapshot for months. Each snapshot of this repo is ~136M because the local marketplace source is the repo root, so the copy carries `node_modules/` (108M) and `vendor/` (26M) as well. `install_claude` therefore prunes this plugin's non-current snapshots right after the reinstall (`_prune_claude_plugin_cache`); it deletes nothing when the current version's directory is missing, so a failed reinstall cannot wipe the only working copy. Other plugins' caches are left alone.
+**Snapshot accumulation**: every reinstall writes a fresh `~/.claude/plugins/cache/earthchen-ai-assets/earthchen-ai-assets/<version>/`, and Claude's own sweep is unreliable — a stale `.in_use` lock pinned a 2026-07 snapshot for months. The local marketplace source is the repo root, so each snapshot of this repo carries `vendor/` as well (26M measured 2026-10-14; earlier snapshots that also carried a local `node_modules/` measured ~136M). `install_claude` therefore prunes this plugin's non-current snapshots right after the reinstall (`_prune_claude_plugin_cache`); it deletes nothing when the current version's directory is missing, so a failed reinstall cannot wipe the only working copy. Other plugins' caches are left alone.
 
 **Bump policy**: bump `plugin.json` + `marketplace.json` together if at all. Claude reads `plugin.json` version only (marketplace.json's version alone is not enough). Bump is diagnostic only — cache dir + `plugin list` reflect the real content either way.
 
-**When a bump is NOT needed**: if `git status _dist/` is clean after `build`, no bump required. Third-party (manual/symlink) skills — mattpocock, understand-anything, anysearch, herdr — live as symlinks in `~/.claude/skills/` (user-level), which Claude scans directly and which **never pass through the plugin cache**. Edits to `install.py`, `third-party.json`, `third-party.schema.json`, or the vendor submodules do NOT require a version bump; on any machine just run `uv run install.py install` (or `install.py manual <name>`) to recreate the symlinks.
+**When a bump is NOT needed**: if `git status _dist/` is clean after `build`, no bump required. Third-party (manual/symlink) skills — the eight sets listed under Third-Party Skills below — live as user-level symlinks in `~/.claude/skills/` and/or `~/.agents/skills/`, which **never pass through the plugin cache** (on Claude, mattpocock comes from its own native plugin instead). Edits to `install.py`, `third-party.json`, `third-party.schema.json`, or the vendor submodules do NOT require a version bump; on any machine just run `uv run install.py install` (or `install.py manual <name>`) to recreate the symlinks.
 
 ### Local vs Remote Marketplace
 
@@ -100,7 +102,7 @@ Cursor resolves a marketplace to a commit SHA on first import and caches it — 
 
 ### Cursor "Include third-party Plugins, Skills, and other configs" — Keep OFF
 
-Settings → Rules, Skills, Subagents: when ON, Cursor recursively scans `~/.claude/plugins/cache/*` (every version of this repo's Claude clone, each with full `skills/`), `~/.codex/skills/`, `~/.agents/skills/` with no de-duplication → every skill (e.g. `tdd`) loads ~11×. Known Cursor bug, no ETA. OFF is safe because this repo's own `~/.claude/skills`, `~/.codex/skills`, `~/.agents/skills` are empty — repo-root `skills/` is the sole source.
+Settings → Rules, Skills, Subagents: when ON, Cursor recursively scans `~/.claude/plugins/cache/*` (every version of this repo's Claude clone, each with full `skills/`), `~/.codex/skills/`, `~/.agents/skills/` with no de-duplication → every skill (e.g. `tdd`) loads ~11×. Known Cursor bug, no ETA. OFF is safe because this repo links no self-owned skill into `~/.claude/skills`, `~/.codex/skills` or `~/.agents/skills` — repo-root `skills/` reaches Cursor only through the plugin. `~/.agents/skills` holds only third-party links from `install.py manual`; pi gets self-owned skills from `~/.pi/agent/skills`, and `install` removes legacy self-owned links from `~/.agents/skills`. Cursor's docs (Skill directories, checked 2026-10-14) list `~/.agents/skills/` as a default user-level dir, so it loads regardless of this toggle; a self-owned skill linked there would load twice.
 
 ## Cursor Plugin "Error loading plugin" — Diagnosis
 
@@ -182,13 +184,15 @@ git submodule update --remote vendor/mattpocock-skills  # update upstream (symli
 
 ## Common Workflows
 
-**Adding a new skill**: drop `skills/<name>/SKILL.md` + optional `references/`. Run `uv run install.py build`. No `_dist/` change unless the skill listing affects a manifest. Commit.
+**Adding a new skill**: drop `skills/<name>/SKILL.md` + optional `references/`. No `build` needed (`build` does not read `skills/`). Run `uv run install.py install` so Cursor's real-dir copy, Claude's snapshot and pi's symlinks pick it up (Codex sees it through its plugin symlink). Commit.
 
 **Adding a new agent**: drop `agents/<name>.md` and commit it. Claude auto-scans the dir (the manifest must NOT list agents — see Claude Plugin Manifest above); pi gets a symlink on `install.py install --platform pi`; Cursor reads `"agents": "./agents/"` from its own manifest. Verify Claude's count with `claude plugin details earthchen-ai-assets@earthchen-ai-assets`.
 
 **Adding a new rule**: see `README.md` Rules 系统详解 (or AGENTS.md if that's where rules deployment strategy lives).
 
-**Bumping versions**: `uv run install.py version --bump patch` (major/minor/patch). Updates `.claude-plugin/{plugin,marketplace}.json`. Optional — see Claude Code Version-Gating above.
+**Bumping versions**: `uv run install.py version --bump patch` (major/minor/patch). Updates `.claude-plugin/{plugin,marketplace}.json`, `.cursor-plugin/plugin.json` and `.codex-plugin/plugin.json`. Optional — see Claude Code Version-Gating above.
+
+**Running tests**: `uv run pytest`. Tests use a scratch HOME and never touch `~/`. The golden test builds a copy of the repo and fails when the committed `_dist/` is stale — run `uv run install.py build` and commit `_dist/`. Installer code lives in `installer/` (one module per phase/platform); `install.py` is only the entrypoint.
 
 **Adding a vendor submodule**: drop into `vendor/<name>/`, add to `.gitmodules`. For skill distribution, add a `third-party.json` entry with an `install` object.
 
@@ -216,5 +220,4 @@ wc -c _dist/codex/AGENTS.md  # must be < 32KB
 If `install.py build` fails with a stack trace, the issue is usually:
 
 - A malformed YAML frontmatter in a rule (unclosed `---`)
-- A skill `references/<file>.md` that doesn't exist (link rot)
-- A `.mcp.json` with invalid `_platforms` syntax
+- A `mcp.json` (source, repo root) with invalid JSON or `_platforms` syntax
