@@ -86,7 +86,7 @@ But the version check is unchanged: Claude compares `plugin.json`'s `version` fi
 
 **Bump policy**: bump `plugin.json` + `marketplace.json` together if at all. Claude reads `plugin.json` version only (marketplace.json's version alone is not enough). Bump is diagnostic only — cache dir + `plugin list` reflect the real content either way.
 
-**When a bump is NOT needed**: if `git status _dist/` is clean after `build`, no bump required. Third-party (manual/symlink) skills — the nine sets listed under Third-Party Skills below — live as user-level symlinks in `~/.claude/skills/` and/or `~/.agents/skills/`, which **never pass through the plugin cache** (on Claude, mattpocock comes from its own native plugin instead). Edits to `install.py`, `third-party.json`, `third-party.schema.json`, or the vendor submodules do NOT require a version bump; on any machine just run `uv run install.py install` (or `install.py manual <name>`) to recreate the symlinks.
+**When a bump is NOT needed**: if `git status _dist/` is clean after `build`, no bump required. Third-party (manual/symlink) skills — the eight sets listed under Third-Party Skills below — live as user-level symlinks in `~/.claude/skills/` and/or `~/.agents/skills/`, which **never pass through the plugin cache** (on Claude, mattpocock comes from its own native plugin instead). Edits to `install.py`, `third-party.json`, `third-party.schema.json`, or the vendor submodules do NOT require a version bump; on any machine just run `uv run install.py install` (or `install.py manual <name>`) to recreate the symlinks.
 
 ### Local vs Remote Marketplace
 
@@ -127,7 +127,7 @@ UI提示 "Error loading plugin" **不写进任何文件日志**，console 也只
 
 ## Third-Party Skills (symlink-installed)
 
-Nine third-party skill sets are **NOT plugin-distributed** — they install as user-level symlinks so their runtime files (`runtime.conf`, `.env`, upstream-pinned content) survive outside the plugin cache (a read-only snapshot overwritten on every version pull). All are declared in `third-party.json` with a top-level `install` object and deployed by `install.py`'s manual-skill path, which **`install.py install` runs automatically** (no separate `install.py manual` needed):
+Eight third-party skill sets are **NOT plugin-distributed** — they install as user-level symlinks so their runtime files (`runtime.conf`, `.env`, upstream-pinned content) survive outside the plugin cache (a read-only snapshot overwritten on every version pull). All are declared in `third-party.json` with a top-level `install` object and deployed by `install.py`'s manual-skill path, which **`install.py install` runs automatically** (no separate `install.py manual` needed):
 
 | Skill set | submodule | discovery | links |
 | --- | --- | --- | --- |
@@ -136,7 +136,6 @@ Nine third-party skill sets are **NOT plugin-distributed** — they install as u
 | **anysearch** | `vendor/anysearch-skill` | `links` (explicit list, single skill) | `~/.claude/skills/anysearch` + `~/.agents/skills/anysearch` |
 | **herdr** | `vendor/herdr-skill` | `generate.scan_dir` (scans `skills/` — sparse submodule pinned to the single herdr skill) | `~/.agents/skills/` + `~/.claude/skills/` (via `extra_links`) |
 | **playwright-cli** | `vendor/playwright-cli` | `generate.scan_dir` (scans `skills/` — single playwright-cli skill) | `~/.agents/skills/` + `~/.claude/skills/` (via `extra_links`) |
-| **ego-browser** | `vendor/ego-lite` | `generate.scan_dir` (scans `skills/` — sparse submodule pinned to the single ego-browser skill) | `~/.agents/skills/` + `~/.claude/skills/` (via `extra_links`) |
 | **show-me** | `vendor/humanlayer-skills` | `generate.scan_dir` (scans `plugins/show-me/skills/` — humanlayer 6-plugin monorepo, show-me + visual-pr linked) | `~/.agents/skills/` + `~/.claude/skills/` (via `extra_links`) |
 | **visual-pr** | `vendor/humanlayer-skills` | `generate.scan_dir` (scans `plugins/visual-pr/skills/` — same submodule as show-me) | `~/.agents/skills/` + `~/.claude/skills/` (via `extra_links`) |
 | **yao-meta-skill** | `vendor/yao-meta-skill` | `links` (explicit list, single skill at repo root) | `~/.claude/skills/yao-meta-skill` + `~/.agents/skills/yao-meta-skill` |
@@ -162,17 +161,6 @@ Nine third-party skill sets are **NOT plugin-distributed** — they install as u
 Not plugin-distributed for the same reason as anysearch: runtime files (`system.json`, generated graphs under `.understand-anything/`) must survive across sessions outside the read-only plugin cache.
 
 **Upgrade:** `git submodule update --remote vendor/understand-anything` (re-pin to a tag if upstream tags one). Symlinks need no update — content flows through automatically.
-
-### ego-browser
-
-[citrolabs/ego-lite](https://github.com/citrolabs/ego-lite) browser skill, pinned as a **sparse submodule** at `vendor/ego-lite` (only `skills/ego-browser` checked out; the rest of the repo is ~8MB of docs and packaging). The skill is a bootstrap stub: its `SKILL.md` tells the agent to run `ego-browser skill`, which prints the guide that matches the installed ego lite app. Skill content therefore does not drift from the binary.
-
-- **Runtime dependency**: the ego lite desktop app (macOS only; GUI onboarding puts `ego-browser` on PATH). Without it the skill is inert.
-- **Link collision**: the ego lite app symlinks its own copy to `~/.agents/skills/ego-browser`. `install.py install` re-points that link at the submodule (`create_symlink` replaces existing symlinks). Both copies defer to the binary's guide, so the swap is harmless.
-- **Not a Playwright replacement**: custom JS API (no `locator()`, `expect()`, `route()`), needs a GUI session, so no headless or CI use. `e2e-runner` and `e2e-testing` stay on `playwright-cli` / Playwright Test. Use ego-browser when the task needs the user's logged-in browser state.
-- **Do not automate `skills/ego-browser/scripts/install.sh`**: it downloads a DMG and may call `sudo`.
-
-**Upgrade:** `git submodule update --remote vendor/ego-lite` (re-pin to a release tag; currently `v2.1.0`). Symlinks flow automatically.
 
 ### herdr-skill
 
