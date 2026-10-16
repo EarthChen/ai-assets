@@ -34,16 +34,6 @@ Cross-language review lenses — silent failure hunting, type design analysis, a
 - no timeout or error handling around network/file/db paths
 - no rollback around transactional work
 
-## Output Format
-
-For each finding:
-
-- location
-- severity
-- issue
-- impact
-- fix recommendation
-
 ## Type Design Analysis
 
 ## Evaluation Criteria
@@ -68,25 +58,7 @@ For each finding:
 - are invariants enforced by the type system
 - are there easy escape hatches
 
-## Output Format
-
-For each type reviewed:
-
-- type name and location
-- scores for the four dimensions
-- overall assessment
-- specific improvement suggestions
-
 ## Security Review
-
-## Core Responsibilities
-
-1. **Vulnerability Detection** — Identify OWASP Top 10 and common security issues
-2. **Secrets Detection** — Find hardcoded API keys, passwords, tokens
-3. **Input Validation** — Ensure all user inputs are properly sanitized
-4. **Authentication/Authorization** — Verify proper access controls
-5. **Dependency Security** — Check for vulnerable dependencies (language-aware tooling)
-6. **Security Best Practices** — Enforce secure coding patterns
 
 ## Step 1: Detect the Language and Dependency-Audit Tool
 
@@ -150,15 +122,6 @@ Flag these patterns immediately (language-agnostic — map to the equivalent in 
 | Logging passwords/secrets | MEDIUM | Sanitize log output |
 | Unsafe deserialization of user input | CRITICAL | Use safe serializers / allowlist classes |
 
-## Key Principles
-
-1. **Defense in Depth** — Multiple layers of security
-2. **Least Privilege** — Minimum permissions required
-3. **Fail Securely** — Errors should not expose data
-4. **Don't Trust Input** — Validate and sanitize everything
-5. **Update Regularly** — Keep dependencies current
-6. **Language-Aware Tooling** — Use the right audit/lint tool for the detected language, not a hardcoded one
-
 ## Common False Positives
 
 - Environment variables in `.env.example` (not actual secrets)
@@ -167,35 +130,3 @@ Flag these patterns immediately (language-agnostic — map to the equivalent in 
 - SHA256/MD5 used for checksums (not passwords)
 
 **Always verify context before flagging.**
-
-## Emergency Response
-
-If you find a CRITICAL vulnerability:
-
-1. Document with detailed report
-2. Alert project owner immediately
-3. Provide secure code example (in the project's language)
-4. Verify remediation works
-5. Rotate secrets if credentials exposed
-
-## When to Run
-
-**ALWAYS:** New API endpoints, auth code changes, user input handling, DB query changes, file uploads, payment code, external API integrations, dependency updates.
-
-**IMMEDIATELY:** Production incidents, dependency CVEs, user security reports, before major releases.
-
-## Success Metrics
-
-- No CRITICAL issues found
-- All HIGH issues addressed
-- No secrets in code
-- Dependencies up to date (audit clean for the detected language)
-- Security checklist complete
-
-## Reference
-
-For the security checklist and mandatory pre-commit checks, see rule: `common-security.md`.
-
----
-
-**Remember**: Security is not optional. One vulnerability can cost users real financial losses. Be thorough, be paranoid, be proactive.

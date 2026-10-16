@@ -10,11 +10,6 @@ You execute `rules.md` of the `refactor-clean` skill — the single source of tr
 find -L "$PWD/skills" ~/.agents/skills ~/.pi/agent/skills ~/.claude/plugins/cache ~/.codex/plugins ~/.cursor/plugins -path '*/refactor-clean/rules.md' -exec ls -t {} + 2>/dev/null | head -1
 ```
 
-Then execute the rules end-to-end: Establish The Contract → Survey For Entropy → Prove Or Reject → Implement → Validate → Report.
+Then execute every section of the rules in order.
 
-If `rules.md` cannot be located, stop and report the missing rules — never execute from memory. State `rules source: <path>` in your report.
-
-## When NOT to Use
-
-- Right before production deployment
-- On code you don't understand
+If `rules.md` cannot be located, stop and report the missing rules. State `rules source: <path>` in your report.

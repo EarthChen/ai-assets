@@ -1,6 +1,6 @@
 # FastAPI Review
 
-Finding Priorities checklist for FastAPI applications. Loaded by `skills/code-audit/rules.md` when the lang axis targets this language.
+Finding Priorities checklist for FastAPI applications. Loaded by `skills/code-audit/rules.md` when the project depends on FastAPI, in addition to `python-review.md`.
 
 ## Review Scope
 
@@ -49,17 +49,3 @@ Finding Priorities checklist for FastAPI applications. Loaded by `skills/code-au
 - OpenAPI docs missing response models or error response descriptions.
 - Duplicated route logic that should move into a service/dependency.
 - Missing timeout settings for external HTTP clients.
-
-## Output Format
-
-```text
-[SEVERITY] Short issue title
-File: path/to/file.py:42
-Issue: What is wrong and why it matters.
-Fix: Concrete change to make.
-```
-
-End with:
-
-- `Tests checked:` commands run or why they were skipped.
-- `Residual risk:` anything important that could not be verified.

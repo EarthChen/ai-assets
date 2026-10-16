@@ -57,21 +57,6 @@ bandit -r .                                # Security scan
 pytest --cov=app --cov-report=term-missing # Test coverage
 ```
 
-## Review Output Format
-
-```text
-[SEVERITY] Issue title
-File: path/to/file.py:42
-Issue: Description
-Fix: What to change
-```
-
-## Approval Criteria
-
-- **Approve**: No CRITICAL or HIGH issues
-- **Warning**: MEDIUM issues only (can merge with caution)
-- **Block**: CRITICAL or HIGH issues found
-
 ## Framework Checks
 
 - **Django**: `select_related`/`prefetch_related` for N+1, `atomic()` for multi-step, migrations
@@ -81,7 +66,3 @@ Fix: What to change
 ## Reference
 
 For detailed Python patterns, security examples, and code samples, see the `python-development` skill (`../../python-development/SKILL.md`).
-
----
-
-Review with the mindset: "Would this code pass review at a top Python shop or open-source project?"

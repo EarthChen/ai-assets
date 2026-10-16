@@ -78,16 +78,6 @@ vitest run                          # Tests (Vitest)
 jest --ci                           # Tests (Jest)
 ```
 
-## Approval Criteria
-
-- **Approve**: No CRITICAL or HIGH issues
-- **Warning**: MEDIUM issues only (can merge with caution)
-- **Block**: CRITICAL or HIGH issues found
-
 ## Reference
 
 For detailed TypeScript and JavaScript patterns, use the `typescript-development` skill (`../../typescript-development/SKILL.md`) for backend code or the `react-development` skill (`../../react-development/SKILL.md`) for React/TSX code.
-
----
-
-Review with the mindset: "Would this code pass review at a top TypeScript shop or well-maintained open-source project?"

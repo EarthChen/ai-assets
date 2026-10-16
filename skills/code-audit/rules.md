@@ -1,6 +1,6 @@
 # Code Audit Rules
 
-Single source of truth for both inline and dispatched execution. Read end-to-end; never execute from memory.
+Single source of truth for inline and dispatched execution. Read it in full before acting.
 
 ## Establish The Scope
 
@@ -12,13 +12,14 @@ Single source of truth for both inline and dispatched execution. Read end-to-end
 
 ## Select Axes
 
-Three sub-agents run independently, dispatched at the same level — direct children of this session, never nested inside an intermediary agent. A change can pass one and fail the others; findings never merge or re-rank across axes.
+Three sub-agents run independently. A change can pass one and fail the others; findings never merge or re-rank across axes.
 
 **Sub-agent rule:** when you execute these rules as a sub-agent (for example the `code-reviewer` agent), spawn nothing: run the eligible axes sequentially in your own context, each with its own checklist and its own findings section, and keep the same aggregation rules.
 
 - **Standards axis** (diff scope only) — does the code conform to documented repo standards plus a Fowler smell baseline? Prompt template comes from the mattpocock `code-review` skill's SKILL.md (located at install time — the path differs across harnesses and plugin caches).
 - **Spec axis** (diff scope only) — does the code faithfully implement the originating issue/spec? Same prompt source.
-- **Lang+Lens axis** — one sub-agent runs both checklists: the matching `references/<lang>-review.md` (language-specific traps: framework mismatches, async correctness, type-safety holes, query-plan killers) and `references/lens-review.md` (cross-language review lenses: silent failure, type design, security). Each finding tags its origin `[lang]` or `[lens]` so the aggregator can split reports. The two are orthogonal: Lang asks language-specific rule questions ("is this Java catch written correctly?"); Lens asks pattern-level questions ("is this error swallowed?"). Both may fire on the same code — the aggregator flags overlaps, it does not dedupe.
+- **Lang+Lens axis** — one sub-agent runs both checklists: the matching `references/<lang>-review.md` (language-specific traps: framework mismatches, async correctness, type-safety holes, query-plan killers) and `references/lens-review.md` (cross-language review lenses: silent failure, type design, security). Each finding tags its origin `[lang]` or `[lens]` so the aggregator can split reports.
+- **Extra lang checklists** (run inside the Lang+Lens sub-agent in addition to `<lang>-review.md`): `references/fastapi-review.md` when the project depends on FastAPI; `references/database-review.md` when the target contains SQL or migration files.
 
 ## Execute
 
@@ -40,11 +41,11 @@ Spawn the Standards and Spec sub-agents in the same parallel batch as Lang+Lens,
 
 ### Lang+Lens axis
 
-Spawn one sub-agent for both checklists. Pass it the diff/file scope and the loaded reference files (read from this skill's directory first; the sub-agent has no other access): the matching `references/<lang>-review.md` if a language was detected, and `references/lens-review.md` always. The sub-agent applies both checklists top to bottom, classifies each finding, tags it `[lang]` or `[lens]`, and returns ranked findings records. Isolating this axis keeps the aggregator's context clean — the same reason the Standards and Spec axes run as separate sub-agents.
+Spawn one sub-agent for both checklists. Pass it the diff/file scope and the loaded reference files (read from this skill's directory first; the sub-agent has no other access): the matching `references/<lang>-review.md` if a language was detected, the extra lang checklists chosen in Select Axes, and `references/lens-review.md` always. The sub-agent applies both checklists top to bottom, classifies each finding, tags it `[lang]` or `[lens]`, and returns ranked findings records.
 
 If the detected language has no reference file, the sub-agent runs only `references/lens-review.md` and reports "no lang checklist for <lang>".
 
-Each finding carries a severity on the scale the reference checklists use: **CRITICAL**, **HIGH**, **MEDIUM**, or **LOW**.
+Each finding carries a severity on the scale the reference checklists use: **CRITICAL**, **HIGH**, **MEDIUM**, or **LOW**. Output formats and approval verdicts (Approve/Warning/Block) inside a checklist do not apply; report with the record below.
 
 State the evidence per finding: which rule fired, where in the diff or file, and why the severity holds.
 
@@ -64,8 +65,8 @@ verify: smallest decisive check
 
 ## Report
 
-- **Done when** every finding in scope has exited Execute proved or rejected with reason, and each axis has a worst-issue line (or "none").
-- Keep or downgrade a finding when its impact cannot be confirmed. Never delete a finding the proof did not cover — report it as "kept, proof incomplete".
+- **Done when** every axis that ran has its own section, every finding carries evidence and a `verify:` check, and each section ends with a worst-issue line (or "none").
+- Keep a finding whose impact you cannot confirm, downgraded and labelled "unconfirmed".
 
 ## Apply
 

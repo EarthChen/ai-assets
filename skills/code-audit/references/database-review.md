@@ -1,6 +1,6 @@
 # Database Review
 
-Review checklist for PostgreSQL. Loaded by `skills/code-audit/rules.md` when the lang axis targets this language.
+Review checklist for PostgreSQL. Loaded by `skills/code-audit/rules.md` when the target contains SQL or migration files.
 
 ## Core Responsibilities
 
@@ -74,7 +74,5 @@ psql -c "SELECT indexrelname, idx_scan, idx_tup_read FROM pg_stat_user_indexes O
 - [ ] Transactions kept short
 
 ---
-
-**Remember**: Database issues are often the root cause of application performance problems. Optimize queries and schema design early. Use EXPLAIN ANALYZE to verify assumptions. Always index foreign keys and RLS policy columns.
 
 *Patterns adapted from Supabase Agent Skills (credit: Supabase team) under MIT license.*

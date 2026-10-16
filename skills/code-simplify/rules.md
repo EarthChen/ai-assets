@@ -1,6 +1,6 @@
 # Simplification Rules
 
-Execution rules for diff-scoped simplification. This file is the single source of truth: the `code-simplify` skill (inline) and the `code-simplifier` agent (dispatched) both execute it end-to-end. Do not execute from memory.
+Execution rules for diff-scoped simplification. This file is the single source of truth: the `code-simplify` skill (inline) and the `code-simplifier` agent (dispatched) both execute it end-to-end. Read it in full before acting.
 
 Two rules govern everything:
 
@@ -40,15 +40,7 @@ Walk the diff against every section below; collect findings with a one-line rati
 
 ### Names
 
-Variable names, function names, and comments are all prose. Apply Orwell's rules ("Politics and the English Language"):
-
-> Never use a long word where a short one will do.
->
-> If it is possible to cut a word out, always cut it out.
->
-> Never use the passive where you can use the active.
->
-> Never use a foreign phrase, a scientific word, or a jargon word if you can think of an everyday English equivalent.
+Variable names, function names, and comments are all prose. Apply Orwell's rules ("Politics and the English Language"): short words, cut every word you can, active voice, everyday words over jargon.
 
 Latinate vocabulary (reconcile, coalesce, normalize) sounds technical and abstract; Anglo-Saxon words (prune, run, watch, stop, drop) are short and physical. Prefer the Saxon word.
 
@@ -63,15 +55,13 @@ Latinate vocabulary (reconcile, coalesce, normalize) sounds technical and abstra
 
 State, in plain English, the constraint the code cannot show: why the **non-obvious** exists.
 
-- Good: If code is complex and the implementation is non-obvious, add a comment.
-- Good: If a function contains complex behaviors or side effects, add a doc comment.
 - Good: Keep why-comments the code cannot carry: `// Retry because the API is flaky`.
 - Delete: If a comment narrates change history from the conversation, delete it.
 - Delete: If a comment restates code whose behavior is self-evident (`// increment counter` above `count++`), delete it.
 
 ### Structure
 
-1. **Inverted pyramid.** Within a file, lead with the exported or significant functions and push helpers below them. Don't bury the lead.
+1. **Inverted pyramid.** Within a file, lead with the exported or significant functions and push helpers below them.
 2. **Related concepts over monoliths.** Break a large file into modules that each own one concept.
 3. **Combine overlapping concepts.** If two types, functions, or constants overlap significantly, merge them. The fewer distinct concepts a reader must hold in their head, the better.
 4. **Use shared code.** Common utilities (ex. file path parsing) may exist in the codebase already. Check for library or utility functions before inlining.
@@ -113,7 +103,7 @@ Code must stand on its own. If a change only makes sense to someone who watched 
 - If a name or comment needs the conversation to be understood, rewrite it against the codebase's own vocabulary.
 - **No backwards compatibility with unshipped code.** Supporting an old signature, alias, or data shape that only existed earlier in the same branch is compatibility with something that was never deployed. Delete the old path and update its callers.
 
-### Do Not Simplify Away
+### Keep Load-Bearing Code
 
 - validation at trust boundaries
 - authorization and security controls
@@ -121,15 +111,14 @@ Code must stand on its own. If a change only makes sense to someone who watched 
 - data-loss prevention
 - durable-data and wire-format compatibility
 - cleanup that establishes resource quiescence
+- performance-critical paths where the simpler form measurably runs slower
 
 ## Apply
 
 1. One simplification at a time; never batch untested changes — a failure must point at one cause.
-2. Before deleting anything, prove it dead per the Redundancy section: search consumers across the whole repo, rule out dynamic reachability. When in doubt, keep it.
-3. Prefer clarity over cleverness: explicit code beats compact code that needs a mental pause to parse.
-4. Keep balance: don't inline a helper that gave a concept a name, don't merge unrelated logic into one complex function, don't strip abstractions that exist for testability. Fewer lines is not the goal; easier comprehension is.
-5. **Rule of 500:** if a pass would touch more than 500 lines, stop and hand off — manual edits at that scale are error-prone and exhausting to review.
-6. Already-committed code gets its own simplification commits; uncommitted polish folds into the pending changes.
+2. Keep balance: don't inline a helper that gave a concept a name, don't merge unrelated logic into one complex function, don't strip abstractions that exist for testability. Fewer lines is not the goal; easier comprehension is.
+3. **Rule of 500:** if a pass would touch more than 500 lines, stop and hand off — manual edits at that scale are error-prone and exhausting to review.
+4. Already-committed code gets its own simplification commits; uncommitted polish folds into the pending changes.
 
 Done when every ranked finding is applied, deferred with reason, or rejected — nothing silently dropped.
 
@@ -147,8 +136,7 @@ Tests that must be modified to pass are a red flag — you likely changed behavi
 - what was simplified and why (one line each);
 - findings intentionally skipped and why;
 - exact verification run and result;
-- adjacent problems outside the scope worth a follow-up;
-- the path this rules file was loaded from.
+- adjacent problems outside the scope worth a follow-up.
 
 Audit findings carry: the proposed change, the evidence it is safe (consumers searched, dynamic reachability ruled out), the smallest decisive check, and estimated net reduction.
 

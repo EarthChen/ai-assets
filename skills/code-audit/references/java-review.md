@@ -164,12 +164,7 @@ grep -rn "listAll\|findAll" src/main/java --include="*.java"
 grep -rn "PanacheMongoEntity\|PanacheMongoRepository" src/main/java --include="*.java"  # [QUARKUS]
 ```
 
-Read `pom.xml`, `build.gradle`, or `build.gradle.kts` to determine the build tool and framework version before reviewing.
-
-## Approval Criteria
-- **Approve**: No CRITICAL or HIGH issues
-- **Warning**: MEDIUM issues only
-- **Block**: CRITICAL or HIGH issues found
+## Reference
 
 For detailed patterns and examples:
 - **[SPRING]**: See the `java-development` skill (`../../java-development/SKILL.md`)
