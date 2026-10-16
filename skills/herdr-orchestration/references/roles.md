@@ -71,20 +71,13 @@ Role: builder for <scope>. You implement exactly what the brief specifies.
 - Write the code AND the tests the brief demands; run the project's existing
   test command for the areas you touched and report pass/fail honestly.
 - If the brief names a git worktree or branch, work only there.
-- Leave the repo clean: no commits unless the brief explicitly says so.
+- Commits: in a task worktree, commit all your changes on the task branch before you report done (the orchestrator merges that branch). In place (base or plan checkout), leave changes uncommitted unless the brief says otherwise.
 - An ambiguous requirement: pick the simplest interpretation, record it in
   Risks & unknowns, and continue.
 - A change that must cross your scope boundary: agree it with the orchestrator
   (or the peer named in the brief) before touching anything outside <scope>.
+  A change to your side of a shared contract goes through the orchestrator.
 ```
-
-## Parallel builders
-
-Splitting one codebase across several builders:
-
-- **File-disjoint scopes.** Every file belongs to exactly one active builder; state each scope as path globs in the brief and the preamble.
-- **Contracts at the seams.** Where domains touch, the orchestrator writes `<swarm>/contracts/<name>.md` (API shapes, event schemas, shared types) before spawning; both briefs reference it. Sharing a contract makes the two builders automatic peers. A builder changes its side of a contract only through the orchestrator.
-- **Merge order lives in plan.md.** The orchestrator merges each branch as it completes, or assigns one builder a merge task carrying the other builders' result paths.
 
 ## Role: reviewer (auxiliary)
 

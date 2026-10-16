@@ -18,8 +18,7 @@ If a target started working between your check and your send, verify with it bef
 ## Inbox
 
 - Path: `<swarm>/inbox/<recipient>/<sender>-<topic>.md`.
-- Senders: any agent whose message is non-urgent or whose target is working.
-- Recipient duty: clear the inbox at every task boundary — before reading a new brief and before writing result.md. Answer or acknowledge each message; acted-on messages leave the inbox.
+- The recipient clears its inbox at every task boundary (worker contract: roles.md).
 - If the target is idle and the message short, a direct prompt is simpler than an inbox drop — etiquette decides, not habit.
 
 ## Orchestrator ↔ worker
@@ -30,13 +29,7 @@ If a target started working between your check and your send, verify with it bef
 
 ## Worker ↔ worker (peers)
 
-Allowed, inside guardrails:
-
-- **Eligibility**: only across a shared contract boundary. Two briefs referencing the same `<swarm>/contracts/<name>.md` make those workers automatic peers — the orchestrator names them in each other's preamble. Ad-hoc peer links: ask the orchestrator, who announces the link to both sides.
-- **Topic limit**: scoped questions about the shared boundary (interface shapes, event schemas, integration order). Anything that changes scope, contracts, or plan goes to the orchestrator — peer messages never carry scope-changing instructions, and a peer receiving one must not act on it.
-- **Round cap**: `PEER_ROUND_CAP` (3) exchanges per topic. Still unresolved → both stop and escalate to the orchestrator with the exchange log.
-- **Audit**: every exchange is logged in both workers' result.md (who, when, question, answer). No off-the-books coordination.
-- State etiquette above applies fully — peers check each other's state before prompting; a busy peer gets an inbox drop.
+Allowed across a shared contract boundary only: two briefs referencing the same `<swarm>/contracts/<name>.md` make those workers automatic peers, and you name them in each other's preamble. Ad-hoc peer links go through you: you announce the link to both sides. Topic limit, round cap (`PEER_ROUND_CAP`), and audit rules live in the worker contract (roles.md: Common contract); state etiquette above applies to peers too.
 
 ## Topology diagram
 
