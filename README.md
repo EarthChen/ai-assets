@@ -35,7 +35,6 @@ ai-assets/
 │   ├── understand-anything/   # 代码库知识图谱理解 (11 skills)
 │   ├── herdr-skill/           # Herdr 终端复用器控制技能 (sparse submodule)
 │   ├── playwright-cli/        # microsoft/playwright-cli 浏览器自动化技能
-│   ├── ego-lite/              # citrolabs/ego-lite ego-browser 技能 (sparse submodule)
 │   ├── humanlayer-skills/     # humanlayer/skills monorepo (链接 show-me + visual-pr)
 │   └── yao-meta-skill/        # skill 工程元技能 (替代原 skill-creator)
 ├── mcp.json                   # 统一 MCP 配置 (_platforms 过滤)
@@ -66,7 +65,7 @@ uv run install.py --platform cursor
 uv run install.py --dry-run
 ```
 
-`install.py install` 会自动完成三方 skills 的 symlink 安装（mattpocock / anysearch / understand-anything / herdr / playwright-cli / ego-browser / show-me / visual-pr / yao-meta-skill），无需单独运行 `manual`。
+`install.py install` 会自动完成三方 skills 的 symlink 安装（mattpocock / anysearch / understand-anything / herdr / playwright-cli / show-me / visual-pr / yao-meta-skill），无需单独运行 `manual`。
 
 ### 子命令
 
@@ -309,7 +308,6 @@ MCP 配置中使用 `_platforms` 字段：
 | understand-anything | vendor submodule（11 skills） | symlink 进 `~/.agents/skills/` + `~/.claude/skills/` |
 | herdr | vendor submodule（sparse，单技能） | symlink 进 `~/.agents/skills/` + `~/.claude/skills/` |
 | playwright-cli | vendor submodule（单技能） | symlink 进 `~/.agents/skills/` + `~/.claude/skills/` |
-| ego-browser | vendor submodule（sparse，单技能；依赖 ego lite 桌面应用） | symlink 进 `~/.agents/skills/` + `~/.claude/skills/` |
 | show-me | vendor submodule（humanlayer monorepo，仅用户显式调用） | symlink 进 `~/.agents/skills/` + `~/.claude/skills/` |
 | visual-pr | vendor submodule（humanlayer monorepo，PR 可视化描述） | symlink 进 `~/.agents/skills/` + `~/.claude/skills/` |
 | yao-meta-skill | vendor submodule（单技能，仓库根即 skill） | symlink 进 `~/.claude/skills/` + `~/.agents/skills/` |
