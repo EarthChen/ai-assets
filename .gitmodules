@@ -22,3 +22,7 @@
 [submodule "vendor/yao-meta-skill"]
 	path = vendor/yao-meta-skill
 	url = git@github.com:yaojingang/yao-meta-skill.git
+[submodule "vendor/ego-lite"]
+	path = vendor/ego-lite
+	url = git@github.com:citrolabs/ego-lite.git
+	sparse = true
