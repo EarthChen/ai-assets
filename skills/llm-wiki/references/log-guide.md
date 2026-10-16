@@ -39,48 +39,6 @@ Rules:
 
 ## Ops allowed in the log
 
-| Op | When it appears | Example |
-|---|---|---|
-| `compile`  | Structural edits, splits, merges, index rebuild | `## [10:00] compile \| split Claude Code page into 7 sub-pages` |
-| `ingest`   | New source added to `raw/`, wiki updated | `## [09:15] ingest \| google-gemma-4-article` |
-| `query`    | Question answered, output file written | `## [11:20] query \| rag-vs-llm-wiki-tradeoffs` |
-| `promote`  | Output promoted to `wiki/concepts/` | `## [11:35] promote \| RAG vs LLM Wiki (from query)` |
-| `lint`     | Lint run with issues fixed | `## [15:05] lint \| 2 dead links found, 2 fixed` |
-| `audit`    | Feedback applied and moved to `audit/resolved/` | `## [14:30] audit \| resolved 20260409-143022-a1b2` |
-| `split`    | A single page split into a folder | `## [10:00] split \| Claude Code → claude-code/` |
-| `scaffold` | Initial wiki setup | `## [08:00] scaffold \| Initialized Topic knowledge base` |
+`compile`, `ingest`, `query`, `promote` (output promoted to `wiki/concepts/`), `lint`, `audit`, `scaffold` (written by `scripts/scaffold.py`).
 
-## Quick grep
-
-```bash
-# All operations on a day
-cat log/20260409.md
-
-# Recent activity across all days
-grep -rh "^## \[" log/ | sort | tail -20
-
-# All audit resolutions
-grep -rh "^## \[.*\] audit" log/
-
-# Activity on a specific file
-grep -rl "Claude_Code" log/
-```
-
-## Migration from single-file `log.md`
-
-If you have an existing `log.md` (from the v1 skill), convert it:
-
-1. Parse each `## [YYYY-MM-DD] op | description` header.
-2. Group entries by date.
-3. For each date `D`, create `log/D.md` with an H1 of the date and H2s for each op — convert `[YYYY-MM-DD]` to `[HH:MM]` (use `00:00` if no time recorded).
-4. Delete the old `log.md`.
-
-This is a one-time manual operation; the skill doesn't automate it.
-
-## What not to put in the log
-
-- **Content**: don't copy-paste chunks of the article you wrote into the log. The log is a pointer, not a diary.
-- **Long rationale**: put design decisions and rationale in `CLAUDE.md` "Notes for the LLM", not in the log.
-- **Secrets / credentials**: never.
-- **Audit file bodies**: only the audit ID and a one-liner. The audit file itself already has the full content.
-
+Entries are pointers: give the audit id plus a one-liner, not the audit body or article text. Put design rationale in `CLAUDE.md` "Notes for the LLM".

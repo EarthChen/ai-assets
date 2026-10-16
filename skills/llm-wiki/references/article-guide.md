@@ -1,6 +1,6 @@
 # Wiki Article Writing Guide
 
-Guidelines for writing high-quality wiki articles. Read before compiling a new concept or entity page.
+Guidelines for writing high-quality wiki articles. Read before writing, splitting, or compiling any page.
 
 ## Length targets
 
@@ -171,54 +171,9 @@ tags: [tag1]
 - [[Entity B]]
 ```
 
-## Diagrams — always mermaid
+## Diagrams and formulas
 
-ASCII art is banned. Any flow, sequence, hierarchy, or state diagram is mermaid. Examples:
-
-Flow:
-````markdown
-```mermaid
-flowchart TB
-    source[raw/article.md] --> ingest
-    ingest --> summary[wiki/summaries/...]
-    ingest --> concept[wiki/concepts/...]
-    concept --> index[wiki/index.md]
-```
-````
-
-Sequence:
-````markdown
-```mermaid
-sequenceDiagram
-    User->>Web: select text + comment
-    Web->>Server: POST /api/audit
-    Server->>FS: write audit/*.md
-    Server-->>User: audit id
-```
-````
-
-State:
-````markdown
-```mermaid
-stateDiagram-v2
-    [*] --> open
-    open --> resolved: audit op
-    open --> deferred: add to Open Questions
-```
-````
-
-## Formulas — always KaTeX
-
-Inline: `The loss is $\mathcal{L}(\theta) = \sum_i \ell(f_\theta(x_i), y_i)$.`
-
-Block:
-```markdown
-$$
-\mathcal{L}(\theta) = \frac{1}{N}\sum_{i=1}^{N} \ell\bigl(f_\theta(x_i), y_i\bigr) + \lambda \|\theta\|_2^2
-$$
-```
-
-The web viewer renders math server-side with KaTeX. Obsidian renders it natively.
+Every flow, sequence, hierarchy, or state diagram is mermaid (no ASCII art). Every formula is KaTeX: inline `$...$`, block `$$...$$`.
 
 ## Wikilink rules
 
@@ -235,21 +190,9 @@ When two sources contradict each other:
 1. State both claims explicitly.
 2. Note which source supports each claim.
 3. Add to the article's "Open questions" section **and** the wiki's `CLAUDE.md` research questions.
-4. Do NOT silently pick one — contradictions are valuable signal.
+4. Keep both claims visible and leave the choice to the human `audit` — contradictions are valuable signal.
 
 Example:
 > Source A (2024) claims X. Source B (2026) claims Y, which contradicts A. It's unclear whether this reflects a methodological difference or an error in one source. See [[summaries/source-a]] and [[summaries/source-b]].
 
-If a human later files an `audit` comment resolving the contradiction, update the article and move the audit to `audit/resolved/` with a resolution note.
-
-## Incorporating audit feedback
-
-When processing an open audit that targets an article you're editing:
-
-1. Locate the anchor using `anchor_before` / `anchor_text` / `anchor_after`.
-2. Apply the correction in the smallest edit that fixes the issue.
-3. Bump the `updated:` field in the frontmatter.
-4. Add a line to the `# Resolution` section of the audit file explaining what changed.
-5. Move the audit file to `audit/resolved/`.
-6. Log the resolution under the current day's `log/YYYYMMDD.md`.
-
+If a human later files an `audit` comment resolving the contradiction, process it per [op-audit.md](op-audit.md).
