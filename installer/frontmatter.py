@@ -73,59 +73,6 @@ def strip_frontmatter(content: str) -> str:
     return body
 
 
-def strip_platforms_field(content: str) -> str:
-    """Convert rule to Claude Code format: normalize to paths CSV, remove platforms.
-
-    Claude Code specifics:
-      - Official field is 'paths' (not 'globs') for conditional loading
-      - Must use CSV string format (not YAML arrays) due to parser bugs
-      - Must include alwaysApply: false for lazy loading
-      - 'platforms' is build-time only, removed from output
-    """
-    metadata, body = parse_frontmatter(content)
-    if not metadata:
-        return content
-
-    # Remove platforms (build-time only field)
-    cleaned = {k: v for k, v in metadata.items() if k != "platforms"}
-    if not cleaned:
-        return body
-
-    # Normalize globs → paths for Claude Code (official field)
-    if "globs" in cleaned and "paths" not in cleaned:
-        cleaned["paths"] = cleaned.pop("globs")
-    elif "globs" in cleaned and "paths" in cleaned:
-        del cleaned["globs"]
-
-    # Reconstruct frontmatter with Claude Code compatible format
-    lines: list[str] = []
-    for key, val in cleaned.items():
-        if isinstance(val, bool):
-            lines.append(f"{key}: {str(val).lower()}")
-        elif isinstance(val, list):
-            if key == "paths":
-                # Claude Code requires CSV string, not YAML array
-                csv_val = ", ".join(val)
-                lines.append(f"paths: {csv_val}")
-            else:
-                lines.append(f"{key}:")
-                for item in val:
-                    lines.append(f'  - "{item}"')
-        else:
-            if key == "paths":
-                # Already a string, keep as-is
-                lines.append(f"paths: {val}")
-            else:
-                lines.append(f'{key}: "{val}"')
-
-    # Ensure alwaysApply: false if paths present (required for lazy loading)
-    if "paths" in cleaned and "alwaysApply" not in cleaned:
-        lines.append("alwaysApply: false")
-
-    fm = "\n".join(lines)
-    return f"---\n{fm}\n---\n{body}"
-
-
 def rule_applies_to(rule_path: Path, platform: str) -> bool:
     """Check if a rule applies to the given platform."""
     content = rule_path.read_text(encoding="utf-8")

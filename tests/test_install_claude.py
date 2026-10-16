@@ -28,11 +28,9 @@ def _seed_repo(repo):
     (repo / "skills" / "alpha" / "SKILL.md").write_text("alpha\n", encoding="utf-8")
     (repo / "agents").mkdir()
     (repo / "agents" / "reviewer.md").write_text("reviewer\n", encoding="utf-8")
-    dist = repo / "_dist" / "claude"
-    (dist / "rules" / "common").mkdir(parents=True)
-    (dist / "CLAUDE.md").write_text("global\n", encoding="utf-8")
-    (dist / "rules" / "common" / "r.md").write_text("rule\n", encoding="utf-8")
-    return dist
+    (repo / "rules" / "common").mkdir(parents=True)
+    (repo / "global-instructions.md").write_text("global\n", encoding="utf-8")
+    (repo / "rules" / "common" / "r.md").write_text("rule\n", encoding="utf-8")
 
 
 @pytest.fixture
@@ -55,7 +53,7 @@ def fake_cli(empty_path, monkeypatch):
 def test_files_deploy_as_symlinks_into_repo(sandbox, empty_path):
     # Edits to skills/, agents/ and the generated _dist files must reach Claude
     # without a reinstall, so every asset is a link, never a copy.
-    dist = _seed_repo(sandbox.repo)
+    _seed_repo(sandbox.repo)
     claude_home = sandbox.home / ".claude"
 
     deploy_claude.install_claude(dry_run=False)
@@ -63,8 +61,8 @@ def test_files_deploy_as_symlinks_into_repo(sandbox, empty_path):
     assert (claude_home / "skills" / "alpha").is_symlink()
     assert (claude_home / "skills" / "alpha" / "SKILL.md").read_text() == "alpha\n"
     assert (claude_home / "agents" / "reviewer.md").resolve() == (sandbox.repo / "agents" / "reviewer.md")
-    assert (claude_home / "CLAUDE.md").resolve() == dist / "CLAUDE.md"
-    assert (claude_home / "rules" / "common").is_symlink()
+    assert (claude_home / "CLAUDE.md").resolve() == sandbox.repo / "global-instructions.md"
+    assert (claude_home / "rules" / "common").resolve() == sandbox.repo / "rules" / "common"
     assert (claude_home / "rules" / "common" / "r.md").read_text() == "rule\n"
 
 
@@ -109,14 +107,14 @@ def test_real_agent_file_is_never_overwritten(sandbox, empty_path, capsys):
 
 
 def test_previous_copy_of_claude_md_is_replaced_by_link(sandbox, empty_path):
-    dist = _seed_repo(sandbox.repo)
+    _seed_repo(sandbox.repo)
     claude_home = sandbox.home / ".claude"
     claude_home.mkdir()
     (claude_home / "CLAUDE.md").write_text("global\n", encoding="utf-8")  # old deploy copy
 
     deploy_claude.install_claude(dry_run=False)
 
-    assert (claude_home / "CLAUDE.md").resolve() == dist / "CLAUDE.md"
+    assert (claude_home / "CLAUDE.md").resolve() == sandbox.repo / "global-instructions.md"
     assert not (claude_home / "CLAUDE.md.pre-link.bak").exists()
 
 
@@ -133,7 +131,7 @@ def test_hand_edited_claude_md_is_kept_as_backup(sandbox, empty_path):
 
 
 def test_previous_rules_copy_is_replaced_by_directory_link(sandbox, empty_path):
-    dist = _seed_repo(sandbox.repo)
+    _seed_repo(sandbox.repo)
     old = sandbox.home / ".claude" / "rules" / "common"
     old.mkdir(parents=True)
     (old / "stale.md").write_text("stale\n", encoding="utf-8")
@@ -141,7 +139,7 @@ def test_previous_rules_copy_is_replaced_by_directory_link(sandbox, empty_path):
     deploy_claude.install_claude(dry_run=False)
 
     assert old.is_symlink()
-    assert old.resolve() == dist / "rules" / "common"
+    assert old.resolve() == sandbox.repo / "rules" / "common"
     assert not (old / "stale.md").exists()
 
 

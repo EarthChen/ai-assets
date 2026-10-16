@@ -13,7 +13,6 @@ from .frontmatter import (
     convert_rule_to_mdc,
     rule_applies_to,
     strip_frontmatter,
-    strip_platforms_field,
 )
 
 
@@ -150,9 +149,28 @@ def _ensure_claude_manifest_autoscan(dry_run: bool = False) -> None:
     log(".claude-plugin/plugin.json: stripped `agents` (Claude auto-scans agents/)")
 
 
+def _check_common_rules_reach_claude() -> None:
+    """Fail when a rules/common file opts out of Claude.
+
+    Claude links rules/common as a directory, so no build step can filter it.
+    A platform-specific rule belongs in rules/<platform>/.
+    """
+    common = paths.REPO_ROOT / "rules" / "common"
+    if not common.is_dir():
+        return
+    for rule_file in sorted(common.rglob("*.md")):
+        if not rule_applies_to(rule_file, "claude"):
+            raise SystemExit(
+                f"{rule_file.relative_to(paths.REPO_ROOT)} excludes claude, but Claude links "
+                f"rules/common as is. Move it to rules/<platform>/."
+            )
+
+
 def build_dist(dry_run: bool = False) -> None:
     """Generate platform-filtered content in _dist/."""
     log_section("Building _dist/ (platform-filtered content)")
+
+    _check_common_rules_reach_claude()
 
     _ensure_submodules(dry_run)
     _clean_mattpocock_skill_symlinks(dry_run)
@@ -163,7 +181,7 @@ def build_dist(dry_run: bool = False) -> None:
             shutil.rmtree(paths.DIST)
         paths.DIST.mkdir()
 
-    for platform in ("cursor", "claude", "codex", "pi"):
+    for platform in ("cursor", "codex", "pi"):
         platform_dir = paths.DIST / platform
         ensure_dir(platform_dir, dry_run)
 
@@ -177,18 +195,17 @@ def build_dist(dry_run: bool = False) -> None:
         # real files — no vendor symlinks that would break on a fresh clone
         # (no submodule init) and trip Cursor's "unsafe source path" scan.
         # _dist/ now holds only what genuinely differs per platform:
-        # mcp.json (_platforms filter), rules (.mdc vs .md), and the
-        # global-instructions deploy (CLAUDE.md / AGENTS.md).
+        # mcp.json (_platforms filter), Cursor rules (.mdc), and the
+        # Codex/pi AGENTS.md. Claude links skills, agents, rules/common and
+        # global-instructions.md from the repo and has no MCP deploy, so it
+        # has no _dist/ directory.
 
         # MCP: filtered per platform (pi excluded — pi gets MCP-equivalent
         # capabilities like playwright via its own extensions, not this repo)
         mcp_servers = {} if platform == "pi" else filter_mcp_for_platform(platform)
         if platform != "pi":
-            # Always write the file, even with zero servers. Repo-root .mcp.json
-            # is a symlink to _dist/claude/mcp.json, so skipping the write on an
-            # empty filter leaves it dangling (hit 2026-10-08: the only server
-            # is tagged _platforms: cursor, so _dist/claude/mcp.json never
-            # existed). Claude accepts an empty {"mcpServers": {}} plugin file.
+            # Always write the file, even with zero servers, so a platform
+            # with an empty filter still has a stable, committed mcp.json.
             mcp_out = platform_dir / "mcp.json"
             content = json.dumps({"mcpServers": mcp_servers}, indent=2, ensure_ascii=False)
             if dry_run:
@@ -199,24 +216,20 @@ def build_dist(dry_run: bool = False) -> None:
 
         # Rules: filtered per platform
         # - Cursor: .mdc files in rules/
-        # - Claude: .md files in rules/ (for script to deploy)
+        # - Claude: none (rules/common is linked as is)
         # - Codex/pi: no separate rules dir (content embedded in AGENTS.md)
         rules_dir = paths.REPO_ROOT / "rules"
         rules_out = platform_dir / "rules"
         has_rules = False
-        if platform not in ("codex", "pi"):
+        if platform == "cursor":
             for rule_file in sorted(rules_dir.rglob("*.md")):
                 if not rule_applies_to(rule_file, platform):
                     continue
                 has_rules = True
                 rel = rule_file.relative_to(rules_dir)
                 ensure_dir(rules_out / rel.parent, dry_run)
-                if platform == "cursor":
-                    dst = rules_out / rel.with_suffix(".mdc")
-                    content = convert_rule_to_mdc(rule_file)
-                else:
-                    dst = rules_out / rel
-                    content = strip_platforms_field(rule_file.read_text(encoding="utf-8"))
+                dst = rules_out / rel.with_suffix(".mdc")
+                content = convert_rule_to_mdc(rule_file)
                 if dry_run:
                     log(f"[DRY-RUN] write {dst}")
                 else:
@@ -236,12 +249,6 @@ def build_dist(dry_run: bool = False) -> None:
                     log(f"[DRY-RUN] write {dst}")
                 else:
                     dst.write_text(mdc, encoding="utf-8")
-            elif platform == "claude":
-                dst = platform_dir / "CLAUDE.md"
-                if dry_run:
-                    log(f"[DRY-RUN] write {dst}")
-                else:
-                    dst.write_text(gi_content, encoding="utf-8")
             elif platform in ("codex", "pi"):
                 # Codex/pi AGENTS.md = global instructions + rules/common/.
                 # Language conventions live in skills/<lang>-development

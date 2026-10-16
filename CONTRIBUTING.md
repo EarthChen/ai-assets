@@ -16,17 +16,17 @@ Maintenance guide for the ai-assets repo itself. End-user product documentation 
 The repo has two layers:
 
 1. **Source (single truth)** — `rules/`, `skills/`, `agents/`, `mcp.json`, `global-instructions.md`, `install.py` + `installer/`, `.claude-plugin/`, `.cursor-plugin/`, `third-party.json`
-2. **`_dist/` (per-platform outputs, committed)** — `cursor/`, `claude/`, `codex/`, `pi/`
+2. **`_dist/` (per-platform outputs, committed)** — `cursor/`, `codex/`, `pi/` (Claude has none: it links the sources)
 
 `install.py build` regenerates `_dist/` from source. Skills and agents are **not** copied into `_dist/` — Claude scans the repo root `skills/`/`agents/` through its plugin, Cursor reads `agents/` from its plugin copy, and pi, Cursor and Codex get self-owned skills through `~/.agents/skills` symlinks. `build` does not read `skills/` or `agents/` at all. `_dist/` holds only what genuinely differs per platform:
 
-- `mcp.json` (`_platforms` filter) — written even when the filter yields zero servers: repo-root `.mcp.json` symlinks to `_dist/claude/mcp.json`, so skipping the write dangles it (that was the state until 2026-10-08). Claude accepts an empty `{"mcpServers": {}}` plugin file.
+- `mcp.json` (`_platforms` filter) — written even when the filter yields zero servers, so the committed file set stays stable. Only Cursor consumes it.
 - `rules/` (`.mdc` vs `.md` + frontmatter transform)
 - `global-instructions.md` deploy (becomes `CLAUDE.md` / `AGENTS.md`)
 
 Known gap: `_dist/codex/mcp.json` is generated but nothing reads it. Codex loads no repo plugin, so a server tagged `_platforms: ["codex"]` never reaches Codex. The file is empty today.
 
-Why commit `_dist/`? Marketplace installs (Cursor marketplace, Claude remote marketplace) clone the repo and read `_dist/` as committed; they never run `build`. Local deploys still need `install.py install` after `build`: Cursor reads a real-dir copy, Codex reads `~/.codex/AGENTS.md` (a copy; only its skills track the repo through the plugin symlink), Claude Code reads symlinks (skills and agents instantly; `CLAUDE.md` and rules at session start), and pi reads `~/.pi/agent/AGENTS.md`. `uv run pytest` fails when the committed `_dist/` differs from a fresh build.
+Why commit `_dist/`? Marketplace installs (Cursor marketplace, Claude remote marketplace) clone the repo and read `_dist/` as committed; they never run `build`. Local deploys still need `install.py install` after `build`: Cursor reads a real-dir copy, Codex reads `~/.codex/AGENTS.md` (a copy; only its skills track the repo through the plugin symlink), Claude Code reads symlinks to the sources (skills and agents instantly; `CLAUDE.md` and rules at session start, with no `build`), and pi reads `~/.pi/agent/AGENTS.md`. `uv run pytest` fails when the committed `_dist/` differs from a fresh build.
 
 ### Claude Plugin Manifest (`.claude-plugin/plugin.json`) — No `agents`, No `skills`
 
@@ -41,13 +41,15 @@ After adding or removing an agent, commit `agents/<name>.md` and nothing else �
 
 ## Build Transforms (rules frontmatter → per-platform)
 
-| Source field | → Cursor (.mdc) | → Claude Code (.md) | → Codex (AGENTS.md) |
-| --- | --- | --- | --- |
-| `paths: [...]` | `globs: [...]` (JSON array) | `paths: csv` (CSV string + `alwaysApply: false`) | stripped (plain text) |
-| `globs: [...]` | kept as JSON array | → `paths: csv` (converted + `alwaysApply: false`) | stripped |
-| `platforms: [...]` | removed | removed | used for filtering then stripped |
-| `description` | kept | kept | stripped |
-| `alwaysApply` | kept | kept | stripped |
+Claude Code gets no build output for rules: it links `rules/common` as is, so a `rules/common` file must already be valid Claude frontmatter (`description`, `alwaysApply: true`; user-level `paths` is ignored). `build` fails when a `rules/common` file's `platforms` excludes claude; platform-only rules live in `rules/<platform>/`.
+
+| Source field | → Cursor (.mdc) | → Codex (AGENTS.md) |
+| --- | --- | --- |
+| `paths: [...]` | `globs: [...]` (JSON array) | stripped (plain text) |
+| `globs: [...]` | kept as JSON array | stripped |
+| `platforms: [...]` | removed | used for filtering then stripped |
+| `description` | kept | stripped |
+| `alwaysApply` | kept | stripped |
 
 ## Codex AGENTS.md 32KB Limit
 
@@ -71,7 +73,7 @@ pi has no such limit (`_dist/pi/AGENTS.md` is built the same way and is also 11.
 | --- | --- | --- |
 | Cursor | `install.py install` (rsync real-dir, `--delete`) | After repo edits: `install` (+ `build` first if rules/MCP changed) + restart/reload |
 | Codex | `~/.agents/skills` symlinks (no repo plugin; `install` disables a previously registered one); `~/.codex/AGENTS.md` is a copy | Skills: edits instant, new/renamed ones need `install`. AGENTS.md: `build` + `install` |
-| Claude Code | `install.py install --platform claude`: symlinks in `~/.claude/{skills,agents}`, `~/.claude/CLAUDE.md`, `~/.claude/rules/common` | Skills, agents: edits instant, new/renamed ones need `install`. `CLAUDE.md`, rules: `build`, then a new session |
+| Claude Code | `install.py install --platform claude`: symlinks in `~/.claude/{skills,agents}`, `~/.claude/CLAUDE.md`, `~/.claude/rules/common` | Skills, agents: edits instant, new/renamed ones need `install`. `CLAUDE.md`, rules: edit, then a new session (no `build`, no `install`) |
 | pi | `install.py install --platform pi` (AGENTS.md copy + skill/agent symlinks under `~/.pi/agent/`) | AGENTS.md: `build` + `install`; skill/agent edits instant, new/renamed ones need `install` |
 
 ### Claude Symlink Deploy
@@ -82,11 +84,11 @@ pi has no such limit (`_dist/pi/AGENTS.md` is built the same way and is also 11.
 | --- | --- | --- |
 | Skills | `~/.claude/skills/<name>` → `skills/<name>` | In-session (documented) |
 | Agents | `~/.claude/agents/<name>.md` → `agents/<name>.md` | Within seconds; the first agent file in a new `agents/` dir needs a restart |
-| `CLAUDE.md` | `~/.claude/CLAUDE.md` → `_dist/claude/CLAUDE.md` | New session; source edits need `build` |
-| Rules | `~/.claude/rules/common` → `_dist/claude/rules/common` | New session; source edits need `build` |
-| MCP | none | `claude --mcp-config <repo>/_dist/claude/mcp.json` |
+| `CLAUDE.md` | `~/.claude/CLAUDE.md` → `global-instructions.md` | New session; no `build` |
+| Rules | `~/.claude/rules/common` → `rules/common` | New session; no `build`, new rule files need no `install` either (directory link) |
+| MCP | none | Manual: `claude mcp add-json --scope user <name> '<json>'` |
 
-- **Why no MCP link**: user-scope servers live in `~/.claude.json`, which also holds oauth state, caches and per-project history and which Claude rewrites at runtime. `_dist/claude/mcp.json` holds no servers today (the one entry is tagged `cursor`).
+- **Why no MCP deploy**: user-scope servers live in `~/.claude.json`, which also holds oauth state, caches and per-project history and which Claude rewrites at runtime. A symlink or copy would clobber it. The one repo entry is tagged `cursor`, so Claude needs none today.
 - **Legacy plugin**: `install` runs `plugin uninstall` and `marketplace remove` for `earthchen-ai-assets` when `claude plugin list` shows it. Left in place it loads every skill a second time under the `earthchen-ai-assets:` prefix. Removing the marketplace also removes its cache.
 - **Names**: skills and agents are bare (`code-audit`, not `earthchen-ai-assets:code-audit`). Same-name agents resolve by priority (user over plugin); same-name skills both load.
 - **Real files are safe**: a different `CLAUDE.md` is kept as `CLAUDE.md.pre-link.bak`; a real agent file with a repo agent's name is skipped with a warning; the old copied `rules/common` dir is replaced.
@@ -222,7 +224,7 @@ uv run python --version  # needs >=3.10
 uv run install.py build --dry-run
 
 # 3. Check _dist/ contents
-ls _dist/claude/rules/ _dist/cursor/rules/ _dist/codex/
+ls _dist/cursor/rules/ _dist/codex/
 
 # 4. Validate the plugin manifest (Cursor marketplace), then check the Claude links
 uv run python -c "import json; json.load(open('.claude-plugin/plugin.json'))"

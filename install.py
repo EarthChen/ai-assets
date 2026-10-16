@@ -9,12 +9,11 @@ Two-phase deployment:
 Plugin systems handle (skills/ and agents/ are read from the repo root,
 not from _dist/):
   - Cursor: skills/, agents/, rules + MCP from _dist/cursor/
-  - Claude Code: skills/, agents/ (auto-scanned), MCP via .mcp.json
-    (symlink to _dist/claude/mcp.json)
-  - Codex: skills/, MCP via .mcp.json (the same _dist/claude/mcp.json)
+  - Codex: skills/ (no MCP consumer for _dist/codex/mcp.json)
 
 Script handles (things plugins can't do):
-  - Claude Code: CLAUDE.md, rules → ~/.claude/rules/common/
+  - Claude Code: symlinks ~/.claude/{skills,agents,CLAUDE.md,rules/common}
+    into the repo (no MCP deploy)
   - Codex: AGENTS.md
   - pi: no plugin system — script deploys AGENTS.md (full overwrite),
     symlinks skills/ + pi/skills/ into ~/.pi/agent/skills/ and agents/ +
