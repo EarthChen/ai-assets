@@ -46,23 +46,6 @@ def test_strip_frontmatter_keeps_only_body():
     assert frontmatter.strip_frontmatter("---\na: b\n---\nbody\n") == "body\n"
 
 
-def test_strip_platforms_field_converts_globs_to_paths_csv_for_claude():
-    # Claude reads `paths` as a CSV string and needs alwaysApply: false to
-    # lazy-load; `platforms` is build-time only and must not leak.
-    content = '---\nplatforms: [claude]\nglobs: ["**/*.py", "**/*.pyi"]\n---\nbody\n'
-    assert frontmatter.strip_platforms_field(content) == (
-        "---\npaths: **/*.py, **/*.pyi\nalwaysApply: false\n---\nbody\n"
-    )
-
-
-def test_strip_platforms_field_drops_frontmatter_holding_only_platforms():
-    assert frontmatter.strip_platforms_field("---\nplatforms: [claude]\n---\nbody\n") == "body\n"
-
-
-def test_strip_platforms_field_without_frontmatter_is_identity():
-    assert frontmatter.strip_platforms_field("plain\n") == "plain\n"
-
-
 def test_convert_rule_to_mdc_without_frontmatter_always_applies(tmp_path: Path):
     rule = tmp_path / "style.md"
     rule.write_text("# Style\n", encoding="utf-8")

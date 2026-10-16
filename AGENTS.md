@@ -9,8 +9,10 @@ Read `CONTRIBUTING.md` before touching the deploy pipeline, build transforms, ve
 ```text
 Source (single truth)     →  _dist/ (only platform-specific)  →  Plugin loads / Script deploys
 rules/common/*.md              _dist/cursor/rules/**/*.mdc       .cursor-plugin (agents→./agents/, rules+mcp→_dist/cursor/; no skills)
-rules/common/                  _dist/claude/rules/**/*.md        Claude: ~/.claude/rules/common ◄── symlink (no plugin)
-mcp.json (_platforms tag)      _dist/claude/mcp.json  ◄── load with `claude --mcp-config` (no user-scope link)
+rules/common/ (all platforms)  —                                 Claude: ~/.claude/rules/common ◄── symlink to source
+rules/<platform>/              _dist/<platform>/rules/**         platform-only rules (today: rules/cursor/)
+global-instructions.md         —                                 Claude: ~/.claude/CLAUDE.md ◄── symlink to source
+mcp.json (_platforms tag)      _dist/cursor/mcp.json             Claude: no MCP deploy
 global-instructions.md         _dist/codex/AGENTS.md             Codex: AGENTS.md copy only (no plugin)
                                _dist/codex/mcp.json              (generated; no consumer)
 skills/      ──────────────────┐  Claude: symlinks in ~/.claude/skills/. pi/Cursor/Codex: symlinks in ~/.agents/skills/
@@ -27,8 +29,8 @@ Code lives in `installer/`; `install.py` is a thin entrypoint. `uv run pytest` i
 ## Gotchas
 
 - **Single source of truth**: this repo is the ONLY source for custom AI configuration. Put skills here, not in `~/.agents/skills/`; skip overlapping third-party plugins; manage every MCP server in `mcp.json`.
-- **Claude deploys by symlink, not plugin**: `install` links skills and agents (hot-reload, no reinstall after edits), `CLAUDE.md` and `rules/common` (read at session start, so edits need `build` and a new session). It uninstalls the legacy `earthchen-ai-assets` plugin, because a second copy loads every skill twice. Skill and agent names are bare, no `earthchen-ai-assets:` prefix.
-- **Claude MCP has no link**: user-scope servers live in `~/.claude.json`, a runtime-state file. Load `_dist/claude/mcp.json` with `claude --mcp-config`; it holds no servers today.
+- **Claude deploys by symlink, not plugin**: `install` links skills, agents, `global-instructions.md` (as `CLAUDE.md`) and `rules/common` straight to the repo, so no `build` sits between an edit and Claude. Skills and agents hot-reload; `CLAUDE.md` and rules load at session start. `build` fails when a `rules/common` file excludes claude: put platform-only rules in `rules/<platform>/`. It uninstalls the legacy `earthchen-ai-assets` plugin, because a second copy loads every skill twice. Skill and agent names are bare, no `earthchen-ai-assets:` prefix.
+- **Claude has no MCP deploy**: user-scope servers live in `~/.claude.json`, a runtime-state file. Add servers by hand with `claude mcp add-json --scope user`; the repo holds none for Claude today.
 - **`.claude-plugin/` stays for the Cursor marketplace** (it reads `marketplace.json`). `agents` must stay absent from `plugin.json` there too: the key loads zero agents (probe-verified on 2.1.285).
 - **Cursor local plugin is a real directory**: Cursor's scanner skips symlinks in `~/.cursor/plugins/local/`. Local real-dir wins over the remote marketplace (stale cache).
 - **Cursor "Include third-party Plugins, Skills, and other configs": keep OFF** — the recursive scan loads each skill ~11×.

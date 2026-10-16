@@ -59,8 +59,7 @@ def copy_plugin_tree(src: Path, dst: Path, dry_run: bool = False) -> None:
     Semantics mirror `rsync -a --delete`: the destination is rebuilt
     from scratch each run, so files deleted from the source also
     disappear from the destination. `symlinks=True` preserves repo-root
-    symlinks like .mcp.json -> _dist/claude/mcp.json as-is rather than
-    dereferencing them.
+    symlinks as-is rather than dereferencing them.
     """
     ensure_dir(dst.parent, dry_run)
     if dst.exists() or dst.is_symlink():

@@ -249,11 +249,16 @@ def _link_agents(dry_run: bool) -> None:
 
 
 def _link_instructions(dry_run: bool) -> None:
-    """Link CLAUDE.md and the common rules dir to the generated `_dist/claude` files."""
-    dist = paths.DIST / "claude"
-    if (dist / "CLAUDE.md").exists():
-        _link_file(dist / "CLAUDE.md", paths.CLAUDE_HOME / "CLAUDE.md", dry_run, backup=True)
-    rules_src = dist / "rules" / "common"
+    """Link CLAUDE.md and the common rules dir straight to their repo sources.
+
+    Both are byte copies of the source for Claude, so no build step sits
+    between an edit and the next session. `build` rejects any rules/common
+    file that opts out of Claude, which keeps the directory link safe.
+    """
+    global_instructions = paths.REPO_ROOT / "global-instructions.md"
+    if global_instructions.exists():
+        _link_file(global_instructions, paths.CLAUDE_HOME / "CLAUDE.md", dry_run, backup=True)
+    rules_src = paths.REPO_ROOT / "rules" / "common"
     rules_dst = paths.CLAUDE_HOME / "rules" / "common"
     if rules_src.exists():
         if rules_dst.is_dir() and not rules_dst.is_symlink():

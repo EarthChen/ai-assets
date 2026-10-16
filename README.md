@@ -9,7 +9,7 @@
 | 平台 | 插件加载 | 脚本补充 |
 | ------ | --------- | --------- |
 | Cursor | rules, agents, MCP | local real-dir (rsync，不含 `skills/`) + skills/ → `~/.agents/skills/` |
-| Claude Code | skills, agents, MCP | common rules → `~/.claude/rules/common/`, CLAUDE.md |
+| Claude Code | skills, agents（软链到 `~/.claude/`） | `rules/common` → `~/.claude/rules/common`、`global-instructions.md` → `~/.claude/CLAUDE.md`（均为软链，无需 build） |
 | Codex | — | AGENTS.md (global-instructions + common rules) + skills/ → `~/.agents/skills/` |
 | pi | — | AGENTS.md + skills/ → `~/.agents/skills/`（与三方 symlink 同目录）+ pi/skills/ → `~/.pi/agent/skills/` + agents/ 与 pi/agents/ → `~/.pi/agent/agents/` |
 
@@ -40,7 +40,6 @@ ai-assets/
 ├── mcp.json                   # 统一 MCP 配置 (_platforms 过滤)
 ├── _dist/                     # 自动生成的平台产物 (已提交；skills/agents 不复制进此)
 │   ├── cursor/                # rules/*.mdc + mcp.json
-│   ├── claude/                # rules/ + mcp.json + CLAUDE.md
 │   ├── codex/                 # mcp.json + AGENTS.md
 │   └── pi/                    # AGENTS.md
 ├── .cursor-plugin/plugin.json
@@ -222,13 +221,15 @@ platforms: [cursor, claude]      # 平台过滤 (build-time, 不进入输出)
 
 ### 各平台 Frontmatter 转换
 
-| 源字段 | Cursor (.mdc) | Claude Code (.md) | Codex (AGENTS.md) |
-| -------- | --------------- | ------------------- | -------------------- |
-| `description` | 保留 (Agent 智能选择) | 保留 | 无 (纯文本) |
-| `paths` | → `globs` (JSON数组) | → `paths: CSV` (单行无引号) | N/A |
-| `globs` | 保留 (JSON数组) | → `paths: CSV` (转换字段名) | N/A |
-| `alwaysApply` | 保留 | 保留; paths 存在时自动加 false | N/A |
-| `platforms` | **移除** | **移除** | N/A (build时过滤) |
+Claude Code 不经过 build：`rules/common` 整个目录软链，文件必须直接符合 Claude 的 frontmatter（`description`、`alwaysApply: true`；用户级 `paths` 不生效）。`rules/common` 中任何排除 claude 的规则会让 `build` 报错，平台专属规则放进 `rules/<platform>/`（如 `rules/cursor/`）。
+
+| 源字段 | Cursor (.mdc) | Codex (AGENTS.md) |
+| -------- | --------------- | -------------------- |
+| `description` | 保留 (Agent 智能选择) | 无 (纯文本) |
+| `paths` | → `globs` (JSON数组) | N/A |
+| `globs` | 保留 (JSON数组) | N/A |
+| `alwaysApply` | 保留 | N/A |
+| `platforms` | **移除** | N/A (build时过滤) |
 
 ### 各平台加载行为
 
@@ -263,8 +264,7 @@ platforms: [cursor]
 ```
 
 - 无 `platforms` 字段 → 所有平台共享
-- `platforms: [cursor]` → 仅 Cursor 加载
-- `platforms: [cursor, claude]` → Cursor + Claude Code
+- `platforms: [cursor]` → 仅 Cursor 加载，文件放在 `rules/cursor/`，**不能**放在 `rules/common/`（Claude 直接软链该目录，`build` 会报错）
 
 MCP 配置中使用 `_platforms` 字段：
 
