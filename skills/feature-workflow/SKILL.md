@@ -8,8 +8,8 @@ description: "Use when starting a feature or fix: plan → TDD → simplify → 
 ## When to Use
 
 - You are starting a new feature or fix and need the full pipeline: plan → TDD → simplify → review → commit.
-- You need the user-run planning commands (`/grill-with-docs`, `/to-spec`, `/to-tickets`), the model-invocable workflow skills (`grilling`, `domain-modeling`, `tdd`, the mattpocock `code-review` skill), the `code-simplifier` / `refactor-cleaner` agents, or the manual `code-simplify` / `refactor-clean` skills.
-- For commit-message and PR conventions, use the `git-workflow` skill.
+- You need the user-run planning commands (`/grill-with-docs`, `/to-spec`, `/to-tickets`), the model-invoked workflow skills (`grilling`, `domain-modeling`, `tdd`, the mattpocock `code-review` skill; each loads through the Skill tool), the `code-simplifier` / `refactor-cleaner` agents, or the manual `code-simplify` / `refactor-clean` skills.
+- For commit-message and PR conventions, call the Skill tool with "git-workflow".
 
 > This skill covers the feature development process that happens before git operations; the `git-workflow` skill covers the git operations.
 
@@ -17,27 +17,27 @@ The Feature Implementation Workflow describes the development pipeline: planning
 
 ## Feature Implementation Workflow
 
-Planning, TDD, and code review use workflow skills, not sub-agents. User-invoked skills cannot fire from another skill: the planning commands in step 1 run only when the user types them.
+Planning, TDD, and code review use workflow skills, not sub-agents. Only the user fires user-invoked skills: the planning commands in step 1 run when the user types them. Model-invoked skills load by calling the Skill tool, one call per skill.
 
 1. **Plan First**
    - Ask the user to run `/grill-with-docs` (align requirements + build the domain model), then `/to-spec` (synthesize the conversation into a spec), then `/to-tickets` (break it into tracer-bullet tickets)
-   - If the user skips them, invoke the `grilling` skill to stress-test the plan, plus the `domain-modeling` skill when terminology matters
+   - If the user skips them, call the Skill tool with "grilling" to stress-test the plan; when terminology matters, call it again with "domain-modeling"
    - Identify dependencies and risks
 
 2. **TDD Approach**
-   - Use the `tdd` skill for the red-green-refactor loop; the coverage target is the global 80% testing rule
+   - Call the Skill tool with "tdd" for the red-green-refactor loop; the coverage target is the global 80% testing rule
 
 3. **Code Simplification**
    - Run the `code-simplifier` agent on the feature's git scope — uncommitted changes, recent commits, or the full branch diff against the merge target; include the `code-simplify` skill directory path in the dispatch prompt so the agent can load its `rules.md` (the agent probes standard install locations if no path is given)
    - Light-touch: reduce nesting, rename for clarity, remove proved-dead code in the changed region, consolidate duplicated logic in the touched files
    - Preserves exact behavior — tests of surviving behavior pass without modification
    - For whole-repo dead-code removal and structural refactoring across files, use the `refactor-cleaner` agent instead
-   - `code-simplify` and `refactor-clean` are the human-invoked skills wrapping these two agents; the pipeline itself dispatches the agents (user-invoked skills cannot fire from another skill)
+   - `code-simplify` and `refactor-clean` are the human-invoked skills wrapping these two agents; the pipeline itself dispatches the agents (the user fires those skills)
 
 4. **Code Review**
-   - Run the mattpocock `code-review` skill (`mattpocock-skills:code-review` on Claude; Standards + Spec axes) immediately after writing code
+   - Immediately after writing code, call the Skill tool with "mattpocock-skills:code-review" on Claude, "code-review" elsewhere (Standards + Spec axes)
    - Address every Spec finding; fix or explicitly justify each Standards finding
    - For a deep severity-tiered audit, dispatch the `code-reviewer` agent; severity and approval rules live in the `code-quality-gate` skill
 
 5. **Commit & Push**
-   - Use the `git-workflow` skill for commit message format and PR process
+   - Call the Skill tool with "git-workflow" for commit message format and PR process

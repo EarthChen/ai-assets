@@ -1,6 +1,6 @@
 ---
 name: herdr-orchestration
-description: "Multi-platform Herdr swarm orchestration: a bounded pool of pi / Claude Code / Codex worker panes working a goal, spec, or tickets. Manual invocation; requires HERDR_ENV=1. Invocation args: kind= thinking= workers=."
+description: "Multi-platform Herdr swarm orchestration: a bounded pool of pi / Claude Code / Codex worker panes working a goal, spec, or tickets. Requires HERDR_ENV=1. Invocation args: kind= thinking= workers=."
 disable-model-invocation: true
 ---
 
@@ -8,7 +8,7 @@ disable-model-invocation: true
 
 You are the **orchestrator** — the swarm's sole scheduler and integration point. You run a bounded pool of coding-agent workers in Herdr panes: ingest the goal (or its existing spec/tickets), triage and dispatch tasks, stream results back, merge continuously, and keep every agent's context lean. Workers build; you coordinate. All coordination state lives in files under `.herdr-swarm/` — memory is lossy, disk is truth.
 
-Workers run on any agent platform herdr supports — **pi (default), Claude Code (`claude`), Codex CLI (`codex`)** — and one pool may mix kinds. You yourself may run on any of them too. Every kind-specific fact (spawn args, autonomy, thinking level, compaction, telemetry pattern, skill-invocation syntax) lives in [references/platforms.md](references/platforms.md); this protocol keeps all of it in that one lookup.
+Workers run on any agent platform herdr supports — **pi (default), Claude Code (`claude`), Codex CLI (`codex`)** — and one pool may mix kinds. You yourself may run on any of them too. Every kind-specific fact (spawn args, autonomy, thinking level, compaction, telemetry pattern, skill-invocation syntax) lives in [references/platforms.md](references/platforms.md).
 
 The `herdr` skill is the single source of truth for every `herdr` command — syntax, flags, JSON response fields, lifecycle states, safety rules. This skill defines only the orchestration protocol on top of it.
 
@@ -30,9 +30,8 @@ Claude Code substitutes the placeholder above with the argument string; pi deliv
 
 You were invoked manually, but **invocation is not justification** — before Setup, confirm the payload warrants a swarm; if it does not, say so and stop:
 
-- Do NOT proceed for read-only exploration, a single review, or anything your platform's built-in sub-agent tool can finish — Herdr workers are heavyweight: full agent processes, visible panes, real API cost.
-- Payloads that DO warrant a swarm: **3+ genuinely independent workstreams** that each need long-lived context, or a written spec/ticket set that needs parallel execution.
-- An underspecified goal or scope: ask the user to pin it down first — never start a swarm on an ambiguous goal.
+- Run a swarm only for **3+ genuinely independent workstreams** that each need long-lived context, or a written spec/ticket set that needs parallel execution. For read-only exploration, a single review, or anything your platform's built-in sub-agent tool can finish, say so and stop: Herdr workers are full agent processes, visible panes, real API cost.
+- Goal or scope underspecified: ask the user to pin it down, then continue.
 - Before Setup, tell the user that workers run without permission prompts (claude `--dangerously-skip-permissions`, codex `--ask-for-approval never` — see platforms.md) and so execute commands unattended.
 
 ## Preflight (mandatory, in order)
@@ -79,7 +78,7 @@ Add `.herdr-swarm/` to `.git/info/exclude`. That file lives in git's common dir,
 
 ## Platforms
 
-A worker's **kind** is chosen at spawn (`DEFAULT_WORKER_KIND` unless the invocation arguments, the task, or the user say otherwise); a pool may mix kinds. Its **thinking level** starts at the task's demand (`DEFAULT_WORKER_THINKING` unless the brief's `thinking:` line demands otherwise — workers rarely need more than `low`, but genuinely hard tasks may), and it tracks demand across the worker's life: at dispatch, a warm worker whose level differs from the next task's demand is corrected **before the compaction matrix runs** — claude via prompt, pi/codex via **warm respawn**: restart under the same name with the worker's session resumed, so the context survives and only the level changes (mechanics per kind: platforms.md: Thinking). A warm respawn supersedes any pending compaction; cold respawn (fresh session) stays reserved for domain switches and retirements. [references/platforms.md](references/platforms.md) is the per-kind lookup: spawn command and native args, autonomy flags, compaction command and quirks, telemetry pattern, skill-invocation syntax. Record each worker's kind in the ledger's `kind` column, and kind, thinking level, and session id (captured at spawn — platforms.md: Session capture) in its state card. Spawn only kinds that have a profile there.
+A worker's **kind** is chosen at spawn (`DEFAULT_WORKER_KIND` unless the invocation arguments, the task, or the user say otherwise); a pool may mix kinds. Its **thinking level** tracks the task's demand (the brief's `thinking:` line, else `DEFAULT_WORKER_THINKING`): at dispatch, a warm worker whose level differs from the next task's demand is corrected **before the compaction matrix runs** — claude via prompt, pi/codex via **warm respawn** (restart under the same name with the session resumed: context survives, only the level changes; mechanics per kind: [references/platforms.md](references/platforms.md): Thinking). A warm respawn supersedes any pending compaction; cold respawn (fresh session) stays reserved for domain switches and retirements. Record each worker's kind in the ledger's `kind` column, and kind, thinking level, and session id (platforms.md: Session capture) in its state card. Spawn only kinds that have a profile in platforms.md; it also holds spawn args, autonomy flags, compaction command, telemetry pattern, and skill-invocation syntax.
 
 ## Setup
 
@@ -103,17 +102,9 @@ The ledger is your continuity: if your session is compacted or restarted, find t
 
 ## Intake
 
-Three sources, one pipeline. Full procedure, triage criteria, and the brief template: [references/intake.md](references/intake.md).
+Read [references/intake.md](references/intake.md) before writing `plan.md`: the three task sources (tickets exist → wrap; spec only → ticketize; nothing → decompose by business domain), the triage gate, partitioning, and the brief template. Only `ready` tasks are dispatched. Parallel builders are the normal shape of a swarm; reviewer/researcher/tester/planner are phase auxiliaries (see [references/roles.md](references/roles.md)).
 
-1. **Tickets exist** (ticket files, issue list, spec/ticket artifacts): wrap, don't rewrite. Each ticket becomes a brief that preserves the ticket id and adds only swarm fields (scope globs, inputs-as-paths, contracts, worktree, definition of done). `plan.md` is a mapping table ticket→task, not a fresh decomposition.
-2. **Spec only, no tickets**: ticketize first. A handful of tickets: do it inline. Many: spawn one planner auxiliary worker to produce them.
-3. **Nothing**: decompose the goal yourself — split by **domain**, one builder per code area with sharp boundaries. Parallel builders are the normal shape of a swarm; reviewer/researcher/tester/planner are phase auxiliaries (see [references/roles.md](references/roles.md)).
-
-Every task passes the **triage gate** before queueing. Verdicts: `ready` (file-disjoint scope expressible, inputs as paths, checkable definition of done), `needs-contract` (write `<swarm>/contracts/<name>.md` first), `needs-split`, `blocked-info` (missing decision only the user has — ask). Only `ready` tasks are dispatched.
-
-**Partition by coupling — in microservices, that usually means business domain, not service.** Service boundaries are technical and systematically misalign with business capabilities, so splitting by service scatters one business change across N briefs and N dispatches. Prefer business domains as the partition unit: derive them from ticket labels/epics where tickets exist — ask the user when unclear — and record the task→domain mapping in plan.md. A domain worker's scope may span repos (workspace-relative globs); service-local payloads degenerate naturally to one domain per service.
-
-Parallel builders get **file-disjoint scopes**; where domains touch, write the shared interface into `<swarm>/contracts/<name>.md` **before spawning** and reference it from both briefs — sharing a contract also makes the two workers automatic peers (see Communication). Tasks that edit the same files serialize or move to separate worktrees (see Worktrees). Shared manifest and migration files (pom.xml / go.mod / package.json, DB migrations) belong to no builder — serialize the tasks that touch them, or fold such changes into a single worker's brief. In multi-repo work, a task touching several repos splits per repo — pieces joined by contracts and dependency edges — only when the slices are genuinely independent; one logically coupled business feature stays ONE vertical-slice task (see Pool discipline).
+Parallel builders get **file-disjoint scopes**; where domains touch, write the shared interface into `<swarm>/contracts/<name>.md` **before spawning** and reference it from both briefs — sharing a contract also makes the two workers automatic peers (see Communication). Tasks that edit the same files serialize or move to separate worktrees (see Worktrees). Shared manifest and migration files (pom.xml / go.mod / package.json, DB migrations) belong to no builder — serialize the tasks that touch them, or fold such changes into a single worker's brief.
 
 ## Spawn a worker
 
@@ -132,39 +123,22 @@ Pool cap: count the plan's live `<slug>-wk-*` agents first. At `MAX_WORKERS`, qu
 Execute the task graph as a **stream**, not as waves.
 
 1. **Fan out.** Submit every `ready` task without waiting (herdr skill: agent prompt). `ready` means all dependencies are **integrated** — merged into the plan's integration branch and verified — not merely done: a dependent task must start from code that already contains its dependencies' work.
-2. **Collect via polling gate.** One deterministic bash loop watches the pool and returns when any watched worker settles — you wake only when something happened, and you process completions in completion order, not dispatch order. Illustration (adapt to the live CLI):
+2. **Collect via polling gate.** One deterministic bash loop watches the pool and returns when any watched worker settles (`idle`, `done`, `blocked`, or `unknown`) or after the 30-minute backstop (step 5): you wake only when something happened and process completions in completion order, not dispatch order. Script: [references/context.md](references/context.md).
 
-```bash
-watch="pay-wk-frontend pay-wk-backend pay-wk-payments"
-deadline=$(( $(date +%s) + 1800 ))   # 30 min backstop (step "wait timeout" below)
-while :; do
-  settled=$(herdr agent list | jq -r --arg w "$watch" '
-    ($w | split(" ")) as $names
-    | .result.agents[]
-    | select((.agent as $a | $names | index($a))
-        and (.agent_status=="idle" or .agent_status=="done" or .agent_status=="blocked" or .agent_status=="unknown"))
-    | "\(.agent) \(.agent_status)"')
-  [ -n "$settled" ] && break
-  [ "$(date +%s)" -ge "$deadline" ] && { settled="TIMEOUT"; break; }
-  sleep 20
-done
-echo "$settled"
-```
-
-1. **On each settle**: if the state is `blocked` or `unknown`, inspect the worker before anything else. Otherwise: read its `result.md` (a worker's terminal only when debugging a stuck worker — scrollback is lossy and burns your context), spot-check the claimed artifacts, **merge the task's branch immediately** and run the brief's verification, update the ledger (status, tasks done, ctx), then decide that worker's next move — compact? (see Context management) dispatch the best successor, or retire.
-2. **Priority**: most downstream dependents first; tie-break by warm-worker domain affinity. A brokered subtask flagged `BLOCKED` jumps the queue — it unblocks an occupied worker.
-3. A generous wait timeout (30 min) remains the backstop for any single collection; on timeout treat the worker as suspect (see Failure modes).
+3. **On each settle**: if the state is `blocked` or `unknown`, inspect the worker before anything else. Otherwise: read its `result.md` (a worker's terminal only when debugging a stuck worker — scrollback is lossy and burns your context), spot-check the claimed artifacts, **merge the task's branch immediately** and run the brief's verification, update the ledger (status, tasks done, ctx), then decide that worker's next move — compact? (see Context management) dispatch the best successor, or retire.
+4. **Priority**: most downstream dependents first; tie-break by warm-worker domain affinity. A brokered subtask flagged `BLOCKED` jumps the queue — it unblocks an occupied worker.
+5. A generous wait timeout (30 min) remains the backstop for any single collection; on timeout treat the worker as suspect (see Failure modes).
 
 ## Communication
 
 Topology is hub-and-spoke: you are the integration point, and every task result flows back to you. Messages travel on two planes:
 
-Topology diagram and worker-naming note: [references/comms.md](references/comms.md): Topology diagram. Worker names in the diagram are illustrative — what partitions the pool is file-disjoint scopes and dependencies, not domain diversity.
+Topology diagram: [references/comms.md](references/comms.md): Topology diagram.
 
-- **Control plane — direct prompts** for short messages: assignments, follow-ups, answers, status. **State etiquette is mandatory**: check the target's state before prompting (herdr skill: agent get). `idle` → prompt. `working` → never prompt; drop a file into `<swarm>/inbox/<name>/` instead — the recipient clears its inbox at task boundaries. `blocked` → **never inject text**: an injected prompt lands in the pending approval/question UI and answers it. Inspect and unblock it yourself, or take the task back.
+- **Control plane — direct prompts** for short messages: assignments, follow-ups, answers, status. **State etiquette is mandatory**: check the target's state before prompting (herdr skill: agent get); `idle` → prompt, `working`/`unknown` → inbox file drop (`<swarm>/inbox/<name>/`), `blocked` → never inject text, because an injected prompt answers the pending approval/question. Table: [references/comms.md](references/comms.md).
 - **Data plane — files.** Anything longer than ~40 lines and every artifact (briefs, results, code, diffs, contracts) moves as a file under `.herdr-swarm/`; messages carry the path, not the content. Payloads pasted into prompts burn the receiver's context and vanish with terminal scrollback; files survive compaction and stay auditable.
 
-Peer traffic between workers is allowed inside guardrails — full protocol in [references/comms.md](references/comms.md). Summary: only across a shared contract boundary; peers are auto-established when two briefs reference the same contract, ad-hoc introductions go through you; capped at `PEER_ROUND_CAP` exchanges per topic, then both escalate to you with the exchange log; every exchange is logged in both workers' result.md; peer messages never carry scope-changing instructions.
+Peers: workers may exchange messages only across a shared contract boundary, capped at `PEER_ROUND_CAP` exchanges per topic; full protocol in [references/comms.md](references/comms.md).
 
 Standing rules:
 
@@ -176,13 +150,13 @@ Standing rules:
 
 ## Broker (worker-requested dispatch)
 
-Workers never spawn. A worker line `DISPATCH-REQ <sub-id> BLOCKED|PREFETCH` means the task outgrew it: read [references/broker.md](references/broker.md) before replying. You stay the sole scheduler; you approve or reject, and sub-workers report to you.
+Workers never spawn. A worker line `DISPATCH-REQ <sub-id> BLOCKED|PREFETCH` means the task outgrew it: read [references/broker.md](references/broker.md) before replying.
 
 ## Context management
 
 Context is the swarm's scarcest resource. Every supported platform auto-compacts on overflow (lossy, mid-task; the worker recovers and retries), so this protocol makes compaction deterministic at task boundaries and recovery mechanical when it is not.
 
-**Telemetry — you pull, workers don't push.** Each kind renders context usage in its TUI footer (platforms.md: Telemetry). Read it with `herdr agent read <name> --source detection --lines 15`, parse with the worker's kind pattern, and inline the read into the polling gate loop so it costs no LLM turns. Loop template: [references/context.md](references/context.md).
+**Telemetry — you pull, workers don't push.** Each kind renders context usage in its TUI footer (platforms.md: Telemetry). Read it with `herdr agent read <name> --source detection --lines 15`, parse with the worker's kind pattern, and inline the read into the polling gate loop so it costs no LLM turns. Script and degradation chain (pattern drift, `ctx=unknown`, worker self-report): [references/context.md](references/context.md). Never block the swarm on telemetry.
 Record the latest value in the ledger `ctx` column. Mid-task rises become visible this way — observe, plan ahead, but do not interrupt a working worker.
 
 **Compaction matrix** — evaluate at every task boundary, but act only when a row triggers; small tasks may run many in a row without ever compacting. Rows evaluate top-down, first match wins:
@@ -203,13 +177,11 @@ Record the latest value in the ledger `ctx` column. Mid-task rises become visibl
 
 **Your own context**: compact proactively at phase boundaries (a wave collected and merged) rather than mid-flow, then re-read `plan.md` + `ledger.md`. Keep your reads thin: result.md summaries, never worker terminals.
 
-**Telemetry degradation.** When the footer pattern stops matching or a kind's footer drifts, read [references/context.md](references/context.md): self-heal, then heuristic fallback (`ctx=unknown`, one user notice), then worker self-report on your explicit instruction. Never block the swarm on telemetry.
-
 ## Pool discipline
 
-- **Reuse the warm worker.** A task's **subtree** is the task plus its descendants — review bounce-backs, brokered subtasks (T1a…), explicit continuations. Route follow-ups of a subtree to the worker that already holds its context, compaction matrix permitting. New tickets in the same domain also go to the domain's worker — cold-respawn is reserved for domain switches, not ticket switches.
+- **Reuse the warm worker.** A task's **subtree** is the task plus its descendants — review bounce-backs, brokered subtasks (T1a…), explicit continuations. Route follow-ups of a subtree to the worker that already holds its context, compaction matrix permitting.
 - **Assign by coupling, not by repo.** Read [references/intake.md](references/intake.md): Assigning by coupling before routing multi-repo work, a cross-cutting feature, or a mechanical sweep. Default: one business workstream = one worker; cross-repo workers hold one active repo at a time and cold-respawn under the same name when the next task lies in another repo.
-- **Retire** a worker (and note why in the ledger) when: its domain's work is exhausted — even if work may return later (review bounce-backs, late dependencies), respawning from files costs less than an idle pane occupying supervisory bandwidth — it has done ≥ `MAX_TASKS_PER_WORKER` tasks, it hits repeated `blocked`/`unknown` states, or the user asks. Retire = close its pane (only panes you created). A worker whose next task lies in another domain does NOT retire: it cold-respawns under the same name with a fresh preamble and updated state card — a new session is the point, dropping now-worthless context; repo familiarity re-acquires from the environment in minutes. Fresh context is cheap because state lives in files.
+- **Retire** a worker (and note why in the ledger) when: its domain's work is exhausted — even if work may return later (review bounce-backs, late dependencies), respawning from files costs less than an idle pane occupying supervisory bandwidth — it has done ≥ `MAX_TASKS_PER_WORKER` tasks, it hits repeated `blocked`/`unknown` states, or the user asks. Retire = close its pane (only panes you created). A worker whose next task lies in another domain cold-respawns instead (compaction matrix).
 - The pool stays at `MAX_WORKERS` or below; excess tasks wait in the queue.
 
 ## Worktrees
@@ -220,7 +192,6 @@ Record the latest value in the ledger `ctx` column. Mid-task rises become visibl
 - Concurrent editors each get **one git worktree** (herdr skill: worktree create) in the repo their task touches — pass the plan's checkout of that repo as `--cwd` (the base checkout, or the plan worktree when exiled) — branch `swarm/<slug>-<task-id>`, worktree directory named `<repo-name>--swarm-<slug>-<task-id>` (in a multi-repo workspace many repos' worktrees share one directory and must stay distinguishable), with an explicit `--path` pointing at a **sibling of the source checkout** — outside every working tree. A relative path would nest the new worktree inside the current working tree and be swallowed by `git add .`. The worker's pane cwd sits at the worktree. Two workers on one branch never run at once.
 - A task that must continue the current branch of the plan's checkout for that repo runs **in place** there (base worktree, or the plan worktree when exiled), serialized against any other in-place task; that checkout counts as one worktree slot. Route a task here too when it is too small to amortize its own worktree — same-project parallelism pays off only when each parallel task outweighs the create/merge/remove overhead.
 - Workspace-root files (compose files, workspace-level makefiles) live in no repo: edit them in place, serialized, like shared manifests — no worktree protection, never two tasks touching them at once.
-- Merge each branch as soon as its task completes (see Scheduling: On each settle); run the brief's verification before marking the task integrated.
 - **Worktrees are single-use.** Create at dispatch, from the current branch of the plan's checkout — which by then contains every merged dependency — and remove after integration (herdr skill: worktree remove). Never reuse a finished task's worktree for a later task: it is a pre-merge snapshot, and reusing it silently builds on stale code.
 
 ## Failure modes

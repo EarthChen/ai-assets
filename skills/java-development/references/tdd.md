@@ -1,56 +1,28 @@
-
 # Spring Boot TDD Workflow
 
-TDD guidance for Spring Boot services (unit + integration).
-
-Cross-stack testing principles (boundaries, sociable/solitary, narrow integration, isolation rules, F.I.R.S.T): Read `../../testing-principles/SKILL.md` — this file carries only Spring-specific application.
-
-## When to Use
-
-- New features or endpoints
-- Bug fixes or refactors
-- Adding data access logic or security rules
+Spring-specific test application. Cross-stack testing principles (boundaries, sociable/solitary, narrow integration, isolation rules, F.I.R.S.T): Read `../../testing-principles/SKILL.md`.
 
 ## Workflow
 
 Red-green-refactor loop: the `tdd` skill. Coverage target: the global 80% testing rule, enforced by the JaCoCo `check` execution below.
 
-## Unit Tests (JUnit 5 + Mockito)
+## Slice Selection
 
-Mock slow/side-effectful collaborators (repositories, HTTP clients); in-process domain collaborators may stay real — sociable unit tests are fine.
+| Layer | Annotation | Mocking |
+| --- | --- | --- |
+| Service | `@ExtendWith(MockitoExtension.class)` | `@Mock` + `@InjectMocks`; mock slow or side-effectful collaborators only |
+| Controller | `@WebMvcTest(X.class)` + `MockMvc` | `@MockitoBean` for the service |
+| Repository | `@DataJpaTest` + `@AutoConfigureTestDatabase(replace = NONE)` | none; real database via Testcontainers |
+| Full flow | `@SpringBootTest` + `@AutoConfigureMockMvc` + `@ActiveProfiles("test")` | external boundaries only (third-party HTTP, brokers) |
 
-```java
-@ExtendWith(MockitoExtension.class)
-class MarketServiceTest {
-  @Mock MarketRepository repo;
-  @InjectMocks MarketService service;
-
-  @Test
-  void createsMarket() {
-    CreateMarketRequest req = new CreateMarketRequest("name", "desc", Instant.now(), List.of("cat"));
-    when(repo.save(any())).thenAnswer(inv -> inv.getArgument(0));
-
-    Market result = service.create(req);
-
-    assertThat(result.name()).isEqualTo("name");
-    verify(repo).save(any());
-  }
-}
-```
-
-Patterns:
-
-- Arrange-Act-Assert
-- Avoid partial mocks; prefer explicit stubbing
-- Use `@ParameterizedTest` for variants
-
-## Web Layer Tests (MockMvc)
+- `@MockBean` is deprecated since Spring Boot 3.4 and removed in 4.0. Use `@MockitoBean` (`org.springframework.test.context.bean.override.mockito`).
+- `@DataJpaTest` rolls back each test. For `@SpringBootTest`, `@Transactional` on the test class rolls back; tests that commit through other threads clean up in `@AfterEach`.
 
 ```java
 @WebMvcTest(MarketController.class)
 class MarketControllerTest {
   @Autowired MockMvc mockMvc;
-  @MockBean MarketService marketService;
+  @MockitoBean MarketService marketService;
 
   @Test
   void returnsMarkets() throws Exception {
@@ -63,61 +35,13 @@ class MarketControllerTest {
 }
 ```
 
-## Integration Tests (SpringBootTest)
-
-Boundary: real DB and real Spring context; mock only external boundaries (third-party HTTP, message brokers).
-
-Isolation: `@Transactional` on the test class rolls back each test; tests that commit via external threads clean up in `@AfterEach`.
-
-```java
-@SpringBootTest
-@AutoConfigureMockMvc
-@ActiveProfiles("test")
-class MarketIntegrationTest {
-  @Autowired MockMvc mockMvc;
-
-  @Test
-  void createsMarket() throws Exception {
-    mockMvc.perform(post("/api/markets")
-        .contentType(MediaType.APPLICATION_JSON)
-        .content("""
-          {"name":"Test","description":"Desc","endDate":"2030-01-01T00:00:00Z","categories":["general"]}
-        """))
-      .andExpect(status().isCreated());
-  }
-}
-```
-
-## Persistence Tests (DataJpaTest)
-
-```java
-@DataJpaTest
-@AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
-@Import(TestContainersConfig.class)
-class MarketRepositoryTest {
-  @Autowired MarketRepository repo;
-
-  @Test
-  void savesAndFinds() {
-    MarketEntity entity = new MarketEntity();
-    entity.setName("Test");
-    repo.save(entity);
-
-    Optional<MarketEntity> found = repo.findByName("Test");
-    assertThat(found).isPresent();
-  }
-}
-```
-
 ## Testcontainers
 
-- Use reusable containers for Postgres/Redis to mirror production
-- Wire via `@DynamicPropertySource` to inject JDBC URLs into Spring context
-- Use real databases via testcontainers; H2 dialect and behavior differ from production Postgres. `@AutoConfigureTestDatabase(replace = NONE)` keeps Spring from swapping one in
+- Use a real Postgres/Redis, not H2: dialect and behavior differ from production.
+- Declare the container as a `static` field annotated `@Container @ServiceConnection` (Spring Boot 3.1+, needs `spring-boot-testcontainers`); Boot derives the datasource properties. Use `@DynamicPropertySource` only for services `@ServiceConnection` does not cover.
+- The container class import path depends on the Testcontainers major version (2.x moved classes to `org.testcontainers.<module>`); copy it from the project's existing tests.
 
 ## Coverage (JaCoCo)
-
-Maven snippet:
 
 ```xml
 <plugin>
@@ -155,26 +79,3 @@ Maven snippet:
   </executions>
 </plugin>
 ```
-
-## Assertions
-
-- Prefer AssertJ (`assertThat`) for readability
-- For JSON responses, use `jsonPath`
-- For exceptions: `assertThatThrownBy(...)`
-
-## Test Data Builders
-
-```java
-class MarketBuilder {
-  private String name = "Test";
-  MarketBuilder withName(String name) { this.name = name; return this; }
-  Market build() { return new Market(null, name, MarketStatus.ACTIVE); }
-}
-```
-
-## CI Commands
-
-- Maven: `mvn -T 4 test` or `mvn verify`
-- Gradle: `./gradlew test jacocoTestReport`
-
-**Remember**: Keep tests fast, isolated, and deterministic. Test behavior, not implementation details.

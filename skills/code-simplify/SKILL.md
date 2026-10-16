@@ -24,4 +24,4 @@ Dispatch is justified by the scan's context weight, not by default — a small d
 
 ## Execute
 
-The execution rules live in [`rules.md`](rules.md) in this skill's directory — Establish The Scope → Understand Before Touching → Scan → Apply → Verify → Report. Read it and execute it end-to-end. Include this skill directory's absolute path in every dispatch prompt so the agent reads `rules.md` from there. The rules file is the single source of truth for both paths — never execute from memory.
+Read [`rules.md`](rules.md) in this skill's directory and execute every section in order. Include this skill directory's absolute path in every dispatch prompt so the agent reads `rules.md` from there.

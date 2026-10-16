@@ -1,68 +1,62 @@
 # Integration Testing (TypeScript Backend)
 
-Principles (boundaries, sociable/solitary, narrow integration, isolation rules): Read `../../testing-principles/SKILL.md`. Three-layer assertions for API tests: Read `../../e2e-testing/references/backend-api.md`. This file carries only the TypeScript stack specifics.
+Principles (boundaries, sociable/solitary, narrow integration, isolation rules, what to mock): Read `../../testing-principles/SKILL.md`. Three-layer assertions, and strict E2E against a running server: Read `../../e2e-testing/references/backend-api.md`. This file carries only the TypeScript stack specifics.
 
 ## Stack
 
-- **Runner**: vitest (preferred) or jest — follow the repo's existing setup
-- **HTTP**: supertest against the app instance
-- **Real database**: testcontainers-node (Postgres/Redis/…)
-- **External HTTP mock**: nock or msw — never hit real third-party APIs
+- **Runner**: vitest (preferred) or jest; follow the repo's existing setup
+- **HTTP**: supertest against the in-process app instance
+- **Real database, cache, message broker**: testcontainers-node (Postgres/Redis/…)
+- **Outbound third-party HTTP**: nock, or msw when shared with frontend tests
 
-## Real Database via Testcontainers
+## Real Database via Testcontainers (vitest)
+
+`globalSetup` runs in the main process; test workers do not share its module state. Start the container once there and pass the connection string to tests with `provide` / `inject`.
 
 ```typescript
-// testcontainers.setup.ts
-import { PostgreSqlContainer, StartedPostgreSqlContainer } from '@testcontainers/postgresql'
+// test/global-setup.ts
+import { PostgreSqlContainer, type StartedPostgreSqlContainer } from '@testcontainers/postgresql'
+import type { TestProject } from 'vitest/node'
 
-export let container: StartedPostgreSqlContainer
-export let pool: Pool
+let container: StartedPostgreSqlContainer
 
-export async function setupDatabase() {
+export async function setup(project: TestProject) {
   container = await new PostgreSqlContainer('postgres:16').start()
-  pool = new Pool({ connectionString: container.getConnectionUri() })
-  await migrate(pool)   // run the project's migrations against the container
+  project.provide('dbUrl', container.getConnectionUri())
+  // run the project's migrations against container.getConnectionUri() here
 }
 
-export async function teardownDatabase() {
-  await pool.end()
+export async function teardown() {
   await container.stop()
+}
+
+declare module 'vitest' {
+  export interface ProvidedContext {
+    dbUrl: string
+  }
 }
 ```
 
-## Integration Test Shape
+Register it with `test: { globalSetup: ['./test/global-setup.ts'] }` in `vitest.config.ts`. Per-test isolation lives in a `beforeEach` (transaction rollback or `TRUNCATE ... CASCADE`; policy in testing-principles).
 
-Strict E2E against a running server instead of the in-process app: Read `../../e2e-testing/references/backend-api.md`.
+## Integration Test Shape
 
 ```typescript
 import request from 'supertest'
-import { app } from '../src/app'
-import { pool } from './testcontainers.setup'
+import { Pool } from 'pg'
+import { inject } from 'vitest'
+import { createApp } from '../src/app'
 
-// supertest imports the app IN-PROCESS — convenient, but strictly speaking
-// that is integration territory. For strict E2E, point at a running server.
-const api = () => request(app)
+const pool = new Pool({ connectionString: inject('dbUrl') })
+const api = request(createApp({ pool }))   // build the app against the container database
 
 it('creates an order and persists it', async () => {
-  const sku = `e2e-${crypto.randomUUID().slice(0, 8)}`
+  const sku = `it-${crypto.randomUUID().slice(0, 8)}`
 
-  const res = await api()
-    .post('/orders')
-    .set('Authorization', `Bearer ${process.env.E2E_TOKEN}`)  // real auth flow in a fixture
-    .send({ sku, qty: 1 })
+  const res = await api.post('/orders').send({ sku, qty: 1 })
 
   expect(res.status).toBe(201)                                 // layer 1: status
-
   const persisted = await pool.query('select sku from orders where id = $1', [res.body.id])
   expect(persisted.rows[0]?.sku).toBe(sku)                     // layer 3: persisted
 })
 ```
-
-## What to Mock
-
-Policy: Read `../../testing-principles/SKILL.md` (What to Mock). TypeScript tools: testcontainers-node for the real database, cache, and message broker; nock intercepts outbound third-party HTTP calls; msw when shared with frontend tests.
-
-## Isolation
-
-- Default: transaction rollback; fall back to per-test truncation (`TRUNCATE ... CASCADE` in `beforeEach`) when the code under test manages its own transactions or commits from other threads
-- vitest wiring: `globalSetup` starts the container once; per-test isolation in a `beforeEach`

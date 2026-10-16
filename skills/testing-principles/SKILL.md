@@ -1,7 +1,7 @@
 ---
 name: testing-principles
 disable-model-invocation: true
-description: "Cross-stack testing principles — unit/integration/E2E boundaries, sociable vs solitary unit tests, narrow integration tests, isolation rules, F.I.R.S.T, naming, mocking schools, flaky prevention. Reference material: the language development skills read this file by relative path (`../testing-principles/SKILL.md`)."
+description: "Cross-stack testing principles — unit/integration/E2E boundaries, sociable vs solitary unit tests, narrow integration tests, isolation rules, F.I.R.S.T, naming, mocking schools, flaky prevention."
 ---
 
 # Testing Principles
@@ -12,7 +12,7 @@ Stack-invariant testing principles. Language skills (`java-development`, `python
 
 | Layer | Dependencies | Entry point | Count |
 | --- | --- | --- | --- |
-| Unit | Slow/side-effectful collaborators replaced by doubles | Direct function/method call | Many |
+| Unit | Awkward collaborators replaced by doubles | Direct function/method call | Many |
 | Integration | Key collaborators real (DB via testcontainers); external boundaries mocked | Component interface / in-process app | Some |
 | E2E | All real | Public interface (browser UI, running server's HTTP) | Few |
 
@@ -20,10 +20,11 @@ A fully real system behind its public entry point is E2E; mocked dependencies ma
 
 ## Unit Tests: Sociable vs Solitary
 
-- **Solitary**: all collaborators replaced by test doubles
-- **Sociable**: only slow/side-effectful collaborators (database, network, filesystem) are doubled; in-process collaborators stay real
+- **Awkward collaborator**: slow, side-effectful, or non-deterministic — network, database, clock, filesystem, randomness
+- **Solitary** (London, mockist): all collaborators replaced by test doubles; asserts interactions
+- **Sociable** (classical, Chicago): only awkward collaborators are doubled; in-process collaborators stay real
 
-Both are legitimate (Fowler). Default to sociable — double what is slow or has side effects, keep the rest real. Mocking everything couples tests to implementation and makes refactoring painful.
+Both are legitimate (Fowler). Default to sociable — double the awkward, keep the rest real, and keep the code under test real always. Mocking everything couples tests to implementation and makes refactoring painful; solitary fits when the interaction IS the contract.
 
 ## Narrow Integration Tests
 
@@ -48,12 +49,7 @@ For external services that cannot run locally, test against a faithful double (W
 
 ## F.I.R.S.T (+U)
 
-- **Fast** — milliseconds for unit; seconds for integration
-- **Independent** — no shared state, any order, parallel-safe
-- **Repeatable** — same result on every machine, every run
-- **Self-validating** — passes or fails without human inspection
-- **Timely** — written with (not after) the production code
-- **Understandable** — reads like a specification of the behavior
+Fast (milliseconds for unit, seconds for integration), Independent (any order, parallel-safe), Repeatable, Self-validating, Timely (written with the production code), plus Understandable (reads like a specification of the behavior).
 
 ## Structure and Naming
 
@@ -62,20 +58,6 @@ For external services that cannot run locally, test against a faithful double (W
 - Test observable behavior through the public interface; private methods are implementation detail
 - Don't test trivial code (getters/setters); don't assert internal call sequences unless the interaction IS the contract
 
-## What to Mock
-
-- **Real**: database, cache, message broker (integration); pure in-process collaborators (unit)
-- **Doubled**: slow/side-effectful dependencies — network calls, clocks, randomness, filesystem (where practical)
-- **Never**: the code under test, the auth layer
-
-Classical (Chicago) style doubles only what is awkward; London (mockist) style mocks all collaborators and asserts interactions. Classical produces less brittle tests — prefer it unless interaction is the contract.
-
 ## Flaky Prevention
 
-Root causes in order of frequency: fixed sleeps instead of condition waits, shared mutable state, reliance on external/live services, concurrency races, animation/timing. Fixes: wait for conditions, isolate state, double externals, quarantine with a tracked issue and fix — do not delete silently.
-
-## Test Data
-
-- **Test Data Builder**: builder per entity with sensible defaults; tests override only what they assert on
-- **Object Mother**: named factory methods for canonical fixtures (`aValidOrder()`, `anExpiredCart()`)
-- Prefer builders over raw constructors repeated across tests; prefer fresh data over mutating shared fixtures
+Root causes: fixed sleeps instead of condition waits, shared mutable state, reliance on external/live services, concurrency races, animation/timing. Fixes: wait for conditions, isolate state, double externals, quarantine with a tracked issue and fix — do not delete silently.

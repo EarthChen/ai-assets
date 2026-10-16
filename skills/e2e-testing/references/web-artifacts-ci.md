@@ -15,13 +15,9 @@ await page.locator('[data-testid="chart"]').screenshot({ path: 'artifacts/chart.
 ### Traces
 
 ```typescript
-await browser.startTracing(page, {
-  path: 'artifacts/trace.json',
-  screenshots: true,
-  snapshots: true,
-})
+await context.tracing.start({ screenshots: true, snapshots: true })
 // ... test actions ...
-await browser.stopTracing()
+await context.tracing.stop({ path: 'artifacts/trace.zip' })
 ```
 
 ### Video

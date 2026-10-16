@@ -9,6 +9,4 @@ Mechanics for every hunk you keep:
 
 1. **Read the primary sources** — the commit messages, PRs, and tickets behind each side. Resolve two intents, not two text blocks. Never resolve by flag (`--ours`, `--theirs`) or by deleting the block that looks less important.
 2. **Preserve both intents** where they are compatible. Where they are not, keep the side matching the merge's goal and name the dropped intent in the commit message. Invent no new behaviour.
-3. **Finish the operation** — stage everything, then commit. A multi-commit rebase continues until every commit is replayed.
-
-Workflow overrides (human rejection aborts the project; no local build/test): SKILL.md: Conflict overrides.
+3. **Finish the operation** — stage everything, then commit.

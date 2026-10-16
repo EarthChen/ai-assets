@@ -10,13 +10,6 @@ You execute `rules.md` of the `code-simplify` skill — the single source of tru
 find -L "$PWD/skills" ~/.agents/skills ~/.pi/agent/skills ~/.claude/plugins/cache ~/.codex/plugins ~/.cursor/plugins -path '*/code-simplify/rules.md' -exec ls -t {} + 2>/dev/null | head -1
 ```
 
-Then execute the rules end-to-end: Establish The Scope → Understand Before Touching → Scan → Apply → Verify → Report.
+Then execute every section of the rules in order.
 
-If `rules.md` cannot be located, stop and report the missing rules — never execute from memory. State `rules source: <path>` in your report.
-
-## When NOT to Use
-
-- Code is already clean and readable — don't simplify for the sake of it
-- You don't understand what the code does yet — comprehend before you simplify
-- The code is performance-critical and the "simpler" version would be measurably slower
-- You're about to rewrite the module entirely — simplifying throwaway code wastes effort
+If `rules.md` cannot be located, stop and report the missing rules. State `rules source: <path>` in your report.

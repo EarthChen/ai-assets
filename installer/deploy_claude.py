@@ -1,12 +1,16 @@
-"""Phase 2: Claude Code deploy (plugins, CLAUDE.md, common rules)."""
+"""Phase 2: Claude Code deploy (symlinked skills, agents, CLAUDE.md, rules)."""
 
 from __future__ import annotations
 
 import shutil
 import subprocess
 
+from pathlib import Path
+
 from . import paths
-from .common import ensure_dir, log, log_section
+from .common import create_symlink, log, log_section
+from .deploy_pi import _symlink_target_under
+from .shared_skills import link_self_owned_skills
 from .third_party import _load_third_party_plugins
 from .version import _get_current_version
 
@@ -174,45 +178,108 @@ def _install_claude_plugins(dry_run: bool) -> None:
             )
 
 
+# The repo used to ship to Claude as a plugin. Its skills and agents now load
+# from user-level links, so a leftover plugin would load each of them twice.
+_LEGACY_PLUGIN_ID = "earthchen-ai-assets@earthchen-ai-assets"
+_LEGACY_MARKETPLACE = "earthchen-ai-assets"
+
+
+def _retire_legacy_plugin(dry_run: bool) -> None:
+    """Uninstall the old self plugin and its local marketplace when present."""
+    listed = subprocess.run(
+        ["claude", "plugin", "list"], capture_output=True, text=True
+    ).stdout
+    if _LEGACY_PLUGIN_ID not in listed:
+        return
+    steps = [
+        ["claude", "plugin", "uninstall", _LEGACY_PLUGIN_ID],
+        ["claude", "plugin", "marketplace", "remove", _LEGACY_MARKETPLACE],
+    ]
+    for cmd in steps:
+        if dry_run:
+            log(f"[DRY-RUN] {' '.join(cmd)}")
+            continue
+        result = subprocess.run(cmd, capture_output=True, text=True)
+        if result.returncode == 0:
+            log(f"legacy plugin: {' '.join(cmd[2:])} ok")
+        else:
+            log(f"legacy plugin: {' '.join(cmd[2:])} failed: {result.stderr.strip()}")
+
+
+def _link_file(src: Path, dst: Path, dry_run: bool, *, backup: bool = False) -> None:
+    """Symlink dst -> src without destroying a real file already at dst.
+
+    A real file identical to src is an old install copy and gets replaced. A
+    different one is user data: kept as `<name>.pre-link.bak` when `backup`,
+    else the link is skipped with a warning.
+    """
+    if dst.exists() and not dst.is_symlink():
+        if dst.read_bytes() == src.read_bytes():
+            if not dry_run:
+                dst.unlink()
+        elif backup:
+            bak = dst.with_name(dst.name + ".pre-link.bak")
+            log(f"{'[DRY-RUN] ' if dry_run else ''}kept hand-edited {dst.name} as {bak.name}")
+            if not dry_run:
+                dst.rename(bak)
+        else:
+            log(f"WARNING: {dst} is a real file; skipped link to {src}")
+            return
+    create_symlink(src, dst, dry_run)
+
+
+def _link_agents(dry_run: bool) -> None:
+    """Symlink every agents/<name>.md into ~/.claude/agents/ (user-level agents)."""
+    source = paths.REPO_ROOT / "agents"
+    if not source.is_dir():
+        return
+    link_dir = paths.CLAUDE_HOME / "agents"
+    source_real = source.resolve()
+    if link_dir.is_dir():
+        for entry in sorted(link_dir.iterdir()):
+            target = _symlink_target_under(entry, source_real)
+            if target is not None and not target.exists():
+                log(f"{'[DRY-RUN] ' if dry_run else ''}rm stale agent symlink {entry.name}")
+                if not dry_run:
+                    entry.unlink()
+    agents = sorted(source.glob("*.md"))
+    for agent in agents:
+        _link_file(agent, link_dir / agent.name, dry_run)
+    log(f"{len(agents)} agents -> {link_dir}")
+
+
+def _link_instructions(dry_run: bool) -> None:
+    """Link CLAUDE.md and the common rules dir to the generated `_dist/claude` files."""
+    dist = paths.DIST / "claude"
+    if (dist / "CLAUDE.md").exists():
+        _link_file(dist / "CLAUDE.md", paths.CLAUDE_HOME / "CLAUDE.md", dry_run, backup=True)
+    rules_src = dist / "rules" / "common"
+    rules_dst = paths.CLAUDE_HOME / "rules" / "common"
+    if rules_src.exists():
+        if rules_dst.is_dir() and not rules_dst.is_symlink():
+            # An earlier install copied the rules here; this dir is installer-owned.
+            log(f"{'[DRY-RUN] ' if dry_run else ''}replace copied rules dir {rules_dst}")
+            if dry_run:
+                return
+            shutil.rmtree(rules_dst)
+        create_symlink(rules_src, rules_dst, dry_run)
+        log("Language conventions load on demand via skills/<lang>-development")
+
+
 def install_claude(dry_run: bool = False) -> None:
     log_section("Deploying Claude Code")
 
     # 1. Plugins. detect_platforms() also accepts ~/.claude without the CLI,
-    # so the plugin steps need their own CLI check; CLAUDE.md and rules do not.
+    # so the plugin steps need their own CLI check; the links do not.
     if shutil.which("claude") is None:
-        log("claude CLI not on PATH: skipped plugin install and cache prune "
-            "(CLAUDE.md and rules still deploy)")
+        log("claude CLI not on PATH: skipped plugin install and legacy plugin retirement "
+            "(skills, agents, CLAUDE.md and rules still link)")
     else:
+        _retire_legacy_plugin(dry_run)
         _install_claude_plugins(dry_run)
 
-    # 2. CLAUDE.md (plugin can't handle)
-    dist_claude_md = paths.DIST / "claude" / "CLAUDE.md"
-    dst_claude_md = paths.CLAUDE_HOME / "CLAUDE.md"
-    if dist_claude_md.exists():
-        if dry_run:
-            log(f"[DRY-RUN] write {dst_claude_md}")
-        else:
-            ensure_dir(paths.CLAUDE_HOME)
-            shutil.copy2(dist_claude_md, dst_claude_md)
-            log(f"_dist/claude/CLAUDE.md -> {dst_claude_md}")
-
-    # 3. Rules: only deploy common/ rules to user-level ~/.claude/rules/
-    rules_common_src = paths.DIST / "claude" / "rules" / "common"
-    dst_rules = paths.CLAUDE_HOME / "rules" / "common"
-    if rules_common_src.exists():
-        if dst_rules.exists() and not dry_run:
-            # pi-lens-ignore: ast-grep:unchecked-throwing-call-python
-            shutil.rmtree(dst_rules)
-        ensure_dir(dst_rules, dry_run)
-        for rule_file in sorted(rules_common_src.rglob("*.md")):
-            rel = rule_file.relative_to(rules_common_src)
-            dst = dst_rules / rel
-            ensure_dir(dst.parent, dry_run)
-            if dry_run:
-                log(f"[DRY-RUN] write {dst}")
-            else:
-                shutil.copy2(rule_file, dst)
-        if not dry_run:
-            count = sum(1 for _ in rules_common_src.rglob("*.md"))
-            log(f"Deployed {count} common rules to {dst_rules}")
-            log("Language conventions load on demand via skills/<lang>-development")
+    # 2. Links. Skills and agents hot-reload; CLAUDE.md and rules load at
+    # session start. MCP has no link: user-scope servers live in ~/.claude.json.
+    link_self_owned_skills(dry_run, link_dir=paths.CLAUDE_HOME / "skills")
+    _link_agents(dry_run)
+    _link_instructions(dry_run)

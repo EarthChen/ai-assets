@@ -1,6 +1,6 @@
 # Refactor Rules
 
-Execution rules for repo-wide entropy reclamation. This file is the single source of truth: the `refactor-clean` skill (inline) and the `refactor-cleaner` agent (dispatched) both execute it end-to-end. Do not execute from memory.
+Execution rules for repo-wide entropy reclamation. This file is the single source of truth: the `refactor-clean` skill (inline) and the `refactor-cleaner` agent (dispatched) both execute it end-to-end. Read it in full before acting.
 
 Core rule: a scanner produces candidates; only consumer, ownership, history, and verification evidence justify deletion. Prefer a few proved cuts over a long speculative list. Finding nothing safe to remove is a valid result.
 
@@ -11,11 +11,11 @@ Core rule: a scanner produces candidates; only consumer, ownership, history, and
 3. Trace the real runtime flow through entrypoints, configuration, registries, dependency injection, events, queues, persistence, processes/workers, and wire protocols.
 4. In apply mode, discover the repository's actual narrow and broad verification commands and run a proportional baseline when feasible. A red baseline limits what later checks can prove; record it instead of claiming a regression.
 
-Do not simplify away validation at trust boundaries, authorization, security controls, accessibility basics, data-loss prevention, durable-data compatibility, or cleanup that establishes resource quiescence.
+Keep validation at trust boundaries, authorization, security controls, accessibility basics, data-loss prevention, durable-data compatibility, and cleanup that establishes resource quiescence.
 
 ## Survey For Entropy
 
-Start with large or central production surfaces, not only obvious unused symbols. Use repository-native tools first: `rg --files`, `rg`, compiler/linter output, dependency manifests, and `git log`. Run installed dead-code or dependency tools when useful, but treat every result as a lead.
+Start with large or central production surfaces, not only obvious unused symbols. Run installed dead-code or dependency tools when useful, but treat every result as a lead.
 
 Look for these candidate classes:
 
@@ -64,7 +64,7 @@ Keep or downgrade a candidate when any of these holds:
 Every candidate exits this step proved or rejected with reason; audit output uses this compact record:
 
 ```plaintext
-[confidence / risk] candidate
+[confidence / SAFE|CAREFUL|RISKY] candidate
 evidence: production consumers; dynamic/public/compatibility checks; owning rationale
 cut: exact code, artifacts, dependency, and concept removed
 tradeoff: observable capability or behavior lost
@@ -80,10 +80,10 @@ verify: smallest decisive check; estimated net reduction
 5. Prefer deletion, then standard library/native features, then already-installed dependencies. Add a dependency only when it removes more implementation and dedicated testing burden than its glue and supply-chain cost add.
 6. Avoid compatibility shims when there is no compatibility obligation. When one exists, keep the path or design an explicit migration instead of silently deleting it.
 7. Keep batches reviewable and reversible. Never discard unrelated user changes.
-8. Remove one category at a time — `deps → exports → files → duplicates` — running tests and committing with a descriptive message after each batch.
+8. Remove one category at a time — `deps → exports → files → duplicates` — running tests after each batch. Leave batches uncommitted unless the user asks for commits.
 9. For legacy code without tests, write characterization tests first; identify seams before refactoring.
 
-Net-negative lines are evidence of a cut, not the goal. A safe simplification may add a small test or migration; a large deletion can still be wrong.
+A safe simplification may add a small test or migration; a large deletion can still be wrong.
 
 ## Validate The Result
 
@@ -107,7 +107,6 @@ For applied changes, report:
 - files, lines, dependencies, and concepts removed where measurable;
 - any user-visible capability or compatibility behavior changed;
 - exact validation run and result;
-- high-value candidates intentionally kept and why;
-- the path this rules file was loaded from.
+- high-value candidates intentionally kept and why.
 
 Do not claim safety from green tests alone, and do not claim value from deletion volume alone.

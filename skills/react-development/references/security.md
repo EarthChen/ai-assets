@@ -1,14 +1,6 @@
 
 # React Security
 
-## When to Use
-
-- Reviewing React/TSX code that renders user-controlled input or raw HTML (`dangerouslySetInnerHTML`, markdown)
-- Validating URL props (`href`, `src`, `xlink:href`) or `target="_blank"` links
-- Writing or reviewing Server Actions (`"use server"`) and their input validation
-- Auditing env vars for client-bundle secret leakage (Next.js/Vite/CRA/Remix public prefixes)
-- Configuring CSP, guarding against prototype pollution, or auditing third-party components
-
 ## XSS via `dangerouslySetInnerHTML`
 
 CRITICAL. The prop name is deliberately scary — treat every usage as a code review halt.
@@ -140,19 +132,6 @@ frame-ancestors 'none';
 - Avoid `unsafe-inline` and `unsafe-eval` in `script-src`
 - For SSR with inline scripts (Next.js streaming, hydration data), use per-request nonces — both Next.js and Remix support nonce injection
 - `style-src 'unsafe-inline'` is often unavoidable for CSS-in-JS libraries — document the tradeoff
-
-## Prototype Pollution via Object Spread
-
-```tsx
-// WRONG: untrusted JSON spread directly into state
-const update = await req.json();
-setState({ ...state, ...update });    // attacker controls __proto__
-
-// CORRECT: parse with a schema, or guard keys
-const Allowed = z.object({ name: z.string(), email: z.string().email() });
-const parsed = Allowed.parse(await req.json());
-setState({ ...state, ...parsed });
-```
 
 ## SSR Template Injection
 

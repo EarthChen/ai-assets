@@ -1,13 +1,25 @@
-# Context Telemetry
+# Context Telemetry and Polling Gate
 
-The compaction matrix and sequence live in SKILL.md: Context management. This file holds the telemetry pull script and the degradation chain.
+The compaction matrix and sequence live in SKILL.md: Context management. This file holds the polling gate script (with the telemetry pull inlined, so it costs no LLM turns) and the degradation chain.
 
-**Telemetry — you pull, workers don't push.** Each kind renders context usage in its TUI footer in its own format (platforms.md: Telemetry). Read it with `herdr agent read <name> --source detection` and parse with the worker's kind pattern — inline this into the polling gate loop so it costs no LLM turns:
+Adapt the script to the live CLI. Telemetry pattern per worker kind: platforms.md: Telemetry (look up each worker's kind in the ledger in a mixed pool; the pi pattern is shown).
 
 ```bash
-# pattern per worker kind — copy it from platforms.md: Telemetry; mixed pools
-# look up each worker's kind in the ledger. pi pattern shown
-for a in $watch; do
+watch="pay-wk-frontend pay-wk-backend pay-wk-payments"
+deadline=$(( $(date +%s) + 1800 ))   # 30 min backstop (SKILL.md: Scheduling, step 5)
+while :; do
+  settled=$(herdr agent list | jq -r --arg w "$watch" '
+    ($w | split(" ")) as $names
+    | .result.agents[]
+    | select((.agent as $a | $names | index($a))
+        and (.agent_status=="idle" or .agent_status=="done" or .agent_status=="blocked" or .agent_status=="unknown"))
+    | "\(.agent) \(.agent_status)"')
+  [ -n "$settled" ] && break
+  [ "$(date +%s)" -ge "$deadline" ] && { settled="TIMEOUT"; break; }
+  sleep 20
+done
+echo "$settled"
+for a in $watch; do   # telemetry: read each worker's footer once the gate returns
   ctx=$(herdr agent read "$a" --source detection --lines 15 2>/dev/null \
         | grep -oE 'ctx [0-9]+(\.[0-9]+)?%/[0-9]+[kKmM]?' | head -1)
   echo "$a: ${ctx:-ctx=?}"

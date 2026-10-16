@@ -218,7 +218,6 @@ mattpocock `tdd` 的核心机制 seam 值得单独展开。seam 的本质是**�
 - `llm-wiki`：Karpathy 式自编译 Obsidian 知识库，支持摄入原始素材、编译交叉链接概念页、查询问答。手动加载 skill（`/skill:llm-wiki`）。
 - `yao-meta-skill`（三方 vendor，yaojingang/yao-meta-skill）：创建、优化、评估、打包与治理 skill（Skill OS：Skill IR、目标编译器、评测、发布门禁）。vendor submodule + symlink 分发，替代原自有 `skill-creator`（2026-09-04 移除）。
 - `project-docs-init`：初始化项目的 AGENTS.md / CLAUDE.md / README.md。
-- `agent-introspection-debugging`：agent 失败时的结构化自调试流程。
 
 ### 2.4 skills 与 rules 分离的原因
 

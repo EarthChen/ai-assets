@@ -5,10 +5,6 @@ everything that is not. One profile per herdr agent kind. The herdr binary is
 the authority for which kinds exist — run a bare `herdr agent` and check the
 `kinds:` line before relying on a kind name.
 
-Defaults (SKILL.md: Constants): worker kind `pi`, thinking level `low` — both
-decided per worker at spawn; mixed pools are allowed. A profile's spawn args
-are native agent arguments — pass them after `--` on `herdr agent start`.
-
 ## pi (default)
 
 - **Spawn**: `herdr agent start <name> --kind pi --pane <pane-id> -- --thinking <level>`
@@ -20,8 +16,7 @@ are native agent arguments — pass them after `--` on `herdr agent start`.
   (verified pi 0.84.2). Caveat: any level change also persists as pi's
   global `defaultThinkingLevel` setting — harmless here because every spawn
   passes `--thinking` explicitly.
-- **Compact**: `/compact <instructions>` — instructions shape the summary only,
-  nothing executes afterwards (hence the two-prompt compaction sequence).
+- **Compact**: `/compact <instructions>`
 - **Auto-compact on overflow**: yes, lossy. Recovery: brief + progress.md +
   state card.
 - **Telemetry**: TUI footer renders `ctx <pct>%/<window>` (e.g. `ctx 19.7%/512k`).
@@ -46,22 +41,23 @@ are native agent arguments — pass them after `--` on `herdr agent start`.
   the first assignment: prompt `/effort <level>` (`low|medium|high|xhigh|max`;
   verify the command exists in that Claude version — if it does not, fall
   back to warm respawn: `claude --resume <session-id>` plus the spawn flag,
-  session id = the JSONL filename below). Mid-session re-adjustment works
+  session id: see Session capture). Mid-session re-adjustment works
   the same way while the worker is idle.
-- **Compact**: `/compact <instructions>` — focus instructions supported,
-  same two-prompt sequence as pi.
+- **Compact**: `/compact <instructions>`
 - **Auto-compact on overflow**: yes, near ~95% of the window.
 - **Telemetry**: the footer shows `N% until auto-compact` only near the
   threshold — a visible indicator means ctx is already high (treat as ≥
   COMPACT_AT, compact at the next boundary); an absent indicator means usage
   sits below that threshold — record and move on. Only an unreadable footer
-  is `unknown` (SKILL.md: Telemetry degradation chain).
+  is `unknown` (context.md: Telemetry degradation chain).
   Pattern: `[0-9]+% until auto-compact`
-- **Skill invocation**: `/<name>` (skills surface as slash commands;
-  user-level skills live in `~/.claude/skills/`).
+- **Skill invocation**: `/<name>`
 - **Session JSONL** (telemetry escape hatch):
   `~/.claude/projects/<cwd-slug>/<session-id>.jsonl`, latest
   `message.usage.totalTokens`.
+- **Session capture**: right after spawn, record the worker's session id — the
+  filename (without `.jsonl`) of the newest file under
+  `~/.claude/projects/<cwd-slug>/` — in the state card; warm respawn needs it.
 
 ## codex (Codex CLI)
 
@@ -84,8 +80,7 @@ are native agent arguments — pass them after `--` on `herdr agent start`.
 - **Telemetry**: footer/status line shows remaining context as `N% left` →
   usage = 100 − N. Pattern: `[0-9]+% left` (footer layout is user-configurable
   via `tui.status_line` — self-heal when the pattern is absent).
-- **Skill invocation**: `$<name>` (skills load from `~/.codex/skills/`,
-  `.codex/skills/`, and `~/.agents/skills/`).
+- **Skill invocation**: `$<name>`
 - **Session JSONL** (telemetry escape hatch): rollout logs under
   `~/.codex/sessions/`, latest `token_count` event.
 - **Session capture**: right after spawn, record the worker's session id —

@@ -1,7 +1,7 @@
 interface:
   display_name: 上线配套文档生成器
-  short_description: 基于分支 diff 生成后门 bsh 测试文档、动态配置变更清单、多语言文案变更清单、Melon 配置变更说明。
-  default_prompt: 手动调用：为当前分支生成后门 bsh 测试文档 / MSE 配置变更清单 / Melon 路由说明（可指定其一）。
+  short_description: 基于分支 diff 生成 QA 版后门/接口模拟测试指南、动态配置变更清单、多语言文案变更清单、Melon 配置变更说明。
+  default_prompt: 手动调用：为当前分支生成后门/接口模拟测试指南（QA 版）/ MSE 配置变更清单 / Melon 路由说明（可指定其一）。
 
 compatibility:
   canonical_format: markdown-skill

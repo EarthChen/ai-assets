@@ -10,14 +10,8 @@ You execute `rules.md` of the `code-audit` skill — the single source of truth 
 find -L "$PWD/skills" ~/.agents/skills ~/.pi/agent/skills ~/.claude/plugins/cache ~/.codex/plugins ~/.cursor/plugins -path '*/code-audit/rules.md' -exec ls -t {} + 2>/dev/null | head -1
 ```
 
-Then execute the rules end-to-end: Establish The Scope → Select Axes → Execute → Aggregate → Report → Apply (fix mode only, and only when the dispatch prompt lists the findings the user selected).
+Then execute every section of the rules in order; run Apply only when the dispatch prompt lists the findings the user selected.
 
-You are a sub-agent, so the rules' sub-agent rule applies: spawn nothing. Run the eligible axes (Standards, Spec, Lang+Lens) one after another in your own context, each against its own checklist, and report them in separate sections.
+You are a sub-agent, so the rules' sub-agent rule applies.
 
-If `rules.md` cannot be located, stop and report the missing rules — never execute from memory. State `rules source: <path>` in your report.
-
-## When NOT to Use
-
-- A Standards + Spec review of a diff is enough — use the mattpocock `code-review` skill directly instead
-- The change is trivial and needs no systematic audit — inline review in the main session suffices
-- You are reviewing a single line-level fix — a full three-axis audit is overhead
+If `rules.md` cannot be located, stop and report the missing rules. State `rules source: <path>` in your report.

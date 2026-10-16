@@ -5,7 +5,20 @@ description: "Use for architectural decisions, security-sensitive code, build br
 
 # Agent Orchestration
 
-Route work to the right agent or skill instead of doing it all inline. Planning, TDD, and code review run through workflow skills: the model invokes `grilling`, `domain-modeling`, `tdd`, and the mattpocock `code-review` skill (`mattpocock-skills:code-review` on Claude) directly; `/grill-with-docs`, `/to-spec`, `/to-tickets`, and `/implement` are user-invoked — ask the user to run them.
+Route work to the right agent or skill instead of doing it all inline. Planning, TDD, and code review run through workflow skills.
+
+## Pick the workflow skill
+
+Model-invoked skills load through the Skill tool. Each call takes one skill: a step that needs two skills is two calls.
+
+| Need | Call the Skill tool with |
+| --- | --- |
+| Stress-test a plan or decision | `"grilling"` |
+| Sharpen domain terms, glossary, ADRs | `"domain-modeling"` (with `"grilling"`: call the Skill tool twice) |
+| Build or fix test-first | `"tdd"` |
+| Standards + Spec review of a diff | `"mattpocock-skills:code-review"` on Claude (the bare `"code-review"` also names a built-in, so the namespaced name pins the target); `"code-review"` elsewhere |
+
+User-invoked skills (`/grill-with-docs`, `/to-spec`, `/to-tickets`, `/implement`) fire only when the user types them. Tell the user to run them.
 
 ## Pick the agent
 
@@ -13,7 +26,7 @@ Route work to the right agent or skill instead of doing it all inline. Planning,
 | --- | --- |
 | System-level architecture: design, scalability, trade-offs, ADR | `architect` |
 | Feature-level "how this lands in existing code" blueprint | `code-architect` |
-| Security-sensitive code (auth, input, SQL, FS, crypto, payments) | `code-reviewer` (its security lens); on Claude Code, the built-in `/security-review` command also reviews pending changes |
+| Security-sensitive code (trigger list: `code-quality-gate` §4) | `code-reviewer` (its security lens) |
 | Java/Maven/Gradle build failure | `java-build-resolver` |
 | Non-Java build failure | `build-error-resolver` |
 
@@ -24,7 +37,7 @@ Architect agents: `architect` for system-level depth, `code-architect` for featu
 | Need | Use |
 | --- | --- |
 | Correctness bugs in a diff (Claude Code only) | built-in `/code-review` |
-| Standards + Spec two-axis review of a diff | mattpocock `code-review` skill |
+| Standards + Spec two-axis review of a diff | Call the Skill tool with the mattpocock `code-review` name (above) |
 | Deep three-axis audit (Standards + Spec, language traps, cross-language lenses) | `code-reviewer` agent |
 | Simplify changed code (Claude Code only) | built-in `/simplify` |
 | Simplify changed code in one git scope | `code-simplifier` agent |

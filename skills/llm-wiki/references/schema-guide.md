@@ -1,119 +1,25 @@
 # CLAUDE.md Schema Guide
 
-`CLAUDE.md` (also read as `AGENTS.md` by some tools) is the **schema document** for a wiki topic. It tells the LLM agent the scope, conventions, current state, and open questions — every session should start by reading it together with `wiki/index.md`.
+`CLAUDE.md` (also read as `AGENTS.md` by some tools) is the **schema document** of a wiki. It tells the LLM the scope, conventions, current state, and open questions. Read it together with `wiki/index.md` at the start of every session. Co-evolve it with the wiki: update it after every compile, ingest batch, or structural change.
 
-## Why it matters
+**Template source**: `scripts/scaffold.py` writes the template (single source). Edit the template there; this guide only explains how to fill each section.
 
-Without a schema, the LLM creates inconsistent page names, overlapping articles, and drifts from the wiki's intended scope. With a well-maintained schema, the LLM becomes a disciplined, consistent wiki maintainer.
+## Sections
 
-**Co-evolve it with the wiki** — update after every major compile, ingest batch, or structural change.
+| Section | Fill with | Update when |
+| --- | --- | --- |
+| Scope | Included areas and deliberate exclusions. A wiki on "LLM memory techniques" excludes "LLM training". | Monthly review |
+| Operations | The five ops and the log rule (written by scaffold). | Never |
+| Naming conventions | Page-name style per folder; enforce it, because a broken wikilink is an orphan. | When a convention changes |
+| Current articles | Every existing page with a one-line summary, so the LLM sees what exists before creating a page (duplicates with slightly different names are the most common error). | After every new concept page |
+| Open research questions | Questions that should drive ingest/query work, gaps, contradictions between articles. | After every lint pass; prune stale ones monthly |
+| Research gaps | `- [ ]` checklist of sources to ingest. | After every ingest batch |
+| Audit backlog | Open-audit counts per target, refreshed from `audit_review.py --open`. Check it at session start to decide whether to run `audit` before ingesting. | After every audit pass |
+| Notes for the LLM | Language (zh/en), tone, depth, how to handle contradictions. | As needed |
 
-## Full template
+## Naming examples
 
-```markdown
-# <Topic Title> Knowledge Base
-
-> Schema document — read at the start of every session together with wiki/index.md.
-
-## Scope
-
-What this wiki covers:
-- <bullet list of included areas>
-
-What this wiki deliberately excludes:
-- <bullet list of out-of-scope areas>
-
-## Operations
-
-This wiki follows the llm-wiki skill's five operations: `compile`, `ingest`, `query`, `lint`, `audit`.
-Every operation appends an entry to `log/YYYYMMDD.md`.
-
-## Naming conventions
-
-### Pages
-- **Concept pages** (`wiki/concepts/`): Title Case noun phrases. E.g., "Market Making Strategy", not "market making" or "MarketMakingStrategy".
-- **Folder-split concepts** (`wiki/concepts/<topic>/`): used when a topic would exceed ~1200 words as a single page. Contains `index.md` + one file per aspect.
-- **Entity pages** (`wiki/entities/`): Proper names. E.g., "Andrej Karpathy", "Obsidian", "Avellaneda-Stoikov Model".
-- **Summary pages** (`wiki/summaries/`): kebab-case source slug. E.g., "karpathy-llm-wiki-gist".
-
-### Wikilinks
-- Always use `[[Page Title]]` — exact page title, case-sensitive.
-- For folder-split pages, link to the index: `[[concepts/Foo/index|Foo]]`.
-- Link the first mention of every entity or concept. Do not link the same page more than twice per article.
-
-### Frontmatter
-Every wiki page has YAML frontmatter:
-```yaml
----
-title: <Page Title>
-type: concept | entity | summary
-created: YYYY-MM-DD
-updated: YYYY-MM-DD
-sources: [list of raw/ slugs this page draws from]
-tags: [relevant tags]
----
-```
-
-### Diagrams and formulas
-- All diagrams are **mermaid**. No ASCII art.
-- All formulas are **KaTeX** (inline `$...$` or block `$$...$$`).
-
-### Raw file policy
-- Small text sources → copy into `raw/<subfolder>/`.
-- Large binaries → create a pointer file at `raw/refs/<slug>.md` with `kind: ref` frontmatter and an `external_path` field. Do not copy the binary.
-
-## Current articles
-
-### Concepts
-- [[<Concept Title>]] — one-line summary
-- [[concepts/<Topic>/index|<Topic>]] — (folder-split) one-line summary
-    - [[<Topic>/<aspect-1>]] — ...
-
-### Entities
-- [[<Entity Name>]] — one-line summary
-
-### Summaries
-- [[summaries/<slug>]] — source title (date)
-
-## Open research questions
-
-- <Questions that should drive future ingest/query work>
-- <Things the wiki currently doesn't cover well>
-- <Contradictions or gaps noticed between articles>
-
-## Research gaps
-
-Sources to ingest:
-- [ ] <URL or paper title> — why it's relevant
-
-## Audit backlog
-
-Count of open audits per target (filled in after running `audit_review.py --open`):
-- <file> — N open
-- ...
-
-## Notes for the LLM
-
-<Any special instructions: tone, depth level, language (zh/en), how to handle contradictions, etc.>
-```
-
-## What makes a good schema
-
-**Good scope definition** prevents sprawl. A wiki about "LLM memory techniques" should exclude "LLM training" even though they're related.
-
-**Explicit naming conventions** keep wikilinks from breaking. If you decide concept pages use Title Case, enforce it — a broken wikilink is an orphan.
-
-**Maintained article list** lets the LLM know what already exists before creating a new page. The most common error is creating duplicate articles with slightly different names.
-
-**Open research questions** give the LLM direction. Without them, the LLM defaults to ingesting the most obvious sources and missing your actual questions.
-
-**Audit backlog** surfaces what the human has flagged as wrong. The AI should glance at it at the start of every session to decide whether to run an `audit` op before ingesting new material.
-
-## Update cadence
-
-- After every new concept page: add to "Current articles".
-- After every ingest batch: update "Sources to ingest" checklist.
-- After every lint pass: update "Research gaps".
-- After every audit pass: refresh the "Audit backlog" counts.
-- Monthly: review scope, prune stale research questions.
-
+- Concept pages: Title Case noun phrases — "Market Making Strategy", not "market making" or "MarketMakingStrategy".
+- Entity pages: proper names — "Andrej Karpathy", "Obsidian".
+- Summary pages: kebab-case source slug — "karpathy-llm-wiki-gist".
+- Page frontmatter fields and templates: [article-guide.md](article-guide.md). Wikilink rules: same file.

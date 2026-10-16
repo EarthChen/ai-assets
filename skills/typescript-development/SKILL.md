@@ -1,24 +1,20 @@
 ---
 name: typescript-development
-description: "Use when writing or reviewing TypeScript/Node backend code, especially tests (vitest/jest, supertest, testcontainers-node)."
+description: "Use when writing or reviewing TypeScript/Node backend code or its tests (vitest/jest, supertest, testcontainers-node)."
 ---
 
 # TypeScript Backend
 
-Conventions for Node/TypeScript backend services. Minimal by design: branches are added as they earn their place.
+Conventions for Node/TypeScript backend services.
 
-## Routing
-
-| Task branch | Reference to read |
-| --- | --- |
-| Unit + integration testing: vitest/jest, supertest, testcontainers-node, mock boundaries, test isolation | `references/integration-testing.md` |
+Testing: Read `references/integration-testing.md` (vitest/jest, supertest, testcontainers-node).
 
 ## Always
 
 - Testing principles (boundaries, sociable/solitary, narrow integration, isolation rules) live once in `../testing-principles/SKILL.md` (Read it); this skill carries only TypeScript specifics.
-- Test-first via the `tdd` skill.
+- Test-first: call the Skill tool with "tdd".
 - Every endpoint has at least one integration test asserting the persisted side effect — a status code alone proves nothing.
 
 ## Completion criterion
 
-Every new service method has unit coverage; every endpoint's integration test asserts persistence, not just the response.
+Every new service method has unit coverage.

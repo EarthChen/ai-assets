@@ -1,13 +1,13 @@
 ---
 name: ship-to-test
-description: Ship each project's feature branch in a multi-project workspace to a test-environment branch — commit and push the feature branch, merge into the target branch (`test` by default), push it (triggers CI/CD), deploy changed inter-service artifacts at test-SNAPSHOT, switch back. Manual invocation.
+description: Ship each workspace project's feature branch to the test branch: commit, push, merge into the target branch (`test` by default), push (triggers CI/CD), deploy changed artifacts at test-SNAPSHOT.
 disable-model-invocation: true
 argument-hint: "[branch]  test-environment branch to merge into (default: test)"
 ---
 
 # Ship to Test
 
-Pushing the target branch triggers the test environment's CI/CD — the whole point of this workflow. Two consequences: the pushed pipeline is the only validator (no local build or test checks, no watching the run — a project ends when its push and artifact deploy, if any, succeed), and a target branch with nothing new stays unpushed.
+Pushing the target branch triggers the test environment's CI/CD — the whole point of this workflow. The pushed pipeline is the only validator: a project ends when its push and artifact deploy, if any, succeed. A target branch with nothing new stays unpushed.
 
 ## Discovery
 
@@ -20,7 +20,7 @@ Pushing the target branch triggers the test environment's CI/CD — the whole po
 
 Run before any mutation. Each guard fails only its project (see **Failure & isolation**):
 
-- No git repository, or no remote configured
+- No remote configured
 - The current branch is the target branch itself
 - A merge/rebase already in progress — an unfinished merge belongs to its owner
 - The target branch checked out in another worktree — git allows one checkout per branch
@@ -30,19 +30,25 @@ Run before any mutation. Each guard fails only its project (see **Failure & isol
 An inter-service dependency is an artifact one workspace project publishes and another declares in its build manifest; it integrates through the remote artifact repository, never through git. Artifacts consumed only by services outside the workspace are out of scope — their versions belong to their owners.
 
 - **Version** — both sides always read `test-SNAPSHOT`: the consumer's declaration and the producer's published version. When committing (step 1) or resolving a manifest conflict, rewrite any inter-project dependency declared at another version to `test-SNAPSHOT` and fold the fix into the commit.
-- **Deploy** — the test environment resolves such an artifact from the remote repository, so a producer whose target branch moved in this ship must publish before its consumers ship (step 6).
 
 ## Per-Project Pipeline
 
 The project's current branch is its feature branch; the **target branch** is the one named in the invocation argument (`test` when none is given). Every step ends on its stated criterion.
 
-1. **Commit the working tree** — skip when the tree is already clean; otherwise analyze the diff and create conventional, atomic commits per the `git-workflow` skill (one concern per commit), committing directly, without confirmation. Before each `git commit`, scan the staged diff for secrets: `gitleaks git --staged` when gitleaks is installed (v8.19+; older versions: `gitleaks protect --staged`), else grep the added lines of the staged diff for common key/token patterns: `git diff --cached -U0 | grep '^+' | grep -iE 'BEGIN [A-Z ]*PRIVATE KEY|AKIA[0-9A-Z]{16}|(api[_-]?key|secret|token|password)["'\'']?[[:space:]]*[:=][[:space:]]*["'\''][^"'\'']{8,}'`. A hit fails the project and hands off: unstage, leave the working tree untouched, and report the hit. Done when the tree is clean.
+1. **Commit the working tree** — skip when the tree is already clean. Otherwise:
+   - **Commit** by calling the Skill tool with "git-workflow": analyze the diff and create conventional, atomic commits (one concern per commit), committing directly, without confirmation.
+   - **Secret scan before each `git commit`**: `gitleaks git --staged` when gitleaks is installed, else grep the added lines of the staged diff for common key/token patterns: `git diff --cached -U0 | grep '^+' | grep -iE 'BEGIN [A-Z ]*PRIVATE KEY|AKIA[0-9A-Z]{16}|(api[_-]?key|secret|token|password)["'\'']?[[:space:]]*[:=][[:space:]]*["'\''][^"'\'']{8,}'`. A hit fails the project and hands off: unstage, leave the working tree untouched, and report the hit.
+   - Done when the tree is clean.
 2. **Push the feature branch** — add `-u` when upstream is missing. Rejected because the remote branch moved → **Feature-branch catch-up**. Done when the branch is on the remote.
 3. **Switch to the target branch** — fetch, create a local target branch tracking `origin/<target>` when missing (remote has no target branch → fail the project), then sync the local target branch with its remote counterpart merge-style: the target is a shared branch, so it moves by merge only. Done when sitting on a target branch even with its remote counterpart.
-4. **Merge the feature branch** — default merge commit, keeping full history on the shared branch. `Already up to date` → record "nothing to merge" and go to step 5. Conflicts → **Conflict resolution**. Done when the merge commit exists.
-5. **Push the target branch** — done when the push succeeds.
-6. **Deploy changed artifacts** — skip unless the project publishes an artifact consumed by a sibling project and its target branch moved during this ship (step 3 sync or step 4 merge). From the target branch, publish that artifact at `test-SNAPSHOT` using the project's own deploy command and version mechanism, skipping test execution (`mvn deploy -DskipTests` for Maven); in a multi-module project deploy the whole parent module from the project root rather than a single child module — the pipeline validates the code, deploy only publishes; verify the published version is `test-SNAPSHOT`, and if the project cannot publish at it, fail the project and hand off. One retry on transient failure. Done when the artifact is deployed at `test-SNAPSHOT`.
-7. **Restore** — back on the feature branch, then the next project.
+4. **Merge the feature branch** — default merge commit, keeping full history on the shared branch. `Already up to date` → record "nothing to merge" and continue at step 5. Conflicts → **Conflict resolution**. Done when the merge commit exists.
+5. **Push the target branch** — skip when the local target branch equals `origin/<target>`. Done when the push succeeds or the push is skipped.
+6. **Deploy changed artifacts** — skip unless the project publishes an artifact consumed by a sibling project and its target branch moved during this ship (step 3 sync or step 4 merge). Otherwise:
+   - Deploy from the target branch, at `test-SNAPSHOT`, with the project's own deploy command and version mechanism, skipping test execution (`mvn deploy -DskipTests` for Maven). In a multi-module project, deploy the whole parent module from the project root rather than a single child module.
+   - Verify the published version is `test-SNAPSHOT`. If the project cannot publish at it, fail the project and hand off.
+   - Retry once on transient failure.
+   - Done when the artifact is deployed at `test-SNAPSHOT`.
+7. **Restore** — back on the feature branch, then the next project. Done when sitting on the feature branch with a clean working tree.
 
 ## Feature-branch catch-up
 
@@ -55,12 +61,9 @@ A feature push rejected as non-fast-forward means the remote feature branch move
 
 Every merge conflict (step 4, Feature-branch catch-up, a manifest conflict): read [references/conflict-resolution.md](references/conflict-resolution.md) before touching a hunk. Resolve deterministic hunks yourself; hand ambiguous hunks to the human.
 
-### Conflict overrides
+### Conflict override
 
-Two overrides apply to conflict handling in this workflow:
-
-1. Human rejection ends the project: `git merge --abort`, fail the project. Abort is allowed here; the default is to finish the merge.
-2. Skip local build and test checks — the target branch's pipeline validates. The step 1 secret scan still runs.
+Human rejection ends the project: `git merge --abort`, fail the project. Abort is allowed here; the default is to finish the merge.
 
 ## Failure & isolation
 
@@ -70,4 +73,4 @@ Two overrides apply to conflict handling in this workflow:
 
 ## Final report
 
-Per-project table: project, feature branch, commits created, merge result (merged / nothing to merge / failed with reason), target branch pushed or not, deploy result (`deployed <artifact>@test-SNAPSHOT` / skipped / failed).
+Per-project table: project, feature branch, commits created, merge result (merged / nothing to merge / failed with reason), target branch pushed or not, deploy result (`deployed <artifact>@test-SNAPSHOT` / skipped / failed), warnings (stale-artifact warning for every not-yet-shipped consumer after a deploy failure).

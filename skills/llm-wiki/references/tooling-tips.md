@@ -1,157 +1,22 @@
 # Tooling Tips
 
-Practical setup and usage notes for the LLM Wiki stack.
+Optional setup notes for browsing the wiki. The skill ships three scripts (`scripts/scaffold.py`, `scripts/lint_wiki.py`, `scripts/audit_review.py`); everything below is human-side tooling.
 
 ## Obsidian setup
 
-### Essential settings
-
-1. **Attachment folder**: Settings → Files and links → "Attachment folder path" → `raw/assets/`.
+1. **Attachment folder**: Settings → Files and links → "Attachment folder path" → `raw/assets/` (Obsidian creates it on first download).
 2. **New file location**: Settings → Files and links → "Default location for new notes" → `wiki/concepts/`.
 3. **Download attachments hotkey**: Settings → Hotkeys → search "Download attachments" → bind to `Ctrl+Shift+D`. After clipping an article, hit the hotkey to download all images locally.
+4. **Graph view** (`Ctrl+G`): an isolated node is an orphan page (`lint_wiki.py` flags these); a dense cluster is a sub-topic worth a folder-split under `wiki/concepts/`.
 
-### Plugins to install
-
-- **`plugins/obsidian-audit/`** (this repo) — select text → add feedback → writes to `audit/`. See "Audit plugin" section below.
-- **Obsidian Web Clipper** (browser extension) — converts any webpage to Markdown and saves to your vault. Configure to save to `raw/articles/`.
-- **Dataview** (optional) — query frontmatter fields; build dynamic tables of articles by tag, date, source count.
-- **Marp** (optional) — render wiki content as slide decks directly from Obsidian.
-
-### Graph view
-
-Graph view (`Ctrl+G`) is the best way to see your wiki's shape:
-- Dense hub = a well-connected concept page.
-- Isolated node = orphan page (needs inbound links or removal). `lint_wiki.py` flags these.
-- Cluster = a sub-topic worth a dedicated folder-split under `wiki/concepts/`.
-
-## Audit plugin — `plugins/obsidian-audit/`
-
-Installs into a local Obsidian vault. Workflow:
-
-1. Build the plugin once:
-   ```bash
-   cd plugins/obsidian-audit
-   pnpm install
-   pnpm run build
-   ```
-2. Symlink (or copy) the plugin folder into your vault:
-   ```bash
-   pnpm run link "/path/to/your/vault"
-   ```
-3. In Obsidian, enable Community Plugins, then enable "LLM Wiki Audit".
-4. In the plugin settings, set:
-   - **Wiki root** — path relative to the vault root (usually `.`).
-   - **Audit directory** — path relative to the wiki root (default `audit`).
-   - **Author** — your name.
-
-Commands (bind to hotkeys if you like):
-- **`Audit: Add feedback on selection`** — opens a modal with severity + comment → writes an audit file.
-- **`Audit: List open feedback for current file`** — shows a notice summarising open audits targeting the current file.
-- **`Audit: Open audit folder`** — reveals `audit/` in the file explorer.
-
-The plugin uses the shared `audit-shared` library, so files it writes are byte-identical in shape to files the web viewer writes.
-
-## Web viewer — `web/`
-
-Local Node.js server that renders the wiki with mermaid, KaTeX, and wikilinks, and lets you file feedback from your browser.
-
-```bash
-cd web
-pnpm install
-pnpm run build
-pnpm start --wiki "/path/to/wiki-root" --port 4175
-```
-
-Then open `http://127.0.0.1:4175`. Features:
-- Left sidebar: navigation tree built from `wiki/index.md`.
-- Main pane: rendered markdown, mermaid diagrams rendered client-side, formulas rendered server-side.
-- Right sidebar: list of open audits for the current page.
-- Select any text → "💬 Add feedback" popover appears → submit → writes an audit file to `<wiki-root>/audit/`.
-
-The server binds to `127.0.0.1` only. No auth; intended for personal use on your own machine.
-
-## Obsidian Web Clipper usage
+## Obsidian Web Clipper
 
 1. Install from [obsidian.md/clipper](https://obsidian.md/clipper).
-2. Configure template to save to `raw/articles/`.
+2. Configure the template to save to `raw/articles/`.
 3. Clip an article → hit the download-images hotkey → file is ready for `ingest`.
 
 For complex pages (paywalled, dynamic): copy-paste the main text manually, save as `raw/articles/<slug>.md`.
 
-## qmd (optional, for large wikis)
+## Audit feedback UIs
 
-[qmd](https://github.com/tobi/qmd) is a local semantic search engine for Markdown files with BM25 + vector hybrid search. Useful when the wiki grows beyond ~100 pages and `wiki/index.md` scanning becomes slow.
-
-```bash
-pip install qmd
-qmd collection add wiki/ --name my-wiki
-qmd embed
-qmd query "what are the tradeoffs of RAG vs wiki" --collection my-wiki
-```
-
-qmd also has an MCP server so LLMs can use it as a native tool.
-
-## Marp — generating slide decks from wiki content
-
-```markdown
----
-marp: true
-theme: default
----
-
-# Slide title
-
-Content here
-
----
-
-# Next slide
-```
-
-Install the Marp plugin in Obsidian to preview/export directly.
-
-## Generating charts
-
-For quantitative analyses, ask the LLM to generate a matplotlib script and save to `outputs/charts/`:
-
-```python
-# outputs/charts/my-analysis.py
-import matplotlib.pyplot as plt
-# ... chart code ...
-plt.savefig('outputs/charts/my-analysis.png')
-```
-
-Embed in a wiki article: `![[my-analysis.png]]`.
-
-## Git workflow
-
-The wiki is a git repo. Benefits:
-- Version history for every article.
-- Branching for experimental research directions.
-- Audit files are tracked, so "who suggested this and when" is first-class.
-
-```bash
-git add .
-git commit -m "ingest: 3 papers on attention mechanisms"
-git push
-```
-
-Keep large files (PDFs >10 MB, raw images at full resolution, video, model weights) in `.gitignore`. Use the raw file policy: pointer files in `raw/refs/`, not copies.
-
-## Interactive HTML outputs
-
-For complex analyses, the LLM can generate interactive HTML with JavaScript and save to `outputs/`. These can be opened in a browser or embedded in Obsidian with the HTML plugin.
-
-## Tools overview
-
-| Tool | Purpose |
-| ------ | --------- |
-| [Obsidian](https://obsidian.md) | IDE for browsing the wiki; graph view shows connections |
-| **`plugins/obsidian-audit/`** | Obsidian plugin — select text → add feedback → writes to `audit/`. **Not bundled in this skill dir** — lives in the upstream llm-wiki repo; install separately if you want UI-based feedback. |
-| **`web/`** | Local Node.js server — preview the wiki with mermaid/math rendered; select → feedback → `audit/`. **Not bundled** — same as above. |
-| `scripts/scaffold.py` | Bootstrap a new wiki directory tree |
-| `scripts/lint_wiki.py` | Seven-pass health check |
-| `scripts/audit_review.py` | Group open/resolved audits by target file |
-| [qmd](https://github.com/tobi/qmd) | Optional local semantic search (useful at >100 pages) |
-
-The Obsidian plugin and the web viewer both write audit files in the **same format** with **the same anchor algorithm**, so feedback filed from either place can be resolved by either place.
+An Obsidian plugin or a local web viewer can write `audit/*.md` files from a text selection. Neither ships with this skill; a human can also write the files by hand in the format of [audit-guide.md](audit-guide.md).
