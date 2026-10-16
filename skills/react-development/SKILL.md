@@ -11,8 +11,8 @@ React/TSX conventions. Load only the reference matching the current task branch.
 
 | Task branch | Reference to read |
 | --- | --- |
-| Naming, file extensions/layout, JSX, imports, hooks discipline, state shape | `references/coding-style.md` |
-| Component architecture: container/presentational, state location, RSC boundary, Suspense, forms, data fetching, composition | `references/patterns.md` |
+| Naming, file extensions/layout, component shape, JSX, imports | `references/coding-style.md` |
+| Component architecture: container/presentational, state location, RSC boundary, Suspense, forms, data fetching, composition, hooks | `references/patterns.md` |
 | User input, `dangerouslySetInnerHTML`, links and `target=_blank`, Server Actions, secrets, CSP | `references/security.md` |
 | Writing or reviewing tests: RTL queries, userEvent, async assertions, MSW, accessibility | `references/testing.md` |
 
@@ -20,9 +20,9 @@ React/TSX conventions. Load only the reference matching the current task branch.
 
 - Server Components by default; add `'use client'` only for interactivity.
 - React Testing Library for component tests; prefer `getByRole` queries.
-- Test-first via the `tdd` skill; cross-stack testing principles: Read `../testing-principles/SKILL.md`.
+- Test-first: call the Skill tool with "tdd"; cross-stack testing principles: Read `../testing-principles/SKILL.md`.
 - Validate all Server Action input; sanitize everything reaching `dangerouslySetInnerHTML`.
-- Function components and hooks; class components only when touching legacy code.
+- Function components and hooks; leave legacy class components unless the change is non-trivial.
 
 ## Completion criterion
 

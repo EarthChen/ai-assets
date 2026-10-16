@@ -1,14 +1,6 @@
 
 # React Coding Style
 
-## When to Use
-
-- Writing or reviewing React/TSX component or hook files (`.tsx`, `.jsx`, `components/`, `hooks/`)
-- Naming components, hooks, context, event handlers, or boolean props
-- Deciding file extensions, JSX formatting, import ordering, or `type` vs `interface` for props
-- Placing `"use client"` / deciding Server vs Client Component (Next.js App Router)
-- Choosing local state vs Context vs external store, or converting legacy class components
-
 ## File Extensions
 
 - `.tsx` for any file containing JSX, even one-liner snippets
@@ -44,7 +36,7 @@ export function UserCard({ user, onSelect }: Props) {
 - Prefer `type Props = {}` for closed component prop shapes
 - Use `interface` only when the prop type is extended via declaration merging or exported as a public API extension point
 - Always destructure props in the parameter list — no `props.user` access inside the body
-- Type the return implicitly through JSX (`function Foo(): JSX.Element` only when the function returns conditionally and the union confuses inference)
+- Type the return implicitly through JSX (`function Foo(): React.JSX.Element` only when the function returns conditionally and the union confuses inference)
 
 ## JSX
 
@@ -62,37 +54,11 @@ return <h1>{greeting}</h1>;
 return <h1>{user.isAdmin ? "Welcome, admin" : `Hello ${user.name}`}</h1>;
 ```
 
-## Server / Client Boundary (Next.js App Router, RSC)
-
-- Default a new file to Server Component — only add `"use client"` when the file uses state, effects, refs, browser APIs, or event handlers
-- Place the `"use client"` directive on line 1, before any imports
-- Never import a Client Component file from inside a `"use server"` action file
-- Never re-export server-only code through a client module — the bundler will silently include it
-
 ## Imports
 
 - React imports first: `import { useState } from "react"`
 - Then third-party libs, then absolute project imports, then relative
 - Type-only imports: `import type { ReactNode } from "react"` — never mix runtime and type imports in one statement when ESLint's `consistent-type-imports` is configured
-
-## Hooks Discipline
-
-See the Hooks section of [patterns.md](./patterns.md) for the full ruleset. Style highlights:
-
-- Custom hooks must start with `use` — enforced by `eslint-plugin-react-hooks`
-- Group all hook calls at the top of the component, before any conditional logic
-- Avoid creating ad-hoc hooks for one-line wrappers — inline the call instead
-
-## State
-
-- Local first (`useState`), lift only when shared
-- Context for cross-cutting state read by many components (theme, auth, i18n) — not for high-frequency updates
-- External store (Zustand, Jotai, Redux Toolkit) when state must persist across route changes, sync across tabs, or be debugged via devtools
-- Never duplicate state that can be derived — compute during render
-
-## Class Components
-
-Forbidden in new code. Convert legacy class components to function components when touching them for non-trivial changes.
 
 ## File Layout per Component
 

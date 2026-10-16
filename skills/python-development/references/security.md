@@ -1,15 +1,8 @@
 # Python Security
 
-Code-level security constraints for Python services. Project CI runs the scanners (commands: `patterns.md` → Python Tooling Integration → Essential Commands: `bandit`, `pip-audit`, `safety scan`); this file carries only what to write and what to forbid.
+Code-level security constraints for Python services. Scanner commands (`bandit`, `pip-audit`): `patterns.md` → Tooling Commands. This file carries only what to write and what to forbid.
 
-## When to Use
-
-- Writing or reviewing any Python code that handles user input, secrets, persistence, deserialisation, or auth
-- Wiring secret loading, environment variables, or `.env` files
-- Reviewing SQL/HTTP/SQLAlchemy call sites for parameterisation
-- Setting up bandit, pip-audit, or pre-commit security hooks
-
-## Hard Constraints
+## Rules
 
 ### Secrets
 
@@ -26,7 +19,6 @@ api_key = os.environ["OPENAI_API_KEY"]  # KeyError on missing — fail fast
 ```
 
 - Production: read from a secret manager (Vault, AWS Secrets Manager) injected as env vars at deploy time
-- Never commit `.env`, `secrets.json`, `credentials.json`, or similar files
 
 ### SQL Injection
 
@@ -57,31 +49,11 @@ session.execute(select(User).where(User.name == name))
 
 ### Authentication
 
-- Use established libraries (e.g. `passlib` with `bcrypt` or `argon2`); never hand-roll crypto
+- Hash passwords with `pwdlib` (argon2) or `argon2-cffi`; `passlib` is unmaintained
 - Issue tokens via a vetted library (`pyjwt`); validate `exp`, `iss`, `aud`, `alg` on every request
 - Never log credentials, cookies, or full Authorization headers
 
-## CI Integration
-
-These run in project CI; listed here so the constraints above can be wired up.
-
-### Static Analysis — bandit
-
-```bash
-uv run bandit -r src/
-```
-
-High-severity findings fail CI; medium and low are reviewed.
-
-### Dependency Scanning — pip-audit
-
-```bash
-uv run pip-audit
-```
-
-Flags dependencies with known CVEs. Run in CI before deploy.
-
-### Pre-commit Hooks
+## Pre-commit
 
 Add to `.pre-commit-config.yaml`:
 
@@ -97,7 +69,6 @@ repos:
 
 ## Anti-Patterns
 
-- Reading secrets from `config.py` with defaults — fail fast is the contract, defaults hide the misconfiguration
 - `eval()` or `exec()` on any string derived from user input
 - `subprocess.run(user_input, shell=True)` — argument injection vector; pass `shell=False` with argv list
 - `requests.get(url)` where `url` is user-controlled without allowlist validation (SSRF)

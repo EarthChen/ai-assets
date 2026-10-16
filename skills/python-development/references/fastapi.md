@@ -1,24 +1,18 @@
 # FastAPI Conventions
 
-FastAPI structure, async patterns, DI, schemas, security, and testing. Pairs with `patterns.md` (general Python idioms) and `testing.md` (pytest fixtures); this file carries only what's specific to FastAPI.
+FastAPI structure, async patterns, DI, schemas, security, and testing. This file carries only what is specific to FastAPI.
 
-## When to Use
-
-- Building or maintaining a FastAPI service
-- Reviewing endpoint signatures, dependency wiring, or schema design
-- Wiring auth, CORS, rate limiting, or middleware
-- Setting up the test client and dependency overrides
-
-## Hard Constraints
+## Rules
 
 ### Application Factory
 
 - Build the app inside `create_app()`; do not instantiate `FastAPI()` at module import time
-- Wire routers, middleware, exception handlers, and startup/shutdown events inside `create_app()`
+- Wire routers, middleware, exception handlers, and `lifespan` inside `create_app()`
 - Settings loaded once at startup and injected via `Depends` — not read inside route handlers
 
 ```python
 def create_app() -> FastAPI:
+    settings = get_settings()
     app = FastAPI(title="markets", version="1.0.0")
     app.include_router(markets_router, prefix="/api/markets")
     app.add_middleware(CORSMiddleware, allow_origins=settings.cors_origins)
@@ -77,11 +71,9 @@ async def get_user(
 
 ## Security
 
-- CORS origins are environment-specific; never `["*"]` in production
-- Don't combine wildcard origins with `allow_credentials=True`
-- JWT: validate `exp`, `iss`, `aud`, `alg` on every request; never trust the `alg` header from the token
+- CORS origins are environment-specific; never `["*"]` in production, and never wildcard origins with `allow_credentials=True`
 - Rate-limit auth and write-heavy endpoints (slowapi or upstream gateway)
-- Redact credentials, cookies, `Authorization` headers, and tokens from logs and trace exports
+- JWT validation, secrets, and log redaction: `security.md`
 
 ## Testing
 
@@ -89,22 +81,4 @@ async def get_user(
 - Clear `app.dependency_overrides` in test teardown — overrides leak across tests
 - Use `httpx.AsyncClient` with `ASGITransport(app=app)` for async apps; `TestClient` works but is sync
 
-```python
-@pytest.fixture
-def client(db_session):
-    from myapp.main import app
-    from myapp.deps import get_db
-
-    app.dependency_overrides[get_db] = lambda: db_session
-    with TestClient(app) as c:
-        yield c
-    app.dependency_overrides.clear()
-```
-
-## Anti-Patterns
-
-- Constructing `SessionLocal()` inside route handlers
-- Catching broad `Exception` to return 200 with an error payload — let the exception handler map to 5xx
-- `from fastapi import ... ; app = FastAPI()` at top level — no factory, no per-environment wiring
-- `allow_origins=["*"]` in production
-- Returning `dict` instead of a `response_model` — internal fields leak
+Fixture example: `testing.md` → API + Database Together.

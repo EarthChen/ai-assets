@@ -1,189 +1,57 @@
-
 # Spring Boot Verification Loop
 
-Run before PRs, after major changes, and pre-deploy.
+Run before PRs, after major refactors or dependency upgrades, and pre-deploy. Stop at the first failing phase; fix it; restart from that phase.
 
-## When to Activate
-
-- Before opening a pull request for a Spring Boot service
-- After major refactoring or dependency upgrades
-- Pre-deployment verification for staging or production
-- Running full build → lint → test → security scan pipeline
-- Validating test coverage meets thresholds
-
-## Phase 1: Build
+## Phase 1: Format (only if Spotless is configured)
 
 ```bash
-mvn -T 4 clean verify -DskipTests
-# or
-./gradlew clean assemble -x test
+mvn spotless:apply
+./gradlew spotlessApply
 ```
 
-If build fails, stop and fix.
+Run first: formatting changes files, so it must precede the build and tests.
 
-## Phase 2: Static Analysis
+## Phase 2: Build
 
-Maven (common plugins):
+```bash
+mvn -T 4 clean compile
+./gradlew clean classes
+```
+
+## Phase 3: Static Analysis
+
+Run only the plugins the build file configures (a missing plugin fails the run):
+
 ```bash
 mvn -T 4 spotbugs:check pmd:check checkstyle:check
-```
-
-Gradle (if configured):
-```bash
 ./gradlew checkstyleMain pmdMain spotbugsMain
 ```
 
-## Phase 3: Tests + Coverage
+## Phase 4: Tests + Coverage
 
 ```bash
 mvn -T 4 verify   # tests + JaCoCo report + check (fails below 80% line coverage; snippet in tdd.md)
-# or
 ./gradlew test jacocoTestReport
 ```
 
-Report:
-- Total tests, passed/failed
-- Coverage % (lines/branches)
+Report total tests, passed/failed, and line/branch coverage.
 
-### Unit Tests
-
-Test service logic in isolation with mocked dependencies:
-
-```java
-@ExtendWith(MockitoExtension.class)
-class UserServiceTest {
-
-  @Mock private UserRepository userRepository;
-  @InjectMocks private UserService userService;
-
-  @Test
-  void createUser_validInput_returnsUser() {
-    var dto = new CreateUserDto("Alice", "alice@example.com");
-    var expected = new User(1L, "Alice", "alice@example.com");
-    when(userRepository.save(any(User.class))).thenReturn(expected);
-
-    var result = userService.create(dto);
-
-    assertThat(result.name()).isEqualTo("Alice");
-    verify(userRepository).save(any(User.class));
-  }
-
-  @Test
-  void createUser_duplicateEmail_throwsException() {
-    var dto = new CreateUserDto("Alice", "existing@example.com");
-    when(userRepository.existsByEmail(dto.email())).thenReturn(true);
-
-    assertThatThrownBy(() -> userService.create(dto))
-        .isInstanceOf(DuplicateEmailException.class);
-  }
-}
-```
-
-### Integration Tests with Testcontainers
-
-Test against a real database instead of H2:
-
-```java
-@SpringBootTest
-@Testcontainers
-class UserRepositoryIntegrationTest {
-
-  @Container
-  static PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:16-alpine")
-      .withDatabaseName("testdb");
-
-  @DynamicPropertySource
-  static void configureProperties(DynamicPropertyRegistry registry) {
-    registry.add("spring.datasource.url", postgres::getJdbcUrl);
-    registry.add("spring.datasource.username", postgres::getUsername);
-    registry.add("spring.datasource.password", postgres::getPassword);
-  }
-
-  @Autowired private UserRepository userRepository;
-
-  @Test
-  void findByEmail_existingUser_returnsUser() {
-    userRepository.save(new User("Alice", "alice@example.com"));
-
-    var found = userRepository.findByEmail("alice@example.com");
-
-    assertThat(found).isPresent();
-    assertThat(found.get().getName()).isEqualTo("Alice");
-  }
-}
-```
-
-### API Tests with MockMvc
-
-Test controller layer with full Spring context:
-
-```java
-@WebMvcTest(UserController.class)
-class UserControllerTest {
-
-  @Autowired private MockMvc mockMvc;
-  @MockBean private UserService userService;
-
-  @Test
-  void createUser_validInput_returns201() throws Exception {
-    var user = new UserDto(1L, "Alice", "alice@example.com");
-    when(userService.create(any())).thenReturn(user);
-
-    mockMvc.perform(post("/api/users")
-            .contentType(MediaType.APPLICATION_JSON)
-            .content("""
-                {"name": "Alice", "email": "alice@example.com"}
-                """))
-        .andExpect(status().isCreated())
-        .andExpect(jsonPath("$.name").value("Alice"));
-  }
-
-  @Test
-  void createUser_invalidEmail_returns400() throws Exception {
-    mockMvc.perform(post("/api/users")
-            .contentType(MediaType.APPLICATION_JSON)
-            .content("""
-                {"name": "Alice", "email": "not-an-email"}
-                """))
-        .andExpect(status().isBadRequest());
-  }
-}
-```
-
-## Phase 4: Security Scan
+## Phase 5: Security Scan
 
 ```bash
 # Dependency CVEs
 mvn org.owasp:dependency-check-maven:check
-# or
 ./gradlew dependencyCheckAnalyze
 
 # Secrets in source
 grep -rn "password\s*=\s*\"" src/ --include="*.java" --include="*.yml" --include="*.properties"
 grep -rn "sk-\|api_key\|secret" src/ --include="*.java" --include="*.yml"
-
-# Secrets (git history)
 git secrets --scan  # if configured
-```
 
-### Common Security Findings
-
-```
-# Check for System.out.println (use logger instead)
-grep -rn "System\.out\.print" src/main/ --include="*.java"
-
-# Check for raw exception messages in responses
+# Raw exception messages in responses, stdout logging, wildcard CORS
 grep -rn "e\.getMessage()" src/main/ --include="*.java"
-
-# Check for wildcard CORS
+grep -rn "System\.out\.print" src/main/ --include="*.java"
 grep -rn "allowedOrigins.*\*" src/main/ --include="*.java"
-```
-
-## Phase 5: Lint/Format (optional gate)
-
-```bash
-mvn spotless:apply   # if using Spotless plugin
-./gradlew spotlessApply
 ```
 
 ## Phase 6: Diff Review
@@ -193,19 +61,16 @@ git diff --stat
 git diff
 ```
 
-Checklist:
-- No debugging logs left (`System.out`, `log.debug` without guards)
-- Meaningful errors and HTTP statuses
-- Transactions and validation present where needed
-- Config changes documented
+Check: no debug output left, meaningful errors and HTTP statuses, transactions and validation where needed, config changes documented.
 
 ## Output Template
 
 ```
 VERIFICATION REPORT
 ===================
+Format:    [PASS/SKIP]
 Build:     [PASS/FAIL]
-Static:    [PASS/FAIL] (spotbugs/pmd/checkstyle)
+Static:    [PASS/FAIL/SKIP] (spotbugs/pmd/checkstyle)
 Tests:     [PASS/FAIL] (X/Y passed, Z% coverage)
 Security:  [PASS/FAIL] (CVE findings: N)
 Diff:      [X files changed]
@@ -214,12 +79,6 @@ Overall:   [READY / NOT READY]
 
 Issues to Fix:
 1. ...
-2. ...
 ```
 
-## Continuous Mode
-
-- Re-run phases on significant changes or every 30–60 minutes in long sessions
-- Keep a short loop: `mvn -T 4 test` + spotbugs for quick feedback
-
-**Remember**: Fast feedback beats late surprises. Keep the gate strict—treat warnings as defects in production systems.
+READY means: Build and Tests PASS, coverage is at least 80%, Static is PASS or SKIP, and Security has no unhandled CVE with CVSS 7.0 or higher (adjust the threshold to the project's policy).
