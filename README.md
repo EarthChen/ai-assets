@@ -283,7 +283,7 @@ MCP 配置中使用 `_platforms` 字段：
 | 插件 | 组件 | 原因 |
 | ------ | ------ | ------ |
 | `.cursor-plugin` | rules, agents, mcp | skills 走 `~/.agents/skills/`，插件不重复提供 |
-| `.claude-plugin` | skills, agents, mcp | rules 需脚本部署 |
+| `.claude-plugin` | （Claude 不再加载；仅 Cursor marketplace 读取其 marketplace.json） | Claude 走 `~/.claude` 软链部署 |
 
 ## 新增规则
 

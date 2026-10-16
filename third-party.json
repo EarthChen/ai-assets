@@ -3,18 +3,6 @@
   "description": "Third-party plugins to install via each platform's native plugin system",
   "plugins": [
     {
-      "name": "earthchen-ai-assets",
-      "description": "This repo's own plugin — deployed to Claude Code via marketplace clone.",
-      "platforms": {
-        "claude": {
-          "marketplace_ref": "https://github.com/EarthChen/ai-assets.git",
-          "marketplace_source": "local",
-          "plugin_id": "earthchen-ai-assets@earthchen-ai-assets",
-          "note": "Self-plugin; provides skills, agents, MCP on Claude. Default local-directory marketplace (no git fetch — edit + reinstall flows immediately); marketplace_ref is the remote fallback for fresh machines that haven't cloned the repo."
-        }
-      }
-    },
-    {
       "name": "mattpocock-skills",
       "description": "Engineering skills by Matt Pocock (mattpocock/skills). Hybrid management: Claude uses the native plugin; Codex/Cursor use manual symlinks into ~/.agents/skills/.",
       "install": {

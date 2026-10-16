@@ -26,18 +26,18 @@ The repo has two layers:
 
 Known gap: `_dist/codex/mcp.json` is generated but nothing reads it. Codex loads no repo plugin, so a server tagged `_platforms: ["codex"]` never reaches Codex. The file is empty today.
 
-Why commit `_dist/`? Marketplace installs (Cursor marketplace, Claude remote marketplace) clone the repo and read `_dist/` as committed; they never run `build`. Local deploys still need `install.py install` after `build`: Cursor reads a real-dir copy, Codex reads `~/.codex/AGENTS.md` (a copy; only its skills track the repo through the plugin symlink), Claude Code reads a reinstalled snapshot, and pi reads `~/.pi/agent/AGENTS.md`. `uv run pytest` fails when the committed `_dist/` differs from a fresh build.
+Why commit `_dist/`? Marketplace installs (Cursor marketplace, Claude remote marketplace) clone the repo and read `_dist/` as committed; they never run `build`. Local deploys still need `install.py install` after `build`: Cursor reads a real-dir copy, Codex reads `~/.codex/AGENTS.md` (a copy; only its skills track the repo through the plugin symlink), Claude Code reads symlinks (skills and agents instantly; `CLAUDE.md` and rules at session start), and pi reads `~/.pi/agent/AGENTS.md`. `uv run pytest` fails when the committed `_dist/` differs from a fresh build.
 
 ### Claude Plugin Manifest (`.claude-plugin/plugin.json`) — No `agents`, No `skills`
 
-Claude Code auto-scans the plugin-root `agents/` and `skills/` dirs. Declaring either key does not add to that scan — for `agents` it replaces it with a resolver that loads nothing:
+Claude Code itself no longer loads this plugin (see Claude Symlink Deploy below); the Cursor marketplace still reads `.claude-plugin/marketplace.json`. Claude Code auto-scans the plugin-root `agents/` and `skills/` dirs. Declaring either key does not add to that scan — for `agents` it replaces it with a resolver that loads nothing:
 
 - **`agents` must stay absent.** Probe-verified 2026-10-08 on Claude Code 2.1.285: two plugins sharing an identical `agents/probe-agent.md`, the one declaring `"agents": ["./agents/probe-agent.md"]` reported `Agents (0)` in `claude plugin details`, the one without the key reported `Agents (1)`. `claude plugin validate` passes either way, so the failure is silent — this repo shipped 12 declared agents that Claude never loaded. A directory value (`"./agents/"`, which is what `.cursor-plugin/plugin.json` uses) is worse: it fails validation with `agents: Invalid input`. Anthropic's own plugins (`feature-dev`, `plugin-dev`, `pr-review-toolkit`, `code-modernization`, `agent-sdk-dev`, `hookify`, `code-simplifier`, `claude-security`) all ship an `agents/` dir with no `agents` key.
 - **`skills`** is deliberately omitted. Per schema it *adds to* the default `skills/` scan, so setting it would duplicate. Claude scans the plugin-root `skills/` directly, which holds only the self-owned skills (mattpocock/anysearch are manual-installed elsewhere).
 
 `install.py build` runs `_ensure_claude_manifest_autoscan()`, which strips an `agents` key if one is ever committed again.
 
-After adding or removing an agent, commit `agents/<name>.md` and nothing else — there is no manifest to sync. Verify what Claude actually loaded with `claude plugin details earthchen-ai-assets@earthchen-ai-assets`: the component inventory must list every agent.
+After adding or removing an agent, commit `agents/<name>.md` and nothing else — there is no manifest to sync.
 
 ## Build Transforms (rules frontmatter → per-platform)
 
@@ -71,26 +71,31 @@ pi has no such limit (`_dist/pi/AGENTS.md` is built the same way and is also 11.
 | --- | --- | --- |
 | Cursor | `install.py install` (rsync real-dir, `--delete`) | After repo edits: `install` (+ `build` first if rules/MCP changed) + restart/reload |
 | Codex | `~/.agents/skills` symlinks (no repo plugin; `install` disables a previously registered one); `~/.codex/AGENTS.md` is a copy | Skills: edits instant, new/renamed ones need `install`. AGENTS.md: `build` + `install` |
-| Claude Code | `install.py install` (local-directory marketplace, reinstall = fresh snapshot) | After repo edits: `install` (+ `build` first if `_dist/` inputs changed); bump optional |
+| Claude Code | `install.py install --platform claude`: symlinks in `~/.claude/{skills,agents}`, `~/.claude/CLAUDE.md`, `~/.claude/rules/common` | Skills, agents: edits instant, new/renamed ones need `install`. `CLAUDE.md`, rules: `build`, then a new session |
 | pi | `install.py install --platform pi` (AGENTS.md copy + skill/agent symlinks under `~/.pi/agent/`) | AGENTS.md: `build` + `install`; skill/agent edits instant, new/renamed ones need `install` |
 
-### Claude Code Version-Gating
+### Claude Symlink Deploy
 
-The marketplace is registered as a **local directory** (`marketplace_source: "local"` in `third-party.json` → `install.py install` runs `claude plugin marketplace add <REPO_ROOT>`), not a git remote — so `plugin update` reads the working tree directly, no `git fetch`/`push` round-trip.
+`install_claude` (`installer/deploy_claude.py`) links the repo into `~/.claude`; nothing is copied or snapshotted:
 
-But the version check is unchanged: Claude compares `plugin.json`'s `version` field against the installed snapshot; same version → it reports "already at latest" and skips the re-snapshot, even when the working tree has changed. Verified: at 1.1.0, content changes without a version bump left the cache at the old snapshot with deleted agents still present. `install.py install`'s reinstall path fixes this (`uninstall`+`install` under the hood, bypasses the version skip).
+| Asset | Link | Reload |
+| --- | --- | --- |
+| Skills | `~/.claude/skills/<name>` → `skills/<name>` | In-session (documented) |
+| Agents | `~/.claude/agents/<name>.md` → `agents/<name>.md` | Within seconds; the first agent file in a new `agents/` dir needs a restart |
+| `CLAUDE.md` | `~/.claude/CLAUDE.md` → `_dist/claude/CLAUDE.md` | New session; source edits need `build` |
+| Rules | `~/.claude/rules/common` → `_dist/claude/rules/common` | New session; source edits need `build` |
+| MCP | none | `claude --mcp-config <repo>/_dist/claude/mcp.json` |
 
-**Update flow**: edit → `build` (if `_dist/claude/` changed) → `install.py install --platform claude`.
-
-**Snapshot accumulation**: every reinstall writes a fresh `~/.claude/plugins/cache/earthchen-ai-assets/earthchen-ai-assets/<version>/`, and Claude's own sweep is unreliable — a stale `.in_use` lock pinned a 2026-07 snapshot for months. The local marketplace source is the repo root, so each snapshot of this repo carries `vendor/` as well (26M measured 2026-10-14; earlier snapshots that also carried a local `node_modules/` measured ~136M). `install_claude` therefore prunes this plugin's non-current snapshots right after the reinstall (`_prune_claude_plugin_cache`); it deletes nothing when the current version's directory is missing, so a failed reinstall cannot wipe the only working copy. Other plugins' caches are left alone.
-
-**Bump policy**: bump `plugin.json` + `marketplace.json` together if at all. Claude reads `plugin.json` version only (marketplace.json's version alone is not enough). Bump is diagnostic only — cache dir + `plugin list` reflect the real content either way.
-
-**When a bump is NOT needed**: if `git status _dist/` is clean after `build`, no bump required. Third-party (manual/symlink) skills — the eight sets listed under Third-Party Skills below — live as user-level symlinks in `~/.claude/skills/` and/or `~/.agents/skills/`, which **never pass through the plugin cache** (on Claude, mattpocock comes from its own native plugin instead). Edits to `install.py`, `third-party.json`, `third-party.schema.json`, or the vendor submodules do NOT require a version bump; on any machine just run `uv run install.py install` (or `install.py manual <name>`) to recreate the symlinks.
+- **Why no MCP link**: user-scope servers live in `~/.claude.json`, which also holds oauth state, caches and per-project history and which Claude rewrites at runtime. `_dist/claude/mcp.json` holds no servers today (the one entry is tagged `cursor`).
+- **Legacy plugin**: `install` runs `plugin uninstall` and `marketplace remove` for `earthchen-ai-assets` when `claude plugin list` shows it. Left in place it loads every skill a second time under the `earthchen-ai-assets:` prefix. Removing the marketplace also removes its cache.
+- **Names**: skills and agents are bare (`code-audit`, not `earthchen-ai-assets:code-audit`). Same-name agents resolve by priority (user over plugin); same-name skills both load.
+- **Real files are safe**: a different `CLAUDE.md` is kept as `CLAUDE.md.pre-link.bak`; a real agent file with a repo agent's name is skipped with a warning; the old copied `rules/common` dir is replaced.
+- **Unverified in the docs**: symlinks for `~/.claude/CLAUDE.md`, `~/.claude/rules/` and `~/.claude/agents/` (skills are documented). After the first install, start a session and confirm the rules and agents load.
+- Third-party (manual/symlink) skills use the same `~/.claude/skills/`; the eight sets listed under Third-Party Skills below are unaffected.
 
 ### Local vs Remote Marketplace
 
-This repo defaults to local-directory marketplace — no `git push` needed to update Claude's cache, just `build` + `install.py install` (reinstall). The remote-git marketplace path still works for fresh machines: `claude plugin marketplace add https://github.com/EarthChen/ai-assets.git` then `plugin install` (version-gated `plugin update` on refresh). Third-party plugins without `marketplace_source` default to `remote` (git clone, version-gated).
+Third-party Claude plugins in `third-party.json` use `marketplace_source`: `remote` (default; git clone, version-gated `plugin update`) or `local` (directory marketplace, reinstall on every `install`). This repo's own plugin is no longer registered; Claude gets it through symlinks.
 
 ### Cursor Local Plugin — Real Directory, Not Symlink
 
@@ -195,9 +200,9 @@ git submodule update --remote vendor/mattpocock-skills  # update upstream (symli
 
 ## Common Workflows
 
-**Adding a new skill**: drop `skills/<name>/SKILL.md` + optional `references/`. No `build` needed (`build` does not read `skills/`). Run `uv run install.py install` so Claude's snapshot and the `~/.agents/skills` symlink (pi, Cursor, Codex) pick it up. Commit.
+**Adding a new skill**: drop `skills/<name>/SKILL.md` + optional `references/`. No `build` needed (`build` does not read `skills/`). Run `uv run install.py install` so the `~/.claude/skills` and `~/.agents/skills` symlinks (Claude; pi, Cursor, Codex) pick it up. Commit.
 
-**Adding a new agent**: drop `agents/<name>.md` and commit it. Claude auto-scans the dir (the manifest must NOT list agents — see Claude Plugin Manifest above); pi gets a symlink on `install.py install --platform pi`; Cursor reads `"agents": "./agents/"` from its own manifest. Verify Claude's count with `claude plugin details earthchen-ai-assets@earthchen-ai-assets`.
+**Adding a new agent**: drop `agents/<name>.md` and commit it. Claude gets a symlink in `~/.claude/agents/` on `install.py install --platform claude`; pi gets one on `--platform pi`; Cursor reads `"agents": "./agents/"` from its own manifest.
 
 **Adding a new rule**: see `README.md` Rules 系统详解 (or AGENTS.md if that's where rules deployment strategy lives).
 
@@ -219,10 +224,10 @@ uv run install.py build --dry-run
 # 3. Check _dist/ contents
 ls _dist/claude/rules/ _dist/cursor/rules/ _dist/codex/
 
-# 4. Validate the Claude manifest, then check what Claude actually loaded
+# 4. Validate the plugin manifest (Cursor marketplace), then check the Claude links
 uv run python -c "import json; json.load(open('.claude-plugin/plugin.json'))"
 claude plugin validate .
-claude plugin details earthchen-ai-assets@earthchen-ai-assets  # skills/agents/MCP counts
+find ~/.claude/skills ~/.claude/agents -maxdepth 1 -type l ! -exec test -e {} \; -print  # dangling links
 
 # 5. Check Codex AGENTS.md size budget
 wc -c _dist/codex/AGENTS.md  # must be < 32KB
