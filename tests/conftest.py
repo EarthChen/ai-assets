@@ -32,9 +32,9 @@ def _point_installer_at(monkeypatch: pytest.MonkeyPatch, repo: Path, home: Path)
     monkeypatch.setattr(paths, "THIRD_PARTY_JSON", repo / "third-party.json")
     monkeypatch.setattr(paths, "PLUGIN_JSONS", [
         repo / ".cursor-plugin" / "plugin.json",
-        repo / ".claude-plugin" / "plugin.json",
+        repo / "hooks" / "claude" / ".claude-plugin" / "plugin.json",
     ])
-    monkeypatch.setattr(paths, "MARKETPLACE_JSON", repo / ".claude-plugin" / "marketplace.json")
+    monkeypatch.setattr(paths, "MARKETPLACE_JSON", repo / ".cursor-plugin" / "marketplace.json")
 
 
 @pytest.fixture(autouse=True)

@@ -73,20 +73,6 @@ def test_build_dry_run_writes_nothing(sandbox):
     assert not (sandbox.repo / "_dist").exists()
 
 
-def test_build_strips_agents_key_from_claude_manifest(sandbox):
-    # A manifest `agents` key makes Claude load zero agents (it overrides the
-    # plugin-root auto-scan), and `claude plugin validate` does not catch it.
-    repo = sandbox.repo
-    _write_build_inputs(repo)
-    manifest = repo / ".claude-plugin" / "plugin.json"
-    manifest.parent.mkdir()
-    manifest.write_text(json.dumps({"name": "p", "agents": ["./agents/x.md"]}), encoding="utf-8")
-
-    build.build_dist()
-
-    assert json.loads(manifest.read_text(encoding="utf-8")) == {"name": "p"}
-
-
 def test_build_removes_stale_mattpocock_links_from_skills_only(sandbox):
     repo = sandbox.repo
     _write_build_inputs(repo)

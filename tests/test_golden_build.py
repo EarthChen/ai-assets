@@ -22,7 +22,7 @@ REAL_REPO = Path(__file__).resolve().parent.parent
 _REAL_RUN = subprocess.run
 
 BUILD_INPUT_FILES = ("install.py", "global-instructions.md", "mcp.json")
-BUILD_INPUT_DIRS = ("installer", "rules", ".claude-plugin")
+BUILD_INPUT_DIRS = ("installer", "rules")
 
 
 def _copy_build_inputs(src: Path, dst: Path) -> None:
