@@ -39,8 +39,18 @@ def _decision(result) -> str | None:
 @pytest.mark.parametrize("command", [
     "git worktree add ../x -b feat/x",
     "git -C /repo worktree add ../x",
+    "git -c core.x=1 --no-pager worktree add ../x",
     "cd /repo && git worktree add ../x main",
     "git fetch origin; git --no-pager worktree add ../x",
+    "git status\ngit worktree add ../x",
+    "FOO=1 git worktree add ../x",
+    "sudo git worktree add ../x",
+    "env -i A=1 git worktree add ../x",
+    "(cd /repo && git worktree add ../x)",
+    "echo $(git worktree add ../x)",
+    "bash -c 'git worktree add ../x'",
+    'sh -lc "cd r && git worktree add ../x"',
+    "false || git worktree add ../x",
 ])
 def test_git_worktree_add_is_denied_inside_herdr(command):
     # Herdr tracks worktrees as workspaces; a raw `git worktree add` is invisible to it.
@@ -69,6 +79,16 @@ def test_enter_worktree_into_an_existing_path_passes_inside_herdr():
 
 
 @pytest.mark.parametrize("command", [
+    "echo 'git worktree add ../x'",
+    'git commit -m "docs: mention git worktree add"',
+    "grep -rn 'git worktree add' skills",
+    "# git worktree add ../x",
+    "git status # git worktree add ../x",
+    "cat <<'EOF' > note.md\ngit worktree add ../x\nEOF",
+    "python3 - <<EOF\nprint('git worktree add')\nEOF\nls",
+    "git commit -m 'unterminated",
+    "git worktree addendum",
+    "git branch worktree add",
     "herdr worktree create --branch feat/x",
     "git worktree list",
     "git worktree remove ../x",
