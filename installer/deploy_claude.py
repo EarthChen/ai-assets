@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import shutil
 import subprocess
 
@@ -178,32 +179,35 @@ def _install_claude_plugins(dry_run: bool) -> None:
             )
 
 
-# The repo used to ship to Claude as a plugin. Its skills and agents now load
-# from user-level links, so a leftover plugin would load each of them twice.
-_LEGACY_PLUGIN_ID = "earthchen-ai-assets@earthchen-ai-assets"
-_LEGACY_MARKETPLACE = "earthchen-ai-assets"
+# Hooks cannot be linked: Claude reads them from settings.json or a plugin.
+# The repo's own plugin therefore ships hooks only. `.claude-plugin/
+# marketplace.json` points it at hooks/claude, never at the repo root, whose
+# skills/ and agents/ already load through the ~/.claude links.
+_SELF_PLUGIN_ID = "earthchen-ai-assets@earthchen-ai-assets"
+_SELF_PLUGIN_MANIFEST = Path("hooks") / "claude" / ".claude-plugin" / "plugin.json"
 
 
-def _retire_legacy_plugin(dry_run: bool) -> None:
-    """Uninstall the old self plugin and its local marketplace when present."""
-    listed = subprocess.run(
+def _install_self_plugin(dry_run: bool) -> None:
+    """Install or reinstall the hooks-only plugin from the working tree.
+
+    An earlier install of the same id came from the full plugin. The local
+    reinstall switches it to the hooks-only content, and `plugin update`
+    would skip an unchanged version. The plugin cache holds a snapshot, so a
+    hook edit reaches Claude only after this install and a new session.
+    """
+    manifest = paths.REPO_ROOT / _SELF_PLUGIN_MANIFEST
+    if not manifest.is_file():
+        return
+    if dry_run:
+        log(f"[DRY-RUN] claude plugin marketplace add {paths.REPO_ROOT} (local)")
+        log(f"[DRY-RUN] claude plugin install {_SELF_PLUGIN_ID}")
+        return
+    installed = subprocess.run(
         ["claude", "plugin", "list"], capture_output=True, text=True
     ).stdout
-    if _LEGACY_PLUGIN_ID not in listed:
-        return
-    steps = [
-        ["claude", "plugin", "uninstall", _LEGACY_PLUGIN_ID],
-        ["claude", "plugin", "marketplace", "remove", _LEGACY_MARKETPLACE],
-    ]
-    for cmd in steps:
-        if dry_run:
-            log(f"[DRY-RUN] {' '.join(cmd)}")
-            continue
-        result = subprocess.run(cmd, capture_output=True, text=True)
-        if result.returncode == 0:
-            log(f"legacy plugin: {' '.join(cmd[2:])} ok")
-        else:
-            log(f"legacy plugin: {' '.join(cmd[2:])} failed: {result.stderr.strip()}")
+    _ensure_claude_plugin(installed, str(paths.REPO_ROOT), "local", _SELF_PLUGIN_ID)
+    version = json.loads(manifest.read_text(encoding="utf-8")).get("version", "0.0.0")
+    _prune_claude_plugin_cache(_SELF_PLUGIN_ID, version)
 
 
 def _link_file(src: Path, dst: Path, dry_run: bool, *, backup: bool = False) -> None:
@@ -277,11 +281,11 @@ def install_claude(dry_run: bool = False) -> None:
     # 1. Plugins. detect_platforms() also accepts ~/.claude without the CLI,
     # so the plugin steps need their own CLI check; the links do not.
     if shutil.which("claude") is None:
-        log("claude CLI not on PATH: skipped plugin install and legacy plugin retirement "
+        log("claude CLI not on PATH: skipped plugin install "
             "(skills, agents, CLAUDE.md and rules still link)")
     else:
-        _retire_legacy_plugin(dry_run)
         _install_claude_plugins(dry_run)
+        _install_self_plugin(dry_run)
 
     # 2. Links. Skills and agents hot-reload; CLAUDE.md and rules load at
     # session start. MCP has no link: user-scope servers live in ~/.claude.json.

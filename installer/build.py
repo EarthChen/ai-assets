@@ -119,36 +119,6 @@ def _clean_mattpocock_skill_symlinks(dry_run: bool = False) -> None:
         log(f"skills/ stale mattpocock symlinks removed ({count})")
 
 
-def _ensure_claude_manifest_autoscan(dry_run: bool = False) -> None:
-    """Keep the `agents` key out of .claude-plugin/plugin.json.
-
-    Claude Code 2.1.x auto-scans the plugin-root agents/ dir, and a manifest
-    `agents` array silently overrides that scan with a resolver that loads
-    nothing. Verified 2026-10-08 with two probe plugins sharing one agents/
-    dir: the one declaring `"agents": ["./agents/x.md"]` reported Agents (0)
-    in `claude plugin details`, the one without the key reported Agents (1).
-    `claude plugin validate` passes either way, so the failure is silent.
-    Anthropic's own plugins (feature-dev, pr-review-toolkit, plugin-dev, ...)
-    ship an agents/ dir with no `agents` key. Build strips the key if it
-    returns, so the repo cannot drift back into loading zero agents.
-    """
-    manifest = paths.REPO_ROOT / ".claude-plugin" / "plugin.json"
-    if not manifest.exists():
-        return
-    # pi-lens-ignore: ast-grep:unchecked-throwing-call-python
-    data = json.loads(manifest.read_text(encoding="utf-8"))
-    if "agents" not in data:
-        return
-    del data["agents"]
-    if dry_run:
-        log(f"[DRY-RUN] strip `agents` from {manifest.relative_to(paths.REPO_ROOT)} "
-            f"(Claude auto-scans agents/; the key loads zero agents)")
-        return
-    manifest.write_text(
-        json.dumps(data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
-    log(".claude-plugin/plugin.json: stripped `agents` (Claude auto-scans agents/)")
-
-
 def _check_common_rules_reach_claude() -> None:
     """Fail when a rules/common file opts out of Claude.
 
@@ -187,9 +157,8 @@ def build_dist(dry_run: bool = False) -> None:
 
         # Skills and agents are NOT copied into _dist/. The plugin platforms
         # read the repo-root skills/ and agents/ directly (Cursor/Codex
-        # manifest: "skills": "./skills/"; Claude: no skills/agents keys →
-        # auto-scans plugin-root skills/ and agents/, see
-        # _ensure_claude_manifest_autoscan); pi gets symlinks from install_pi.
+        # manifest: "skills": "./skills/"; Claude links them into ~/.claude);
+        # pi gets symlinks from install_pi.
         # This works because mattpocock/anysearch moved to manual install
         # (~/.agents/skills/ symlinks), so root skills/ holds only committed
         # real files — no vendor symlinks that would break on a fresh clone
@@ -279,8 +248,3 @@ def build_dist(dry_run: bool = False) -> None:
 
         if has_rules and not dry_run:
             log(f"_dist/{platform}/rules/ generated")
-
-    # Claude auto-scans the plugin-root agents/ dir; a manifest `agents` key
-    # overrides that scan and loads zero agents (probe-verified — see
-    # _ensure_claude_manifest_autoscan).
-    _ensure_claude_manifest_autoscan(dry_run)

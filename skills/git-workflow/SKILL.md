@@ -44,7 +44,15 @@ Use `git worktree` instead of stash + branch-switching when work must proceed in
 - Hotfix while a feature branch has work in progress
 - Risky experiments that should not touch the main working tree
 
-Conventions:
+Before creating a worktree, check `HERDR_ENV`. `HERDR_ENV=1` means the session runs inside Herdr: use the `herdr` skill and `herdr worktree` for the whole lifecycle. A hook denies `git worktree add` and `EnterWorktree` creation there. Otherwise use `git worktree add`.
+
+Herdr lifecycle:
+
+- Create: `herdr worktree create --branch <name> --base <ref>`. Herdr picks the path (`~/.herdr/worktrees/<repo>/<branch>`) and opens a workspace.
+- Enter: `EnterWorktree` with `path` switches the session into it.
+- Remove after merge: `herdr worktree remove --workspace <id>`, then `git branch -d <branch>`. Herdr deletes the checkout only, so the branch stays.
+
+Conventions (the placement rule applies to plain git only; Herdr owns its path):
 
 - Place worktrees OUTSIDE the repo directory (e.g. sibling `../<repo>-<branch>`), never inside it — nested worktrees pollute file search and tooling scans
 - One branch = one worktree; a branch cannot be checked out in two worktrees

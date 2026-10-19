@@ -3,12 +3,12 @@
   "owner": {
     "name": "earthchen"
   },
+  "description": "Personal Claude Code hooks. Skills, agents and rules load from ~/.claude links.",
   "plugins": [
     {
       "name": "earthchen-ai-assets",
-      "version": "1.3.2",
-      "description": "Personal unified AI agent assets: skills, agents, rules, MCP",
-      "source": "./",
+      "description": "Personal Claude Code hooks",
+      "source": "./hooks/claude",
       "category": "Productivity"
     }
   ]
