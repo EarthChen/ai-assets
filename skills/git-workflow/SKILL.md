@@ -44,11 +44,17 @@ Use `git worktree` instead of stash + branch-switching when work must proceed in
 - Hotfix while a feature branch has work in progress
 - Risky experiments that should not touch the main working tree
 
-Before creating a worktree, check `HERDR_ENV`. When `HERDR_ENV=1`, the session runs inside Herdr: load the `herdr` skill and create the worktree with `herdr worktree create`, which opens it as a workspace. Herdr owns the path, and the conventions below that concern placement and `git worktree` commands do not apply. Otherwise use `git worktree add`.
+Before creating a worktree, check `HERDR_ENV`. `HERDR_ENV=1` means the session runs inside Herdr: use the `herdr` skill and `herdr worktree` for the whole lifecycle. A hook denies `git worktree add` and `EnterWorktree` creation there. Otherwise use `git worktree add`.
 
-Conventions:
+Herdr lifecycle:
+
+- Create: `herdr worktree create --branch <name> --base <ref>`. Herdr picks the path (`~/.herdr/worktrees/<repo>/<branch>`) and opens a workspace.
+- Enter: `EnterWorktree` with `path` switches the session into it.
+- Remove after merge: `herdr worktree remove --workspace <id>`, then `git branch -d <branch>`. Herdr deletes the checkout only, so the branch stays.
+
+Conventions (the placement rule applies to plain git only; Herdr owns its path):
 
 - Place worktrees OUTSIDE the repo directory (e.g. sibling `../<repo>-<branch>`), never inside it — nested worktrees pollute file search and tooling scans
 - One branch = one worktree; a branch cannot be checked out in two worktrees
 - Dependencies and env files (`node_modules/`, `.venv/`, `.env`) are NOT shared — reinstall/copy per worktree before running anything
-- Clean up after merge: `git worktree remove <path>`, then `git worktree prune` (Herdr worktrees: `herdr worktree remove`); do not leave stale worktrees behind
+- Clean up after merge: `git worktree remove <path>`, then `git worktree prune`; do not leave stale worktrees behind
