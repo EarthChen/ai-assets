@@ -27,11 +27,12 @@ _REASON = (
 
 def _creates_worktree(payload: dict) -> bool:
     tool = payload.get("tool_name")
+    tool_input = payload.get("tool_input") or {}
     if tool == "EnterWorktree":
-        return True
+        # `path` switches into an existing worktree; only `name` or nothing creates one.
+        return not tool_input.get("path")
     if tool == "Bash":
-        command = (payload.get("tool_input") or {}).get("command") or ""
-        return bool(_GIT_WORKTREE_ADD.search(command))
+        return bool(_GIT_WORKTREE_ADD.search(tool_input.get("command") or ""))
     return False
 
 

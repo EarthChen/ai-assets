@@ -52,11 +52,20 @@ def test_git_worktree_add_is_denied_inside_herdr(command):
     assert "herdr worktree create" in reason
 
 
-def test_enter_worktree_tool_is_denied_inside_herdr():
+@pytest.mark.parametrize("tool_input", [{}, {"name": "probe"}])
+def test_enter_worktree_creation_is_denied_inside_herdr(tool_input):
     # The built-in tool creates a git worktree without going through Bash.
-    result = _run({"tool_name": "EnterWorktree", "tool_input": {}}, herdr=True)
+    result = _run({"tool_name": "EnterWorktree", "tool_input": tool_input}, herdr=True)
 
     assert _decision(result) == "deny"
+
+
+def test_enter_worktree_into_an_existing_path_passes_inside_herdr():
+    # `path` only switches into a worktree that exists, such as one just made
+    # by `herdr worktree create`. Denying it would block the sanctioned flow.
+    result = _run({"tool_name": "EnterWorktree", "tool_input": {"path": "/repo-wt"}}, herdr=True)
+
+    assert _decision(result) is None
 
 
 @pytest.mark.parametrize("command", [
