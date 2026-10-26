@@ -22,3 +22,6 @@
 [submodule "vendor/yao-meta-skill"]
 	path = vendor/yao-meta-skill
 	url = git@github.com:yaojingang/yao-meta-skill.git
+[submodule "vendor/momo-tools"]
+	path = vendor/momo-tools
+	url = git@github.com:EarthChen/momo-tools.git

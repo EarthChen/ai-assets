@@ -36,7 +36,8 @@ ai-assets/
 │   ├── herdr-skill/           # Herdr 终端复用器控制技能 (sparse submodule)
 │   ├── playwright-cli/        # microsoft/playwright-cli 浏览器自动化技能
 │   ├── humanlayer-skills/     # humanlayer/skills monorepo (链接 show-me + visual-pr)
-│   └── yao-meta-skill/        # skill 工程元技能 (替代原 skill-creator)
+│   ├── yao-meta-skill/        # skill 工程元技能 (替代原 skill-creator)
+│   └── momo-tools/            # EarthChen/momo-tools 内部系统 CLI 技能 (私有仓库)
 ├── mcp.json                   # 统一 MCP 配置 (_platforms 过滤)
 ├── _dist/                     # 自动生成的平台产物 (已提交；skills/agents 不复制进此)
 │   ├── cursor/                # rules/*.mdc + mcp.json
@@ -66,7 +67,7 @@ uv run install.py --platform cursor
 uv run install.py --dry-run
 ```
 
-`install.py install` 会自动完成三方 skills 的 symlink 安装（mattpocock / anysearch / understand-anything / herdr / playwright-cli / show-me / visual-pr / yao-meta-skill），无需单独运行 `manual`。
+`install.py install` 会自动完成三方 skills 的 symlink 安装（mattpocock / anysearch / understand-anything / herdr / playwright-cli / show-me / visual-pr / yao-meta-skill / momo-tools），无需单独运行 `manual`。
 
 ### 子命令
 
@@ -313,6 +314,7 @@ MCP 配置中使用 `_platforms` 字段：
 | show-me | vendor submodule（humanlayer monorepo，仅用户显式调用） | symlink 进 `~/.agents/skills/` + `~/.claude/skills/` |
 | visual-pr | vendor submodule（humanlayer monorepo，PR 可视化描述） | symlink 进 `~/.agents/skills/` + `~/.claude/skills/` |
 | yao-meta-skill | vendor submodule（单技能，仓库根即 skill） | symlink 进 `~/.claude/skills/` + `~/.agents/skills/` |
+| momo-tools | vendor submodule（私有仓库，单技能；依赖 `uv tool install` 装的 CLI） | symlink 进 `~/.agents/skills/` + `~/.claude/skills/` |
 | context-mode | 仅溯源登记 | 不经本仓库分发；各平台原生插件/npm 安装（Claude 由 install.py 自动装） |
 
 > symlink 安装绕过插件缓存，运行时文件（`runtime.conf`、生成的图谱等）得以跨 session 留存。
