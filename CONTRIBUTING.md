@@ -15,7 +15,7 @@ Maintenance guide for the ai-assets repo itself. End-user product documentation 
 
 The repo has two layers:
 
-1. **Source (single truth)** — `rules/`, `skills/`, `agents/`, `mcp.json`, `global-instructions.md`, `install.py` + `installer/`, `.claude-plugin/` (Claude marketplace), `.cursor-plugin/`, `hooks/`, `third-party.json`
+1. **Source (single truth)** — `rules/`, `skills/`, `agents/`, `mcp.json`, `global-instructions.md`, `install.py` + `installer/`, `.cursor-plugin/`, `third-party.json`
 2. **`_dist/` (per-platform outputs, committed)** — `cursor/`, `codex/`, `pi/` (Claude has none: it links the sources)
 
 `install.py build` regenerates `_dist/` from source. Skills and agents are **not** copied into `_dist/` — Claude scans the repo root `skills/`/`agents/` through its plugin, Cursor reads `agents/` from its plugin copy, and pi, Cursor and Codex get self-owned skills through `~/.agents/skills` symlinks. `build` does not read `skills/` or `agents/` at all. `_dist/` holds only what genuinely differs per platform:
@@ -28,16 +28,11 @@ Known gap: `_dist/codex/mcp.json` is generated but nothing reads it. Codex loads
 
 Why commit `_dist/`? Marketplace installs (Cursor marketplace, Claude remote marketplace) clone the repo and read `_dist/` as committed; they never run `build`. Local deploys still need `install.py install` after `build`: Cursor reads a real-dir copy, Codex reads `~/.codex/AGENTS.md` (a copy; only its skills track the repo through the plugin symlink), Claude Code reads symlinks to the sources (skills and agents instantly; `CLAUDE.md` and rules at session start, with no `build`), and pi reads `~/.pi/agent/AGENTS.md`. `uv run pytest` fails when the committed `_dist/` differs from a fresh build.
 
-### Plugin Manifests: Claude and Cursor Load Different Plugins
+### Plugin Manifests: Only Cursor Loads a Repo Plugin
 
-The two platforms each own one marketplace manifest. Neither points at the other's plugin:
+Cursor owns the one marketplace manifest, `.cursor-plugin/marketplace.json` + `.cursor-plugin/plugin.json`. Its source is `./` (repo root) and its content is agents, rules and MCP.
 
-| Platform | Manifest | Plugin source | Content |
-| --- | --- | --- | --- |
-| Cursor | `.cursor-plugin/marketplace.json` + `.cursor-plugin/plugin.json` | `./` (repo root) | agents, rules, MCP |
-| Claude | `.claude-plugin/marketplace.json` | `./hooks/claude` | hooks only (`hooks/claude/.claude-plugin/plugin.json`) |
-
-Claude links skills, agents, `CLAUDE.md` and rules into `~/.claude` (see Claude Symlink Deploy below). A Claude plugin rooted at the repo root would load every skill and agent a second time, so `tests/test_plugin_manifests.py` pins the Claude source to `./hooks/claude`. Both manifests keep the plugin name `earthchen-ai-assets`: an earlier full install of that id switches to hooks-only content on the next `install` (reinstall), with no uninstall step of its own.
+Claude has no repo plugin. It links skills, agents, `CLAUDE.md` and rules into `~/.claude` (see Claude Symlink Deploy below). A Claude plugin rooted at the repo root would load every skill and agent a second time, so `tests/test_plugin_manifests.py` fails when `.claude-plugin/` exists.
 
 ## Build Transforms (rules frontmatter → per-platform)
 
@@ -86,11 +81,10 @@ pi has no such limit (`_dist/pi/AGENTS.md` is built the same way and is also 11.
 | Agents | `~/.claude/agents/<name>.md` → `agents/<name>.md` | Within seconds; the first agent file in a new `agents/` dir needs a restart |
 | `CLAUDE.md` | `~/.claude/CLAUDE.md` → `global-instructions.md` | New session; no `build` |
 | Rules | `~/.claude/rules/common` → `rules/common` | New session; no `build`, new rule files need no `install` either (directory link) |
-| Hooks | none; plugin `earthchen-ai-assets` from `hooks/claude/` | Plugin cache snapshot: edit, rerun `install`, start a new session. `claude --plugin-dir hooks/claude` loads the live directory for one session |
+| Hooks | none | Not deployed. Add hooks by hand in `~/.claude/settings.json` |
 | MCP | none | Manual: `claude mcp add-json --scope user <name> '<json>'` |
 
 - **Why no MCP deploy**: user-scope servers live in `~/.claude.json`, which also holds oauth state, caches and per-project history and which Claude rewrites at runtime. A symlink or copy would clobber it. The one repo entry is tagged `cursor`, so Claude needs none today.
-- **Hooks plugin**: Claude reads hooks from `settings.json` or a plugin, so a link cannot carry them. `.claude-plugin/marketplace.json` points the `earthchen-ai-assets` plugin at `hooks/claude/`, which holds hooks only. `install` reinstalls it from the working tree on every run, because `plugin update` skips an unchanged version (probe-verified 2026-10-19: with a bumped version, `update` re-reads a local marketplace and switches source). Current hook: `herdr_worktree_guard.py` denies `git worktree add` and `EnterWorktree` when `HERDR_ENV=1`.
 - **Names**: skills and agents are bare (`code-audit`, not `earthchen-ai-assets:code-audit`). Same-name agents resolve by priority (user over plugin); same-name skills both load.
 - **Real files are safe**: a different `CLAUDE.md` is kept as `CLAUDE.md.pre-link.bak`; a real agent file with a repo agent's name is skipped with a warning; the old copied `rules/common` dir is replaced.
 - **Unverified in the docs**: symlinks for `~/.claude/CLAUDE.md`, `~/.claude/rules/` and `~/.claude/agents/` (skills are documented). After the first install, start a session and confirm the rules and agents load.
@@ -219,7 +213,7 @@ git submodule update --remote vendor/mattpocock-skills  # update upstream (symli
 
 **Adding a new rule**: see `README.md` Rules 系统详解 (or AGENTS.md if that's where rules deployment strategy lives).
 
-**Bumping versions**: `uv run install.py version --bump patch` (major/minor/patch). Updates `.cursor-plugin/{plugin,marketplace}.json` and `hooks/claude/.claude-plugin/plugin.json`. Optional — see Claude Code Version-Gating above.
+**Bumping versions**: `uv run install.py version --bump patch` (major/minor/patch). Updates `.cursor-plugin/{plugin,marketplace}.json`. Optional — see Claude Code Version-Gating above.
 
 **Running tests**: `uv run pytest`. Tests use a scratch HOME and never touch `~/`. The golden test builds a copy of the repo and fails when the committed `_dist/` is stale — run `uv run install.py build` and commit `_dist/`. Installer code lives in `installer/` (one module per phase/platform); `install.py` is only the entrypoint.
 
@@ -237,9 +231,7 @@ uv run install.py build --dry-run
 # 3. Check _dist/ contents
 ls _dist/cursor/rules/ _dist/codex/
 
-# 4. Validate the Claude marketplace and hooks plugin, then check the Claude links
-claude plugin validate .
-claude plugin validate hooks/claude
+# 4. Check the Claude links
 find ~/.claude/skills ~/.claude/agents -maxdepth 1 -type l ! -exec test -e {} \; -print  # dangling links
 
 # 5. Check Codex AGENTS.md size budget

@@ -9,8 +9,6 @@ import pytest
 
 from installer import deploy_claude
 
-SELF_PLUGIN = "earthchen-ai-assets@earthchen-ai-assets"
-
 
 def _declare_local_plugin(repo):
     (repo / "third-party.json").write_text(json.dumps({"plugins": [{
@@ -165,55 +163,3 @@ def test_other_third_party_plugins_still_install(sandbox, fake_cli):
     deploy_claude.install_claude(dry_run=False)
 
     assert ["claude", "plugin", "install", "other@other", "--scope", "user"] in fake_cli["calls"]
-
-
-def _seed_hooks_plugin(repo):
-    manifest = repo / "hooks" / "claude" / ".claude-plugin"
-    manifest.mkdir(parents=True)
-    (manifest / "plugin.json").write_text(
-        json.dumps({"name": "earthchen-ai-assets", "version": "1.4.0"}), encoding="utf-8"
-    )
-
-
-def test_hooks_plugin_installs_from_the_repo_marketplace(sandbox, fake_cli):
-    _seed_repo(sandbox.repo)
-    _seed_hooks_plugin(sandbox.repo)
-
-    deploy_claude.install_claude(dry_run=False)
-
-    assert ["claude", "plugin", "marketplace", "add", str(sandbox.repo)] in fake_cli["calls"]
-    assert ["claude", "plugin", "install", SELF_PLUGIN, "--scope", "user"] in fake_cli["calls"]
-
-
-def test_earlier_install_of_the_same_id_is_reinstalled_not_retired(sandbox, fake_cli):
-    # The repo marketplace now lists only the hooks-only plugin, so an install
-    # left from the full plugin needs a reinstall to switch content: `plugin
-    # update` skips an unchanged version. Removing the marketplace would
-    # take the new plugin down with it.
-    _seed_repo(sandbox.repo)
-    _seed_hooks_plugin(sandbox.repo)
-    fake_cli["listed"] = f"  ❯ {SELF_PLUGIN}\n    Version: 1.3.2\n"
-
-    deploy_claude.install_claude(dry_run=False)
-
-    calls = fake_cli["calls"]
-    assert ["claude", "plugin", "uninstall", SELF_PLUGIN] in calls
-    assert ["claude", "plugin", "install", SELF_PLUGIN, "--scope", "user"] in calls
-    assert not [c for c in calls if c[:4] == ["claude", "plugin", "marketplace", "remove"]]
-
-
-def test_hooks_plugin_is_skipped_when_its_directory_is_absent(sandbox, fake_cli):
-    _seed_repo(sandbox.repo)
-
-    deploy_claude.install_claude(dry_run=False)
-
-    assert not [c for c in fake_cli["calls"] if SELF_PLUGIN in c]
-
-
-def test_dry_run_makes_no_hooks_plugin_calls(sandbox, fake_cli):
-    _seed_repo(sandbox.repo)
-    _seed_hooks_plugin(sandbox.repo)
-
-    deploy_claude.install_claude(dry_run=True)
-
-    assert not [c for c in fake_cli["calls"] if c[2:3] in (["install"], ["uninstall"]) or "add" in c]

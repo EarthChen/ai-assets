@@ -14,7 +14,7 @@ def _get_current_version() -> str:
     Reading the first available file instead let drift silently re-issue an
     existing version: with .cursor-plugin at 1.3.0 and .claude-plugin at 1.3.1,
     `version --bump patch` computed 1.3.0 -> 1.3.1 and wrote 1.3.1 everywhere
-    (hit 2026-10-08). set_version keeps the three aligned, so the max is the
+    (hit 2026-10-08). set_version keeps them aligned, so the max is the
     base a bump should start from.
     """
     def sort_key(ver: str) -> tuple:
