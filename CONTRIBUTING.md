@@ -94,7 +94,7 @@ pi has no such limit (`_dist/pi/AGENTS.md` is built the same way and is also 11.
 - **Names**: skills and agents are bare (`code-audit`, not `earthchen-ai-assets:code-audit`). Same-name agents resolve by priority (user over plugin); same-name skills both load.
 - **Real files are safe**: a different `CLAUDE.md` is kept as `CLAUDE.md.pre-link.bak`; a real agent file with a repo agent's name is skipped with a warning; the old copied `rules/common` dir is replaced.
 - **Unverified in the docs**: symlinks for `~/.claude/CLAUDE.md`, `~/.claude/rules/` and `~/.claude/agents/` (skills are documented). After the first install, start a session and confirm the rules and agents load.
-- Third-party (manual/symlink) skills use the same `~/.claude/skills/`; the eight sets listed under Third-Party Skills below are unaffected.
+- Third-party (manual/symlink) skills use the same `~/.claude/skills/`; the nine sets listed under Third-Party Skills below are unaffected.
 
 ### Local vs Remote Marketplace
 
@@ -135,7 +135,7 @@ UI提示 "Error loading plugin" **不写进任何文件日志**，console 也只
 
 ## Third-Party Skills (symlink-installed)
 
-Eight third-party skill sets are **NOT plugin-distributed** — they install as user-level symlinks so their runtime files (`runtime.conf`, `.env`, upstream-pinned content) survive outside the plugin cache (a read-only snapshot overwritten on every version pull). All are declared in `third-party.json` with a top-level `install` object and deployed by `install.py`'s manual-skill path, which **`install.py install` runs automatically** (no separate `install.py manual` needed):
+Nine third-party skill sets are **NOT plugin-distributed** — they install as user-level symlinks so their runtime files (`runtime.conf`, `.env`, upstream-pinned content) survive outside the plugin cache (a read-only snapshot overwritten on every version pull). All are declared in `third-party.json` with a top-level `install` object and deployed by `install.py`'s manual-skill path, which **`install.py install` runs automatically** (no separate `install.py manual` needed):
 
 | Skill set | submodule | discovery | links |
 | --- | --- | --- | --- |
@@ -147,6 +147,7 @@ Eight third-party skill sets are **NOT plugin-distributed** — they install as 
 | **show-me** | `vendor/humanlayer-skills` | `generate.scan_dir` (scans `plugins/show-me/skills/` — humanlayer 6-plugin monorepo, show-me + visual-pr linked) | `~/.agents/skills/` + `~/.claude/skills/` (via `extra_links`) |
 | **visual-pr** | `vendor/humanlayer-skills` | `generate.scan_dir` (scans `plugins/visual-pr/skills/` — same submodule as show-me) | `~/.agents/skills/` + `~/.claude/skills/` (via `extra_links`) |
 | **yao-meta-skill** | `vendor/yao-meta-skill` | `links` (explicit list, single skill at repo root) | `~/.claude/skills/yao-meta-skill` + `~/.agents/skills/yao-meta-skill` |
+| **momo-tools** | `vendor/momo-tools` | `generate.scan_dir` (scans `skills/` — single momo-tools skill; private upstream) | `~/.agents/skills/` + `~/.claude/skills/` (via `extra_links`) |
 
 `install.py manual <name>` remains as a single-skill reinstall entry point. All four platforms (Claude, Codex, Cursor, pi) follow these symlinks correctly; no per-platform workaround needed. Adding a third-party skill = adding a `third-party.json` entry with an `install` object (choose `links` for single-skill repos, `generate.from+field` if upstream declares a skill list, `generate.scan_dir` if it doesn't) — no `install.py` code change. See `third-party.schema.json` for the `install`/`installConfig`/`generateConfig` schema.
 
@@ -181,6 +182,15 @@ The [herdr](https://github.com/badlogic/herdr) terminal-multiplexer control skil
 [yaojingang/yao-meta-skill](https://github.com/yaojingang/yao-meta-skill) — Skill-OS-style meta skill: create, improve, evaluate, package, and govern reusable agent skills. Single skill at repo root (`SKILL.md` + `references/` + `scripts/` + `reports/`), so distribution uses the `links` pattern (same as anysearch). Replaced the former self-owned `skills/skill-creator` (removed 2026-09-04).
 
 **Upgrade:** `git submodule update --remote vendor/yao-meta-skill` (no upstream release tags — re-pin to a main commit). Symlinks flow automatically.
+
+### momo-tools
+
+[EarthChen/momo-tools](https://github.com/EarthChen/momo-tools) — CLIs and one skill for wemomo.com internal systems (`hubble`, `mse`, `kibana`, `store`). Full (not sparse) submodule at `vendor/momo-tools`: the repo is small, and the checkout doubles as the CLI install source.
+
+- **Private upstream**: this repo is public, so the `.gitmodules` URL and the pinned SHA are visible; the skill content is not. A clone without access to `EarthChen/momo-tools` fails to init the submodule; `install_manual_skills` logs the error and skips the entry, and the other skills still install.
+- **Runtime dependency**: the skill calls the CLIs on PATH. Install them with `uv tool install --force vendor/momo-tools` (or from any local clone). Without them the skill tells the agent to ask the user to install.
+
+**Upgrade:** `git submodule update --remote vendor/momo-tools` (no upstream release tags — re-pin to a main commit). Symlinks flow automatically; rerun `uv tool install --force` to update the CLIs.
 
 ### mattpocock/skills
 

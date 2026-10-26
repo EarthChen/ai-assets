@@ -205,6 +205,32 @@
       }
     },
     {
+      "name": "momo-tools",
+      "description": "EarthChen/momo-tools (PRIVATE repo) — skill for the wemomo.com internal-system CLIs: hubble (Hubble metrics/MOA/trace), mse (MSE config center), kibana (log KQL search), store (MOMO STORE Redis/MySQL clusters). Single skill (skills/momo-tools/SKILL.md + references/ + evals/). Requires the CLIs at runtime: uv tool install --force vendor/momo-tools (or any local clone). Private submodule: a clone without access to EarthChen/momo-tools fails to init it, and install.py logs the error and skips this entry. Upstream carries no release tags — pinned to a main commit; upgrade via git submodule update --remote vendor/momo-tools + re-pin. Submodule stays out of build/_dist.",
+      "install": {
+        "source": "vendor/momo-tools",
+        "generate": {
+          "scan_dir": "skills",
+          "link_dir": "~/.agents/skills",
+          "extra_links": ["~/.claude/skills"]
+        }
+      },
+      "platforms": {
+        "claude": {
+          "note": "Installed by `install.py manual momo-tools` — symlinks skills/momo-tools into ~/.claude/skills/ (Claude scans this user-level dir; it does NOT read ~/.agents/skills/)."
+        },
+        "codex": {
+          "note": "Installed by `install.py manual momo-tools` — symlinks into ~/.agents/skills/ (Codex standard user path; follows symlinks per loader.rs User scope = Follow)."
+        },
+        "cursor": {
+          "note": "Same as codex: `install.py manual momo-tools` → ~/.agents/skills/. Cursor scans ~/.agents/skills/ by default and follows symlinks correctly."
+        },
+        "pi": {
+          "note": "pi scans ~/.agents/skills/ natively; no extra deploy step beyond `install.py manual momo-tools`."
+        }
+      }
+    },
+    {
       "name": "context-mode",
       "description": "MCP server + session-continuity layer by mksglu/context-mode. Saves context by sandboxing tool output (ctx_execute/ctx_execute_file/ctx_batch_execute/ctx_fetch_and_index/ctx_index/ctx_search) and tracking session events in FTS5-backed SQLite for restore across compactions. NOT a skill distributed by this repo — installed per-platform via each platform's native plugin or npm path. This repo's AGENTS.md already references ctx-* tools, so this entry formalizes their provenance.",
       "platforms": {
