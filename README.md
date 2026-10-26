@@ -45,8 +45,6 @@ ai-assets/
 │   └── pi/                    # AGENTS.md
 ├── .cursor-plugin/plugin.json
 ├── .cursor-plugin/marketplace.json
-├── .claude-plugin/marketplace.json  # Claude：仅指向 hooks/claude
-├── hooks/claude/              # Claude 插件（仅 hooks）
 ├── install.py                 # 一键安装脚本
 ├── installer/                 # install.py 的实现（按阶段/平台分模块）
 ├── tests/                     # pytest（uv run pytest；含 _dist/ golden 测试）
@@ -286,7 +284,6 @@ MCP 配置中使用 `_platforms` 字段：
 | 插件 | 组件 | 原因 |
 | ------ | ------ | ------ |
 | `.cursor-plugin` | rules, agents, mcp | skills 走 `~/.agents/skills/`，插件不重复提供 |
-| `.claude-plugin` → `hooks/claude` | hooks | skills/agents/rules 走 `~/.claude` 软链部署，插件只补软链无法承载的 hooks |
 
 ## 新增规则
 

@@ -44,7 +44,7 @@ Use `git worktree` instead of stash + branch-switching when work must proceed in
 - Hotfix while a feature branch has work in progress
 - Risky experiments that should not touch the main working tree
 
-Before creating a worktree, check `HERDR_ENV`. `HERDR_ENV=1` means the session runs inside Herdr: use the `herdr` skill and `herdr worktree` for the whole lifecycle. A hook denies `git worktree add` and `EnterWorktree` creation there. Otherwise use `git worktree add`.
+Before creating a worktree, check `HERDR_ENV`. `HERDR_ENV=1` means the session runs inside Herdr: use the `herdr` skill and `herdr worktree` for the whole lifecycle. Otherwise use `git worktree add`.
 
 Herdr lifecycle:
 

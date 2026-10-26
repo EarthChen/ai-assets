@@ -37,14 +37,5 @@ def test_bump_version(current, part, expected):
     assert version._bump_version(current, part) == expected
 
 
-def test_get_current_version_uses_highest_manifest_version(sandbox):
-    # Drifted manifests must not let a bump re-issue an existing version.
-    versions = {".cursor-plugin": "1.3.0", "hooks/claude/.claude-plugin": "1.3.10"}
-    for d, ver in versions.items():
-        (sandbox.repo / d).mkdir(parents=True)
-        (sandbox.repo / d / "plugin.json").write_text(json.dumps({"version": ver}), encoding="utf-8")
-    assert version._get_current_version() == "1.3.10"
-
-
 def test_get_current_version_without_manifests_is_zero(sandbox):
     assert version._get_current_version() == "0.0.0"
