@@ -62,6 +62,38 @@ def test_manual_skills_link_into_user_dirs(sandbox):
         assert (sandbox.home / d / "skills" / "s1").resolve() == target
 
 
+def _write_local_source_entry(repo, local):
+    (repo / "third-party.json").write_text(json.dumps({"plugins": [
+        {"name": "one", "install": {"source": "vendor/one", "local_source": str(local), "generate": {
+            "scan_dir": ".", "link_dir": "~/.claude/skills"}}},
+    ]}), encoding="utf-8")
+
+
+def test_manual_skills_prefer_local_source_so_dev_checkout_edits_apply_at_once(sandbox, tmp_path):
+    # The CLIs run from an editable install of the dev checkout; linking the
+    # skill to the same checkout keeps docs and CLI behavior in step.
+    make_skill(sandbox.repo / "vendor" / "one", "s1")
+    local = tmp_path / "dev" / "one"
+    make_skill(local, "s1")
+    _write_local_source_entry(sandbox.repo, local)
+
+    third_party.install_manual_skills(name=None)
+
+    assert (sandbox.home / ".claude" / "skills" / "s1").resolve() == (local / "s1").resolve()
+
+
+def test_manual_skills_fall_back_to_vendor_when_local_source_is_absent(sandbox, tmp_path):
+    # local_source is a path on one machine; every other clone must keep
+    # working from the pinned submodule.
+    make_skill(sandbox.repo / "vendor" / "one", "s1")
+    _write_local_source_entry(sandbox.repo, tmp_path / "missing")
+
+    third_party.install_manual_skills(name=None)
+
+    target = (sandbox.repo / "vendor" / "one" / "s1").resolve()
+    assert (sandbox.home / ".claude" / "skills" / "s1").resolve() == target
+
+
 def test_manual_skills_unknown_name_installs_nothing(sandbox, capsys):
     (sandbox.repo / "third-party.json").write_text(json.dumps({"plugins": []}), encoding="utf-8")
     third_party.install_manual_skills(name="missing")

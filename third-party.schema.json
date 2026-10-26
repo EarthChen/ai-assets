@@ -40,6 +40,7 @@
       "description": "Symlink-install declaration. Exactly one of `links` | `generate` (enforced by install.py). source = repo-relative submodule path.",
       "properties": {
         "source": { "type": "string", "description": "Repo-relative submodule path, e.g. vendor/understand-anything." },
+        "local_source": { "type": "string", "description": "Optional absolute or ~ path to a dev checkout on this machine. Used instead of source when it is a non-empty dir, so edits there apply without a submodule bump; other machines fall back to source." },
         "links": {
           "type": "array",
           "items": { "type": "string" },

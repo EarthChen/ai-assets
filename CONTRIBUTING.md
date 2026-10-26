@@ -183,6 +183,7 @@ The [herdr](https://github.com/badlogic/herdr) terminal-multiplexer control skil
 
 - **Private upstream**: this repo is public, so the `.gitmodules` URL and the pinned SHA are visible; the skill content is not. A clone without access to `EarthChen/momo-tools` fails to init the submodule; `install_manual_skills` logs the error and skips the entry, and the other skills still install.
 - **Runtime dependency**: the skill calls the CLIs on PATH. Install them with `uv tool install --force vendor/momo-tools` (or from any local clone). Without them the skill tells the agent to ask the user to install.
+- **Dev checkout first**: `install.local_source` is `~/work/momo/momo-tools`, the checkout the CLIs are editable-installed from. When it exists, the skill links point there, so skill edits apply at once and match the CLI behavior (uncommitted edits and the checked-out branch included). Other machines lack the path and link the submodule. Rerun `install.py manual momo-tools` after creating or removing that checkout.
 
 **Upgrade:** `git submodule update --remote vendor/momo-tools` (no upstream release tags — re-pin to a main commit). Symlinks flow automatically; rerun `uv tool install --force` to update the CLIs.
 
