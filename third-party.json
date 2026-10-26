@@ -206,9 +206,10 @@
     },
     {
       "name": "momo-tools",
-      "description": "EarthChen/momo-tools (PRIVATE repo) — skill for the wemomo.com internal-system CLIs: hubble (Hubble metrics/MOA/trace), mse (MSE config center), kibana (log KQL search), store (MOMO STORE Redis/MySQL clusters). Single skill (skills/momo-tools/SKILL.md + references/ + evals/). Requires the CLIs at runtime: uv tool install --force vendor/momo-tools (or any local clone). Private submodule: a clone without access to EarthChen/momo-tools fails to init it, and install.py logs the error and skips this entry. Upstream carries no release tags — pinned to a main commit; upgrade via git submodule update --remote vendor/momo-tools + re-pin. Submodule stays out of build/_dist.",
+      "description": "EarthChen/momo-tools (PRIVATE repo) — skill for the wemomo.com internal-system CLIs: hubble (Hubble metrics/MOA/trace), mse (MSE config center), kibana (log KQL search), store (MOMO STORE Redis/MySQL clusters). Single skill (skills/momo-tools/SKILL.md + references/). Requires the CLIs at runtime: uv tool install --force vendor/momo-tools (or any local clone). Private submodule: a clone without access to EarthChen/momo-tools fails to init it, and install.py logs the error and skips this entry. Upstream carries no release tags — pinned to a main commit; upgrade via git submodule update --remote vendor/momo-tools + re-pin. Submodule stays out of build/_dist. local_source ~/work/momo/momo-tools (the dev checkout the CLIs are editable-installed from) wins when it exists, so skill edits there apply at once; other machines use the submodule.",
       "install": {
         "source": "vendor/momo-tools",
+        "local_source": "~/work/momo/momo-tools",
         "generate": {
           "scan_dir": "skills",
           "link_dir": "~/.agents/skills",

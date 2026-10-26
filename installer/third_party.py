@@ -111,6 +111,21 @@ def _expand_install_links(install: dict, source: Path) -> list[tuple[Path, Path]
     return []
 
 
+def _resolve_source(install: dict) -> Path:
+    """Return `local_source` when it is a non-empty dir, else the submodule.
+
+    `local_source` names a dev checkout on this machine (e.g. the repo an
+    editable CLI install runs from), so edits there apply without a
+    submodule bump. Other machines lack the path and use `source`.
+    """
+    local = install.get("local_source")
+    if local:
+        path = Path(local).expanduser()
+        if path.is_dir() and any(path.iterdir()):
+            return path
+    return paths.REPO_ROOT / install["source"]
+
+
 def _manual_skills() -> list[dict]:
     """Plugins in third-party.json that declare an `install` object.
 
@@ -123,7 +138,7 @@ def _manual_skills() -> list[dict]:
         install = plugin.get("install")
         if not isinstance(install, dict):
             continue
-        source = paths.REPO_ROOT / install["source"]
+        source = _resolve_source(install)
         pairs = _expand_install_links(install, source)
         result.append({"name": plugin["name"], "source": source, "pairs": pairs})
     return result
@@ -172,13 +187,14 @@ def install_manual_skills(name: str | None, dry_run: bool = False) -> None:
                     log(f"ERROR: submodule init failed: {result.stderr.strip()}")
                     continue
 
-        log(f"[{skill['name']}] {len(pairs)} symlink(s)")
+        log(f"[{skill['name']}] {len(pairs)} symlink(s) from {src}")
         for link, target in pairs:
             create_symlink(target.resolve(), link, dry_run)
 
     if dry_run:
         return
-    log("Manual skills installed. Each symlink points at its vendor submodule,")
+    log("Manual skills installed. Each symlink points at its vendor submodule")
+    log("(or its local_source checkout when that exists),")
     log("so `git submodule update --remote <path>` (then re-pin to a tag) flows")
     log("to all platforms at once. Caveats per platform are in third-party.json")
     log("under each platform's `note`.")
