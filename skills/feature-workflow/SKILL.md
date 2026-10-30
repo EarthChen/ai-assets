@@ -1,6 +1,6 @@
 ---
 name: feature-workflow
-description: "Use when starting a feature or fix: plan → TDD → simplify → review → commit pipeline, with the user-run vs model-run split."
+description: "Use before changing code that adds or alters behavior (feature, fix, strategy or schema change): plan → TDD → simplify → review → commit pipeline, with the user-run vs model-run split."
 ---
 
 # Development Workflow
@@ -20,7 +20,7 @@ The Feature Implementation Workflow describes the development pipeline: planning
 Planning, TDD, and code review use workflow skills, not sub-agents. Only the user fires user-invoked skills: the planning commands in step 1 run when the user types them. Model-invoked skills load by calling the Skill tool, one call per skill.
 
 1. **Plan First**
-   - Ask the user to run `/grill-with-docs` (align requirements + build the domain model), then `/to-spec` (synthesize the conversation into a spec), then `/to-tickets` (break it into tracer-bullet tickets)
+   - Ask the user to run `/grill-with-docs` (align requirements + build the domain model), then `/to-spec` (synthesize the conversation into a spec), then `/to-tickets` (break it into tracer-bullet tickets), then `/implement-spec` (build every ticket on one integration branch); when the spec chain ran, continue at step 4 on that branch
    - If the user skips them, call the Skill tool with "grilling" to stress-test the plan; when terminology matters, call it again with "domain-modeling"
    - Identify dependencies and risks
 
@@ -37,6 +37,11 @@ Planning, TDD, and code review use workflow skills, not sub-agents. Only the use
 4. **Code Review**
    - Immediately after writing code, call the Skill tool with "mattpocock-skills:code-review" on Claude, "code-review" elsewhere (Standards + Spec axes)
    - Address every Spec finding; fix or explicitly justify each Standards finding
+   - Answer these about the diff before you call it reviewed. Standards review does not catch them, and the user has asked each one by hand:
+     - Data access: does a new or changed query scan a whole table, run once per item in a loop, or add a call that a cheaper existing one covers?
+     - Leftovers: does the change obsolete a field, branch, or config key? Remove it in the same change.
+     - Stability: does a value that crosses a boundary (database, RPC, config) travel as an explicit code, not an enum name or ordinal?
+     - Reuse: does existing logic already produce this result or display?
    - For a deep severity-tiered audit, dispatch the `code-reviewer` agent; severity and approval rules live in the `code-quality-gate` skill
 
 5. **Commit & Push**
