@@ -24,7 +24,7 @@ ai-assets/
 │       ├── KarpathyGuide.md
 │       └── ...
 │   ├── (历史：java/、python/ 已合并到 skills/java-development/references/ 与 skills/python-development/references/)
-├── skills/                    # 共享技能 (19 个自有实目录；vendor skills 由 install.py symlink 安装)
+├── skills/                    # 共享技能 (20 个自有实目录；vendor skills 由 install.py symlink 安装)
 ├── agents/                    # Subagent 定义 (Cursor + Claude + pi，12 个)
 ├── pi/                        # pi 专属资源: skills/ + agents/ → ~/.pi/agent/ (仅 pi 加载)
 ├── docs/                      # 团队分享文档（能力、设计依据与工作流）
