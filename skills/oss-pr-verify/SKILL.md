@@ -24,6 +24,8 @@ A PR or issue claims a bug and a fix. Reproduce both claims before you judge the
    | real, fix wrong or too wide | request changes, with the failing case and a proposed change |
    | not reproducible, or intended behavior | comment, with what you ran |
 
+   Write the review text in the language the upstream repo already uses (check recent PR reviews and issue comments there), not the chat language. Say which language the draft is in when you show it.
+
 6. Submit only after the user confirms the exact text and verdict: `gh pr review <n> --approve|--request-changes|--comment -b "<body>"`. Pushing a fix to the author's branch needs a separate yes.
 7. Clean up the worktree and its branch.
 
