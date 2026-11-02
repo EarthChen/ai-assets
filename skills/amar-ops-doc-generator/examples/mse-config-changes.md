@@ -1,14 +1,25 @@
 # 示例：<分支名> 动态配置变更清单
 
-> 本示例随 skill 包自带；key 名与字段为虚构工程示例值。结构：配置中心 key / yml 两节，每项为变更类型 + 样例 + 字段注释。
+> 本示例随 skill 包自带；key 名、appKey 与字段为虚构工程示例值。结构：测试环境链接 / 配置中心 key / yml / 下发核对，每项为变更类型 + 样例 + 字段注释。
 
 ## 目的
 
 梳理 <分支名> 对比 <基线> 的动态配置新增与修改项，供配置下发参考。
 
+## 测试环境链接
+
+appKey：`momo.ibt.amar.service.demo-service`，测试环境 `alpha`。链接由 `mse --region test --json share` 生成。
+
+| key | 命名空间 | 测试环境（alpha） |
+|---|---|---|
+| `newStrategyGrayConfig` | Application | [打开](https://mse.wemomo.com/#/config/app?corp=alpha&env=alpha&appKey=momo.ibt.amar.service.demo-service&nameSpace=Application&configKey=newStrategyGrayConfig) |
+| `service-b.strategy_config` | service-b | [打开](https://mse.wemomo.com/#/config/app?corp=alpha&env=alpha&appKey=momo.ibt.amar.service.demo-service&nameSpace=service-b&configKey=service-b.strategy_config) |
+
 ## 一、配置中心 key（@MomoConfig）
 
 ### 1. newStrategyGrayConfig【新增】
+
+链接：[测试环境（alpha）](https://mse.wemomo.com/#/config/app?corp=alpha&env=alpha&appKey=momo.ibt.amar.service.demo-service&nameSpace=Application&configKey=newStrategyGrayConfig) · 命名空间：`Application`
 
 读取方：`pangu/NewStrategyGrayConfigProvider`（`@MomoConfig(key = "newStrategyGrayConfig", defaultVal = "{}")`）
 
@@ -27,6 +38,8 @@
 | testWhitelistUids | Set&lt;String&gt; | 空集合 | enabled=false 时白名单 uid 放行；灰度外命中静默丢弃（无报错不落库） |
 
 ### 2. service-b.strategy_config【修改：新增 2 个子对象】
+
+链接：[测试环境（alpha）](https://mse.wemomo.com/#/config/app?corp=alpha&env=alpha&appKey=momo.ibt.amar.service.demo-service&nameSpace=service-b&configKey=service-b.strategy_config) · 命名空间：`service-b`
 
 读取方：`pangu/StrategyConfigProvider#initStrategyConfig`（`@MomoConfig(key = "service-b.strategy_config")`）
 
@@ -73,3 +86,8 @@ audit:
 |---|---|---|---|
 | config-key | String | amarmultipleMsg | 多语言文案 MSE key；变更=全量文案迁移，须与多语言平台同步 |
 | enable | Boolean | true | false=全部文案加载失败，运行时报错 |
+
+## 下发核对
+
+- 新增 key（#1）新建后状态为"未生效"：再发布一次（网页"发布"或用保存值 `mse publish`），看到"已全量发布并完成"才算生效。
+- 发布后搜索日志 `initStrategyConfig_error`：Provider 校验失败只打 error 并保留旧配置，MSE 发布仍显示成功。
