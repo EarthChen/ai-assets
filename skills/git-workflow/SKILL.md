@@ -43,7 +43,9 @@ Landing is commit → push → PR → merge → clean up. The user's words set h
 1. Detect the default branch: `git symbolic-ref --short refs/remotes/origin/HEAD` (strip `origin/`). Name it to the user before the first push or merge.
 2. Detect the host from `git remote get-url origin`. GitHub: `gh`. GitLab: `glab`, see [references/gitlab-mr.md](references/gitlab-mr.md), which also covers several projects at once and a branch that conflicts with the default branch.
 3. First push of a repository: list tracked files over 5 MB and files named `.env*`, `*.pem`, `*.key`, or `id_*`. Each hit needs the user's explicit yes before the push. (A user may commit `.env` to a private repo on purpose; that call is theirs.)
-4. Work on a feature branch, never on the default branch. Write the PR body with the `pr` skill.
+4. Work on a feature branch, never on the default branch. Write the PR body with the `pr` skill, plus two parts its template lacks:
+   - The first line of **Summary** says in one sentence why the change exists: the problem it solves, or what it makes possible.
+   - When the change carries a migration, a compatibility constraint, a deliberate omission or a surprising decision, add `## Special things to note` after Summary, with 1–3 bullets.
 5. Merge the way the repository merges: `git log --merges --oneline -5` on the default branch shows merge commits (use `gh pr merge --merge`); linear history means squash or rebase. Wait for the checks (`gh pr checks --watch`) before the merge.
 6. Clean up: delete the remote branch, `git switch <default>`, `git pull --ff-only`, `git branch -d <branch>`, then the worktree (Worktrees, below). Before you delete a branch that this session did not create, run `git log <default>..<branch>`: unmerged commits mean stop and ask.
 
