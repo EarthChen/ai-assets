@@ -54,7 +54,9 @@ def _load_third_party_plugins() -> list[dict]:
 def _expand_install_links(install: dict, source: Path) -> list[tuple[Path, Path]]:
     """Resolve an `install` object into (link_path, target_path) pairs.
 
-    Two forms, mutually exclusive:
+    Two forms, mutually exclusive (both => ValueError). Neither => no pairs:
+    a source-only object only inits its submodule (e.g. answer-me-with-html,
+    a CLI backend for skills/show-me).
     - `links`: explicit list of user-level paths (each → source root).
       For single-skill repos whose root IS the skill root (e.g. anysearch).
     - `generate`: discover skills then symlink each into one or more dirs.
@@ -164,6 +166,10 @@ def install_manual_skills(name: str | None, dry_run: bool = False) -> None:
             "(no plugin has an `install` object)")
         return
 
+    # Self-owned links are made before this step, so a same-name third-party
+    # link would replace them silently; skip it instead.
+    self_owned = {p.parent.name for p in (paths.REPO_ROOT / "skills").glob("*/SKILL.md")}
+
     log_section(f"Installing manual skills ({len(skills)}): "
                 f"{', '.join(s['name'] for s in skills)}")
 
@@ -189,6 +195,11 @@ def install_manual_skills(name: str | None, dry_run: bool = False) -> None:
 
         log(f"[{skill['name']}] {len(pairs)} symlink(s) from {src}")
         for link, target in pairs:
+            if link.name in self_owned:
+                log(f"ERROR: [{skill['name']}] {link.name} is also a self-owned skill "
+                    f"(skills/{link.name}); skipped {link} -> {target}. "
+                    f"Rename one of them or drop it from third-party.json.")
+                continue
             create_symlink(target.resolve(), link, dry_run)
 
     if dry_run:
