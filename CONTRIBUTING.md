@@ -88,7 +88,7 @@ pi has no such limit (`_dist/pi/AGENTS.md` is built the same way and is also 11.
 - **Names**: skills and agents are bare (`code-audit`, not `earthchen-ai-assets:code-audit`). Same-name agents resolve by priority (user over plugin); same-name skills both load.
 - **Real files are safe**: a different `CLAUDE.md` is kept as `CLAUDE.md.pre-link.bak`; a real agent file with a repo agent's name is skipped with a warning; the old copied `rules/common` dir is replaced.
 - **Unverified in the docs**: symlinks for `~/.claude/CLAUDE.md`, `~/.claude/rules/` and `~/.claude/agents/` (skills are documented). After the first install, start a session and confirm the rules and agents load.
-- Third-party (manual/symlink) skills use the same `~/.claude/skills/`; the nine sets listed under Third-Party Skills below are unaffected.
+- Third-party (manual/symlink) skills use the same `~/.claude/skills/`; the sets listed under Third-Party Skills below are unaffected.
 
 ### Local vs Remote Marketplace
 
@@ -129,7 +129,7 @@ UI提示 "Error loading plugin" **不写进任何文件日志**，console 也只
 
 ## Third-Party Skills (symlink-installed)
 
-Nine third-party skill sets are **NOT plugin-distributed** — they install as user-level symlinks so their runtime files (`runtime.conf`, `.env`, upstream-pinned content) survive outside the plugin cache (a read-only snapshot overwritten on every version pull). All are declared in `third-party.json` with a top-level `install` object and deployed by `install.py`'s manual-skill path, which **`install.py install` runs automatically** (no separate `install.py manual` needed):
+The third-party sets declared with an `install` object are **NOT plugin-distributed**. The skill sets among them install as user-level symlinks, so their runtime files (`runtime.conf`, `.env`, upstream-pinned content) survive outside the plugin cache (a read-only snapshot overwritten on every version pull). answer-me-with-html only inits its submodule. All are declared in `third-party.json` with a top-level `install` object and deployed by `install.py`'s manual-skill path, which **`install.py install` runs automatically** (no separate `install.py manual` needed):
 
 | Skill set | submodule | discovery | links |
 | --- | --- | --- | --- |
@@ -138,16 +138,22 @@ Nine third-party skill sets are **NOT plugin-distributed** — they install as u
 | **anysearch** | `vendor/anysearch-skill` | `links` (explicit list, single skill) | `~/.claude/skills/anysearch` + `~/.agents/skills/anysearch` |
 | **herdr** | `vendor/herdr-skill` | `generate.scan_dir` (scans `skills/` — sparse submodule pinned to the single herdr skill) | `~/.agents/skills/` + `~/.claude/skills/` (via `extra_links`) |
 | **playwright-cli** | `vendor/playwright-cli` | `generate.scan_dir` (scans `skills/` — single playwright-cli skill) | `~/.agents/skills/` + `~/.claude/skills/` (via `extra_links`) |
-| **show-me** | `vendor/humanlayer-skills` | `generate.scan_dir` (scans `plugins/show-me/skills/` — humanlayer 6-plugin monorepo, show-me + visual-pr linked) | `~/.agents/skills/` + `~/.claude/skills/` (via `extra_links`) |
-| **visual-pr** | `vendor/humanlayer-skills` | `generate.scan_dir` (scans `plugins/visual-pr/skills/` — same submodule as show-me) | `~/.agents/skills/` + `~/.claude/skills/` (via `extra_links`) |
 | **yao-meta-skill** | `vendor/yao-meta-skill` | `links` (explicit list, single skill at repo root) | `~/.claude/skills/yao-meta-skill` + `~/.agents/skills/yao-meta-skill` |
 | **momo-tools** | `vendor/momo-tools` | `generate.scan_dir` (scans `skills/` — single momo-tools skill; private upstream) | `~/.agents/skills/` + `~/.claude/skills/` (via `extra_links`) |
+| **answer-me-with-html** | `vendor/answer-me-with-html` | `install.source` only — inits the submodule; its CLI is the page backend of self-owned `skills/show-me` | none |
 
-`install.py manual <name>` remains as a single-skill reinstall entry point. All four platforms (Claude, Codex, Cursor, pi) follow these symlinks correctly; no per-platform workaround needed. Adding a third-party skill = adding a `third-party.json` entry with an `install` object (choose `links` for single-skill repos, `generate.from+field` if upstream declares a skill list, `generate.scan_dir` if it doesn't) — no `install.py` code change. See `third-party.schema.json` for the `install`/`installConfig`/`generateConfig` schema.
+`install.py manual <name>` remains as a single-skill reinstall entry point. All four platforms (Claude, Codex, Cursor, pi) follow these symlinks correctly; no per-platform workaround needed. Adding a third-party skill = adding a `third-party.json` entry with an `install` object (choose `links` for single-skill repos, `generate.from+field` if upstream declares a skill list, `generate.scan_dir` if it doesn't, `source` alone for a submodule that must be checked out but links no skill) — no `install.py` code change. See `third-party.schema.json` for the `install`/`installConfig`/`generateConfig` schema.
+
+**Name-collision guard**: `install_manual_skills` runs after the self-owned links, so it skips any third-party link whose name matches a `skills/<name>` dir and logs `ERROR` (e.g. upstream show-me vs the self-owned `skills/show-me`). Rename one of them or drop it from `third-party.json`.
 
 **Stale-link caveat**: `install_manual_skills` only creates links — it never prunes. When upstream deletes or renames a skill, the old link survives as a dangling symlink, so after any vendor upgrade check `find ~/.agents/skills ~/.claude/skills -maxdepth 1 -type l ! -exec test -e {} \; -print` and delete what it lists. Hit in practice: a 2026-09 upstream skill deletion left one behind.
 
 **context-mode** also has a `third-party.json` entry but is a **provenance record only** — installed per-platform via each platform's native plugin/npm path (Claude: `install.py` auto-runs `claude plugin marketplace add mksglu/context-mode` + `plugin install context-mode@context-mode --scope user`). The entry formalizes the ctx-* tools this repo's docs reference.
+
+**merman** is a Claude-only plugin entry, auto-installed the same way (`claude plugin marketplace add iamrohithrnair/merman` + `plugin install merman@merman`). It is a Claude Code mod: hooks that redraw replies, so ```` ```mermaid ```` fences draw in the terminal. `skills/show-me` relies on it for inline Mermaid. Two caveats:
+
+- **Mod rollout switch**: installed mods load only while Claude Code's rollout switch for mods reads on for the account. Check with `/merman demo`; the message `installed mods are off for now` means it reads off.
+- **`diagramHints` off by hand**: by default the mod adds ~355 tokens of drawing instructions to the model context per conversation, which overlap with `skills/show-me`. `install.py` does not write plugin options, so set `pluginConfigs["merman@merman"].options.diagramHints = false` in `~/.claude/settings.json` (or `/plugin configure merman@merman`) on each machine, then `/reload-plugins`.
 
 ### anysearch-skill
 
@@ -186,6 +192,19 @@ The [herdr](https://github.com/badlogic/herdr) terminal-multiplexer control skil
 - **Dev checkout first**: `install.local_source` is `~/work/momo/momo-tools`, the checkout the CLIs are editable-installed from. When it exists, the skill links point there, so skill edits apply at once and match the CLI behavior (uncommitted edits and the checked-out branch included). Other machines lack the path and link the submodule. Rerun `install.py manual momo-tools` after creating or removing that checkout.
 
 **Upgrade:** `git submodule update --remote vendor/momo-tools` (no upstream release tags — re-pin to a main commit). Symlinks flow automatically; rerun `uv tool install --force` to update the CLIs.
+
+### answer-me-with-html
+
+[QingYunA/answer-me-with-html](https://github.com/QingYunA/answer-me-with-html) — renders a short Markdown draft into a one-page HTML explainer. Full submodule at `vendor/answer-me-with-html` (~12MB), pinned to a release tag. The self-owned `skills/show-me` uses its bundled CLI, `skills/answer-me-with-html/scripts/am.mjs` (one ~1MB file, nothing to install), as the page backend, and reads its upstream `SKILL.md` as the manual for that route.
+
+- **Upstream skill not linked**: its description tells the model to make a page for most explanations, comparisons, reviews and diagnoses, and to cut the terminal reply to 2–3 lines. No config makes it user-only. The `install` object has only `source`, so `install.py` inits the submodule and creates no link. `skills/show-me` decides when a page fits, then reads upstream `SKILL.md` sections 2–7 with four overrides (when to page, command name, reply length, updates). Upstream rules and the CLI share one tag, so they never drift apart.
+- **Wrapper**: `skills/show-me/scripts/am` runs the CLI; `am skill-dir` prints the real path of the upstream skill dir. It resolves the skill symlink with `cd -P` first: Node (and so Claude Code's Read tool) normalizes `..` as text, so `~/.claude/skills/show-me/../../vendor/...` resolves to `~/.claude/vendor/...` and fails.
+- **Runtime**: Node.js >= 20. Pages go to `~/.answer-me-with-html/pages`; `am clean` prunes them.
+- **Network**: a daily update check fetches `package.json` + `highlights.json` from `raw.githubusercontent.com`. Turn it off with `am config set update_check false` or `AM_NO_UPDATE_CHECK=1`. `am theme` reads the catalog at `answer-me-with-html.com`; `am video` calls ElevenLabs TTS.
+- **Update path trap**: the CLI's `! Update hint` tells a git-checkout install to run `git pull && npm install`. Inside the submodule that moves it off the pin and uses npm. `skills/show-me` tells the model to leave the upstream update commands unrun.
+- **No plugin**: upstream `INSTALL.md` installs a Claude Code plugin. Do not: it loads the upstream skill this repo leaves out.
+
+**Upgrade:** `git submodule update --remote vendor/answer-me-with-html`, re-pin to the latest release tag (`git -C vendor/answer-me-with-html checkout vX.Y.Z`), then check that the overrides in `skills/show-me/SKILL.md` ("Page route") still match upstream `SKILL.md`: the section numbers (0 settings, 1 when to page, 2–7 workflow), the `node "${CLAUDE_SKILL_DIR}/scripts/am.mjs"` command string, the 2–3 line reply rule, and the `✓ <path>` success line. Also check the `am.mjs` path in `scripts/am`.
 
 ### mattpocock/skills
 

@@ -29,7 +29,7 @@
         },
         "install": {
           "$ref": "#/definitions/installConfig",
-          "description": "If present, `install.py manual` symlinks this plugin's skills into user-level dirs. Absent => managed manually per-platform (install_cmd/note)."
+          "description": "If present, `install.py manual` inits the source submodule and symlinks this plugin's skills into user-level dirs (none for a source-only object). Absent => managed manually per-platform (install_cmd/note)."
         }
       }
     },
@@ -37,7 +37,7 @@
       "type": "object",
       "required": ["source"],
       "additionalProperties": false,
-      "description": "Symlink-install declaration. Exactly one of `links` | `generate` (enforced by install.py). source = repo-relative submodule path.",
+      "description": "Symlink-install declaration. At most one of `links` | `generate` (both => install.py raises). Neither => source-only: install.py inits the submodule and links nothing (e.g. a CLI backend for a self-owned skill). source = repo-relative submodule path.",
       "properties": {
         "source": { "type": "string", "description": "Repo-relative submodule path, e.g. vendor/understand-anything." },
         "local_source": { "type": "string", "description": "Optional absolute or ~ path to a dev checkout on this machine. Used instead of source when it is a non-empty dir, so edits there apply without a submodule bump; other machines fall back to source." },

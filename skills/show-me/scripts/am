@@ -1,0 +1,17 @@
+#!/bin/sh
+# Runs the vendored answer-me-with-html CLI. `am skill-dir` prints the real path of
+# the upstream skill directory (its SKILL.md and references/) instead.
+# `cd -P` resolves the skill symlink (~/.claude/skills/show-me -> <repo>/skills/show-me)
+# before `..` is applied. Node normalizes `..` as text, so a symlinked path with `..` breaks.
+here=$(cd -P "$(dirname "$0")" && pwd) || exit 1
+repo=$(cd -P "$here/../../.." && pwd) || exit 1
+skill="$repo/vendor/answer-me-with-html/skills/answer-me-with-html"
+if [ ! -f "$skill/scripts/am.mjs" ]; then
+  echo "am CLI not found at $skill/scripts/am.mjs. Run: git -C \"$repo\" submodule update --init vendor/answer-me-with-html" >&2
+  exit 1
+fi
+if [ "$1" = "skill-dir" ]; then
+  echo "$skill"
+  exit 0
+fi
+exec node "$skill/scripts/am.mjs" "$@"

@@ -16,12 +16,12 @@
 [submodule "vendor/playwright-cli"]
 	path = vendor/playwright-cli
 	url = git@github.com:microsoft/playwright-cli.git
-[submodule "vendor/humanlayer-skills"]
-	path = vendor/humanlayer-skills
-	url = git@github.com:humanlayer/skills.git
 [submodule "vendor/yao-meta-skill"]
 	path = vendor/yao-meta-skill
 	url = git@github.com:yaojingang/yao-meta-skill.git
 [submodule "vendor/momo-tools"]
 	path = vendor/momo-tools
 	url = git@github.com:EarthChen/momo-tools.git
+[submodule "vendor/answer-me-with-html"]
+	path = vendor/answer-me-with-html
+	url = git@github.com:QingYunA/answer-me-with-html.git

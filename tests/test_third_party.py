@@ -60,3 +60,27 @@ def test_ambiguous_install_objects_are_rejected(install):
 
 def test_install_object_without_links_or_generate_yields_nothing():
     assert third_party._expand_install_links({"source": "vendor/x"}, Path("/nonexistent")) == []
+
+
+def test_third_party_link_never_replaces_a_self_owned_skill(sandbox, capsys):
+    # install_manual_skills runs after the self-owned links, so a same-name
+    # third-party skill would silently take over ~/.agents/skills/<name>.
+    own = make_skill(sandbox.repo / "skills", "show-me")
+    vendor = sandbox.repo / "vendor" / "upstream"
+    make_skill(vendor / "skills", "show-me")
+    make_skill(vendor / "skills", "upstream-only")
+    (sandbox.repo / "third-party.json").write_text(json.dumps({"plugins": [{
+        "name": "upstream", "platforms": {},
+        "install": {"source": "vendor/upstream", "generate": {
+            "scan_dir": "skills", "link_dir": "~/.agents/skills"}},
+    }]}), encoding="utf-8")
+    link_dir = sandbox.home / ".agents" / "skills"
+    link_dir.mkdir(parents=True)
+    (link_dir / "show-me").symlink_to(own)
+
+    third_party.install_manual_skills(None)
+
+    assert (link_dir / "show-me").resolve() == own.resolve()
+    assert (link_dir / "upstream-only").resolve() == (vendor / "skills" / "upstream-only").resolve()
+    out = capsys.readouterr().out
+    assert "ERROR" in out and "show-me" in out

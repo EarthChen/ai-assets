@@ -128,58 +128,6 @@
       }
     },
     {
-      "name": "show-me",
-      "description": "HumanLayer's visual-explanation skill (humanlayer/skills plugin monorepo, plugins/show-me). Explains the current topic visually with the smallest fitting view: pseudocode, call trees, component/file trees, Mermaid, diff sketches, or a focused HTML artifact. Single skill (plugins/show-me/skills/show-me/SKILL.md). Upstream sets `disable-model-invocation: true`, so it runs only when the user invokes it. Upstream carries no release tags — pinned to a main commit (upstream plugin.json version 1.0.1); upgrade via git submodule update --remote vendor/humanlayer-skills + re-pin. Submodule stays out of build/_dist.",
-      "install": {
-        "source": "vendor/humanlayer-skills",
-        "generate": {
-          "scan_dir": "plugins/show-me/skills",
-          "link_dir": "~/.agents/skills",
-          "extra_links": ["~/.claude/skills"]
-        }
-      },
-      "platforms": {
-        "claude": {
-          "note": "Installed by `install.py manual show-me` — symlinks plugins/show-me/skills/show-me into ~/.claude/skills/ (Claude scans this user-level dir; it does NOT read ~/.agents/skills/). Upstream is a 6-plugin monorepo; show-me and visual-pr are linked (visual-pr has its own entry below)."
-        },
-        "codex": {
-          "note": "Installed by `install.py manual show-me` — symlinks into ~/.agents/skills/ (Codex standard user path; follows symlinks per loader.rs User scope = Follow)."
-        },
-        "cursor": {
-          "note": "Same as codex: `install.py manual show-me` → ~/.agents/skills/. Cursor scans ~/.agents/skills/ by default and follows symlinks correctly."
-        },
-        "pi": {
-          "note": "pi scans ~/.agents/skills/ natively; no extra deploy step beyond `install.py manual show-me`."
-        }
-      }
-    },
-    {
-      "name": "visual-pr",
-      "description": "HumanLayer's PR-description skill (humanlayer/skills plugin monorepo, plugins/visual-pr). Writes or updates the pull request for the current task with a concise visual outline for reviewers (SKILL.md + 3 references: pr_description_template, describe_pr_final_answer, show-me). Single skill (plugins/visual-pr/skills/visual-pr/SKILL.md); upstream SKILL.md restricts it to explicit user invocation. Same submodule as show-me (vendor/humanlayer-skills, upstream plugin.json version 1.0.0, no release tags — pinned to a main commit). Submodule stays out of build/_dist.",
-      "install": {
-        "source": "vendor/humanlayer-skills",
-        "generate": {
-          "scan_dir": "plugins/visual-pr/skills",
-          "link_dir": "~/.agents/skills",
-          "extra_links": ["~/.claude/skills"]
-        }
-      },
-      "platforms": {
-        "claude": {
-          "note": "Installed by `install.py manual visual-pr` — symlinks plugins/visual-pr/skills/visual-pr into ~/.claude/skills/ (Claude scans this user-level dir; it does NOT read ~/.agents/skills/)."
-        },
-        "codex": {
-          "note": "Installed by `install.py manual visual-pr` — symlinks into ~/.agents/skills/ (Codex standard user path; follows symlinks per loader.rs User scope = Follow)."
-        },
-        "cursor": {
-          "note": "Same as codex: `install.py manual visual-pr` → ~/.agents/skills/. Cursor scans ~/.agents/skills/ by default and follows symlinks correctly."
-        },
-        "pi": {
-          "note": "pi scans ~/.agents/skills/ natively; no extra deploy step beyond `install.py manual visual-pr`."
-        }
-      }
-    },
-    {
       "name": "yao-meta-skill",
       "description": "Yao Team's skill-engineering meta skill (yaojingang/yao-meta-skill) — create, improve, evaluate, package, and govern reusable agent skills (Skill OS: Skill IR, target compilers, eval lab, release gates). Single skill at repo root (SKILL.md + references/ + scripts/ + reports/); replaces the former self-owned skills/skill-creator. NOT plugin-distributed: same symlink rationale as anysearch. Upstream carries no release tags — pinned to a main commit (upstream VERSION 2.1.0); upgrade via git submodule update --remote vendor/yao-meta-skill + re-pin. Submodule stays out of build/_dist.",
       "install": {
@@ -232,6 +180,27 @@
       }
     },
     {
+      "name": "answer-me-with-html",
+      "description": "QingYunA/answer-me-with-html: renders a short extended-Markdown draft into a one-page HTML explainer. Used ONLY as the page backend of the self-owned skills/show-me, which reads the upstream SKILL.md (sections 2-7, with overrides) as its page manual and calls the bundled CLI at vendor/answer-me-with-html/skills/answer-me-with-html/scripts/am.mjs (~1MB single file, Node.js >= 20). The upstream skill is NOT linked: its description makes the model render a page for most answers and cuts the terminal reply to 2-3 lines. `install` has only `source`, so install.py inits the submodule and links nothing. Writes pages to ~/.answer-me-with-html/pages. Network: daily update check (raw.githubusercontent.com; disable with `am config set update_check false` or AM_NO_UPDATE_CHECK), theme catalog only on `am theme`, ElevenLabs only on `am video`. Never follow the CLI's `! Update hint` (`git pull && npm install`): upgrade via git submodule update --remote vendor/answer-me-with-html + re-pin to a release tag, then smoke-test `am render`. Do NOT install the upstream Claude plugin. Stays out of build/_dist.",
+      "install": {
+        "source": "vendor/answer-me-with-html"
+      },
+      "platforms": {
+        "claude": {
+          "note": "No skill link. skills/show-me runs the CLI through its wrapper skills/show-me/scripts/am (see CONTRIBUTING.md, answer-me-with-html)."
+        },
+        "codex": {
+          "note": "No skill link. skills/show-me runs the CLI through its wrapper skills/show-me/scripts/am (see CONTRIBUTING.md, answer-me-with-html)."
+        },
+        "cursor": {
+          "note": "No skill link. skills/show-me runs the CLI through its wrapper skills/show-me/scripts/am (see CONTRIBUTING.md, answer-me-with-html)."
+        },
+        "pi": {
+          "note": "No skill link. skills/show-me runs the CLI through its wrapper skills/show-me/scripts/am (see CONTRIBUTING.md, answer-me-with-html)."
+        }
+      }
+    },
+    {
       "name": "context-mode",
       "description": "MCP server + session-continuity layer by mksglu/context-mode. Saves context by sandboxing tool output (ctx_execute/ctx_execute_file/ctx_batch_execute/ctx_fetch_and_index/ctx_index/ctx_search) and tracking session events in FTS5-backed SQLite for restore across compactions. NOT a skill distributed by this repo — installed per-platform via each platform's native plugin or npm path. This repo's AGENTS.md already references ctx-* tools, so this entry formalizes their provenance.",
       "platforms": {
@@ -246,6 +215,26 @@
         },
         "cursor": {
           "note": "Installed via Cursor marketplace (user-managed, not installed by this repo). Plugin auto-registers MCP + hooks (preToolUse/postToolUse/sessionStart/stop/afterAgentResponse) + rules + skills. Upstream README still lists marketplace as 'awaiting Cursor team review' (#485) with local-folder fallback, but install completed successfully via marketplace on this machine."
+        }
+      }
+    },
+    {
+      "name": "merman",
+      "description": "Claude Code mod by iamrohithrnair/merman (TypeScript hooks that redraw replies; not a skill, tool or MCP server). Draws ```mermaid fences in the terminal as colored box art: flowchart/graph, sequence, state, class, ER, xychart-beta, pie, gantt, C4; a diagram over 80 lines or 8,000 characters, or wider than the window, stays as source. Also recolors tables, code and headings. skills/show-me relies on it for inline Mermaid in Claude Code. Needs Claude Code 2.1.311+, and installed mods only load when Claude Code's mod rollout switch is on for the account. No network. Keep `diagramHints` off (pluginConfigs[\"merman@merman\"].options.diagramHints = false in ~/.claude/settings.json): when on, it adds ~355 tokens of drawing instructions to the model context per conversation, which overlap with skills/show-me. install.py does not write that setting. Upstream marketplace pins a release tag.",
+      "platforms": {
+        "claude": {
+          "marketplace_ref": "iamrohithrnair/merman",
+          "plugin_id": "merman@merman",
+          "note": "Auto-installed by install.py via `claude plugin marketplace add iamrohithrnair/merman` + `claude plugin install merman@merman --scope user`. After install, set diagramHints to false by hand (settings.json pluginConfigs or `/plugin configure merman@merman`), then /reload-plugins. Verify with `/merman demo`: colored diagrams = mods load; 'installed mods are off for now' = the rollout switch is off, so uninstall it."
+        },
+        "codex": {
+          "note": "Not applicable: a Claude Code mod."
+        },
+        "cursor": {
+          "note": "Not applicable: a Claude Code mod."
+        },
+        "pi": {
+          "note": "Not applicable: a Claude Code mod."
         }
       }
     }

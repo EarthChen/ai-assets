@@ -14,7 +14,7 @@ Per project, in order:
      --title "<conventional title>" --description-file body.md --remove-source-branch --yes
    ```
 
-   Write `body.md` with the `pr` skill. One MR per project; the bodies may reference each other's URLs.
+   Write `body.md` the way Land a Branch, step 4 of `SKILL.md`, writes a PR body. One MR per project; the bodies may reference each other's URLs.
 5. Check mergeability: `glab mr view <id> -F json --jq '.detailed_merge_status'`. `mergeable` is the goal; `conflict`, `ci_must_pass`, or `not_approved` go in the report with the MR URL.
 
 Merge only when the user asked for it: `glab mr merge <id> --yes`, adding `--squash` or `--rebase` to match the project's history (Land a Branch, step 5). Projects with a build dependency between them merge in dependency order.
