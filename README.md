@@ -24,7 +24,7 @@ ai-assets/
 │       ├── KarpathyGuide.md
 │       └── ...
 │   ├── (历史：java/、python/ 已合并到 skills/java-development/references/ 与 skills/python-development/references/)
-├── skills/                    # 共享技能 (20 个自有实目录；vendor skills 由 install.py symlink 安装)
+├── skills/                    # 共享技能 (自有实目录；vendor skills 由 install.py symlink 安装)
 ├── agents/                    # Subagent 定义 (Cursor + Claude + pi，12 个)
 ├── pi/                        # pi 专属资源: skills/ + agents/ → ~/.pi/agent/ (仅 pi 加载)
 ├── docs/                      # 团队分享文档（能力、设计依据与工作流）
@@ -35,9 +35,9 @@ ai-assets/
 │   ├── understand-anything/   # 代码库知识图谱理解 (11 skills)
 │   ├── herdr-skill/           # Herdr 终端复用器控制技能 (sparse submodule)
 │   ├── playwright-cli/        # microsoft/playwright-cli 浏览器自动化技能
-│   ├── humanlayer-skills/     # humanlayer/skills monorepo (链接 show-me + visual-pr)
 │   ├── yao-meta-skill/        # skill 工程元技能 (替代原 skill-creator)
-│   └── momo-tools/            # EarthChen/momo-tools 内部系统 CLI 技能 (私有仓库)
+│   ├── momo-tools/            # EarthChen/momo-tools 内部系统 CLI 技能 (私有仓库)
+│   └── answer-me-with-html/   # 自有 show-me 的页面渲染后端 (am CLI，需 Node 20+；不链接其 skill)
 ├── mcp.json                   # 统一 MCP 配置 (_platforms 过滤)
 ├── _dist/                     # 自动生成的平台产物 (已提交；skills/agents 不复制进此)
 │   ├── cursor/                # rules/*.mdc + mcp.json
@@ -65,7 +65,7 @@ uv run install.py --platform cursor
 uv run install.py --dry-run
 ```
 
-`install.py install` 会自动完成三方 skills 的 symlink 安装（mattpocock / anysearch / understand-anything / herdr / playwright-cli / show-me / visual-pr / yao-meta-skill / momo-tools），无需单独运行 `manual`。
+`install.py install` 会自动完成三方 skills 的 symlink 安装（mattpocock / anysearch / understand-anything / herdr / playwright-cli / yao-meta-skill / momo-tools；answer-me-with-html 只初始化 submodule），无需单独运行 `manual`。
 
 ### 子命令
 
@@ -308,11 +308,11 @@ MCP 配置中使用 `_platforms` 字段：
 | understand-anything | vendor submodule（11 skills） | symlink 进 `~/.agents/skills/` + `~/.claude/skills/` |
 | herdr | vendor submodule（sparse，单技能） | symlink 进 `~/.agents/skills/` + `~/.claude/skills/` |
 | playwright-cli | vendor submodule（单技能） | symlink 进 `~/.agents/skills/` + `~/.claude/skills/` |
-| show-me | vendor submodule（humanlayer monorepo，仅用户显式调用） | symlink 进 `~/.agents/skills/` + `~/.claude/skills/` |
-| visual-pr | vendor submodule（humanlayer monorepo，PR 可视化描述） | symlink 进 `~/.agents/skills/` + `~/.claude/skills/` |
 | yao-meta-skill | vendor submodule（单技能，仓库根即 skill） | symlink 进 `~/.claude/skills/` + `~/.agents/skills/` |
 | momo-tools | vendor submodule（私有仓库，单技能；依赖 `uv tool install` 装的 CLI） | symlink 进 `~/.agents/skills/` + `~/.claude/skills/` |
+| answer-me-with-html | vendor submodule（只用其 am CLI，作为自有 `show-me` 的页面后端；需 Node 20+） | 不链接 skill；`install` 只初始化 submodule |
 | context-mode | 仅溯源登记 | 不经本仓库分发；各平台原生插件/npm 安装（Claude 由 install.py 自动装） |
+| merman | Claude Code mod（终端里画 Mermaid、彩色表格和代码；自有 `show-me` 依赖它在终端画图） | 仅 Claude，install.py 自动装插件；`diagramHints` 需手动设为 `false` |
 
 > symlink 安装绕过插件缓存，运行时文件（`runtime.conf`、生成的图谱等）得以跨 session 留存。
 > 详细机制与踩坑记录见 [CONTRIBUTING.md - Third-Party Skills](CONTRIBUTING.md#third-party-skills-symlink-installed)。
