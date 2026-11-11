@@ -221,26 +221,29 @@ def _link_agents(dry_run: bool) -> None:
 
 
 def _link_instructions(dry_run: bool) -> None:
-    """Link CLAUDE.md and the common rules dir straight to their repo sources.
+    """Link CLAUDE.md and rules/{common,claude} straight to their repo sources.
 
-    Both are byte copies of the source for Claude, so no build step sits
-    between an edit and the next session. `build` rejects any rules/common
-    file that opts out of Claude, which keeps the directory link safe.
+    All are byte copies of the source for Claude, so no build step sits
+    between an edit and the next session. The rule's directory routes it,
+    so the directory links need no filter.
     """
     global_instructions = paths.REPO_ROOT / "global-instructions.md"
     if global_instructions.exists():
         _link_file(global_instructions, paths.CLAUDE_HOME / "CLAUDE.md", dry_run, backup=True)
-    rules_src = paths.REPO_ROOT / "rules" / "common"
-    rules_dst = paths.CLAUDE_HOME / "rules" / "common"
-    if rules_src.exists():
+    # rules/claude holds Claude-only rules; build never reads it for other platforms.
+    for name in ("common", "claude"):
+        rules_src = paths.REPO_ROOT / "rules" / name
+        rules_dst = paths.CLAUDE_HOME / "rules" / name
+        if not rules_src.exists():
+            continue
         if rules_dst.is_dir() and not rules_dst.is_symlink():
             # An earlier install copied the rules here; this dir is installer-owned.
             log(f"{'[DRY-RUN] ' if dry_run else ''}replace copied rules dir {rules_dst}")
             if dry_run:
-                return
+                continue
             shutil.rmtree(rules_dst)
         create_symlink(rules_src, rules_dst, dry_run)
-        log("Language conventions load on demand via skills/<lang>-development")
+    log("Language conventions load on demand via skills/<lang>-development")
 
 
 def install_claude(dry_run: bool = False) -> None:

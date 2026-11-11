@@ -73,24 +73,11 @@ def strip_frontmatter(content: str) -> str:
     return body
 
 
-def rule_applies_to(rule_path: Path, platform: str) -> bool:
-    """Check if a rule applies to the given platform."""
-    content = rule_path.read_text(encoding="utf-8")
-    metadata, _ = parse_frontmatter(content)
-    platforms = metadata.get("platforms")
-    if platforms is None:
-        return True
-    if isinstance(platforms, list):
-        return platform in platforms
-    return True
-
-
 def convert_rule_to_mdc(src: Path) -> str:
     """Convert a rule to Cursor .mdc format with proper frontmatter translation.
 
     Translates platform-agnostic frontmatter to Cursor-specific fields:
       - paths → globs (Cursor uses 'globs', not 'paths')
-      - Removes 'platforms' field (build-time only, not Cursor-native)
       - Ensures alwaysApply is set appropriately
     """
     content = src.read_text(encoding="utf-8")

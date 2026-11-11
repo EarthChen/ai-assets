@@ -1,5 +1,5 @@
 ---
-description: "Security: mandatory checks, secret management"
+description: "common-security"
 alwaysApply: true
 ---
 # Security Guidelines

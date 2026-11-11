@@ -36,13 +36,12 @@ Claude has no repo plugin. It links skills, agents, `CLAUDE.md` and rules into `
 
 ## Build Transforms (rules frontmatter → per-platform)
 
-Claude Code gets no build output for rules: it links `rules/common` as is, so a `rules/common` file must already be valid Claude frontmatter (`description`, `alwaysApply: true`; user-level `paths` is ignored). `build` fails when a `rules/common` file's `platforms` excludes claude; platform-only rules live in `rules/<platform>/`.
+The directory routes a rule: every platform gets `rules/common/` plus `rules/<platform>/`. No frontmatter field names a platform; `build` fails on a rule that still has the retired `platforms` field. Claude Code gets no build output for rules: it links `rules/common` and `rules/claude` as is (`~/.claude/rules/{common,claude}`), so their frontmatter is read by Claude as is: Claude uses only `paths` (ignored at user level), and a rule without frontmatter always loads. Rules need no frontmatter; for a rule without frontmatter, Cursor's `.mdc` gets `description: "<file stem>"` and `alwaysApply: true`.
 
 | Source field | → Cursor (.mdc) | → Codex (AGENTS.md) |
 | --- | --- | --- |
 | `paths: [...]` | `globs: [...]` (JSON array) | stripped (plain text) |
 | `globs: [...]` | kept as JSON array | stripped |
-| `platforms: [...]` | removed | used for filtering then stripped |
 | `description` | kept | stripped |
 | `alwaysApply` | kept | stripped |
 
@@ -68,7 +67,7 @@ pi has no such limit (`_dist/pi/AGENTS.md` is built the same way and is also 11.
 | --- | --- | --- |
 | Cursor | `install.py install` (rsync real-dir, `--delete`) | After repo edits: `install` (+ `build` first if rules/MCP changed) + restart/reload |
 | Codex | `~/.agents/skills` symlinks (no repo plugin; `install` disables a previously registered one); `~/.codex/AGENTS.md` is a copy | Skills: edits instant, new/renamed ones need `install`. AGENTS.md: `build` + `install` |
-| Claude Code | `install.py install --platform claude`: symlinks in `~/.claude/{skills,agents}`, `~/.claude/CLAUDE.md`, `~/.claude/rules/common` | Skills, agents: edits instant, new/renamed ones need `install`. `CLAUDE.md`, rules: edit, then a new session (no `build`, no `install`) |
+| Claude Code | `install.py install --platform claude`: symlinks in `~/.claude/{skills,agents}`, `~/.claude/CLAUDE.md`, `~/.claude/rules/{common,claude}` | Skills, agents: edits instant, new/renamed ones need `install`. `CLAUDE.md`, rules: edit, then a new session (no `build`, no `install`) |
 | pi | `install.py install --platform pi` (AGENTS.md copy + skill/agent symlinks under `~/.pi/agent/`) | AGENTS.md: `build` + `install`; skill/agent edits instant, new/renamed ones need `install` |
 
 ### Claude Symlink Deploy
@@ -80,7 +79,7 @@ pi has no such limit (`_dist/pi/AGENTS.md` is built the same way and is also 11.
 | Skills | `~/.claude/skills/<name>` → `skills/<name>` | In-session (documented) |
 | Agents | `~/.claude/agents/<name>.md` → `agents/<name>.md` | Within seconds; the first agent file in a new `agents/` dir needs a restart |
 | `CLAUDE.md` | `~/.claude/CLAUDE.md` → `global-instructions.md` | New session; no `build` |
-| Rules | `~/.claude/rules/common` → `rules/common` | New session; no `build`, new rule files need no `install` either (directory link) |
+| Rules | `~/.claude/rules/{common,claude}` → `rules/{common,claude}` | New session; no `build`, new rule files need no `install` either (directory link) |
 | Hooks | none | Not deployed. Add hooks by hand in `~/.claude/settings.json` |
 | MCP | none | Manual: `claude mcp add-json --scope user <name> '<json>'` |
 

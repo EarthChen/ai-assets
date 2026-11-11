@@ -1,7 +1,3 @@
----
-description: "Testing requirements: 80% coverage, TDD workflow"
-alwaysApply: true
----
 # Testing Requirements
 
 Applies to changes in executable code. Documentation-only and configuration-only changes are exempt.
