@@ -20,8 +20,14 @@ def _write_build_inputs(repo):
     (common / "style.md").write_text("# Style\n", encoding="utf-8")
     cursor = repo / "rules" / "cursor"
     cursor.mkdir()
-    (cursor / "cursor-only.md").write_text(
-        "---\nplatforms: [cursor]\n---\n# Cursor only\n", encoding="utf-8")
+    (cursor / "cursor-only.md").write_text("# Cursor only\n", encoding="utf-8")
+    # The directory alone names the platform; no frontmatter field repeats it.
+    claude = repo / "rules" / "claude"
+    claude.mkdir()
+    (claude / "claude-only.md").write_text("# Claude only\n", encoding="utf-8")
+    codex = repo / "rules" / "codex"
+    codex.mkdir()
+    (codex / "codex-only.md").write_text("# Codex only\n", encoding="utf-8")
     (repo / "global-instructions.md").write_text("# Global\n", encoding="utf-8")
     (repo / "mcp.json").write_text(json.dumps({"mcpServers": {
         "fb": {"command": "uvx", "_platforms": ["cursor"]},
@@ -42,14 +48,18 @@ def test_build_routes_rules_instructions_and_mcp_per_platform(sandbox):
     assert (dist / "cursor" / "rules" / "common" / "style.mdc").is_file()
     assert (dist / "cursor" / "rules" / "cursor" / "cursor-only.mdc").is_file()
     assert (dist / "cursor" / "rules" / "global-instructions.mdc").is_file()
+    # A Claude-only rule reaches no other platform.
+    assert not (dist / "cursor" / "rules" / "claude").exists()
     # Claude links rules/common and global-instructions.md from the repo, so
     # _dist/claude holds neither.
     assert not (dist / "claude" / "rules").exists()
     assert not (dist / "claude" / "CLAUDE.md").exists()
-    # Codex/pi: one AGENTS.md embedding the applicable common rules.
-    for platform in ("codex", "pi"):
-        agents = (dist / platform / "AGENTS.md").read_text(encoding="utf-8")
-        assert agents == "# Global\n\n\n# --- Rules ---\n\n# Style\n"
+    assert not (dist / "cursor" / "rules" / "codex").exists()
+    # Codex/pi: one AGENTS.md embedding rules/common plus the platform's own dir.
+    assert (dist / "codex" / "AGENTS.md").read_text(encoding="utf-8") == (
+        "# Global\n\n\n# --- Rules ---\n\n# Style\n\n\n# Codex only\n")
+    assert (dist / "pi" / "AGENTS.md").read_text(encoding="utf-8") == (
+        "# Global\n\n\n# --- Rules ---\n\n# Style\n")
     # MCP: written for cursor and codex, never for claude (no MCP deploy) or pi.
     assert not (dist / "claude").exists()
     assert json.loads((dist / "cursor" / "mcp.json").read_text()) == {
@@ -57,11 +67,12 @@ def test_build_routes_rules_instructions_and_mcp_per_platform(sandbox):
     assert not (dist / "pi" / "mcp.json").exists()
 
 
-def test_build_rejects_common_rule_that_excludes_claude(sandbox):
-    # Claude links rules/common as a directory, so a rule there that opts out
-    # of Claude would load anyway. Such rules belong in rules/<platform>/.
+@pytest.mark.parametrize("subdir", ["common", "claude"])
+def test_build_rejects_rule_with_platforms_field(sandbox, subdir):
+    # The directory routes a rule. A leftover `platforms` field would be
+    # ignored, so the rule would load where its author did not intend.
     _write_build_inputs(sandbox.repo)
-    (sandbox.repo / "rules" / "common" / "bad.md").write_text(
+    (sandbox.repo / "rules" / subdir / "bad.md").write_text(
         "---\nplatforms: [cursor]\n---\n# Bad\n", encoding="utf-8")
     with pytest.raises(SystemExit, match="bad.md"):
         build.build_dist()

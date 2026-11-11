@@ -1,7 +1,6 @@
 ---
 description: "Mandatory mcp-feedback-pro feedback loop: main-agent-only invocation, subagent-disable clause, 10x timeout retry logic"
 alwaysApply: true
-platforms: [cursor]
 ---
 
 # MCP 增强反馈协议 (Mandatory Protocol)

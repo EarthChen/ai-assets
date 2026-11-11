@@ -1,7 +1,3 @@
----
-description: "Tech stack constraints: mandatory uv/pnpm, Python-first scripts, atomic functions, visualization"
-alwaysApply: true
----
 # 技术栈约束 (Strict Tech Stack)
 
 ## Python 环境管理

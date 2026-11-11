@@ -10,7 +10,7 @@ Read `CONTRIBUTING.md` before touching the deploy pipeline, build transforms, ve
 Source (single truth)     →  _dist/ (only platform-specific)  →  Plugin loads / Script deploys
 rules/common/*.md              _dist/cursor/rules/**/*.mdc       .cursor-plugin (agents→./agents/, rules+mcp→_dist/cursor/; no skills)
 rules/common/ (all platforms)  —                                 Claude: ~/.claude/rules/common ◄── symlink to source
-rules/<platform>/              _dist/<platform>/rules/**         platform-only rules (today: rules/cursor/)
+rules/<platform>/              _dist/<platform>/rules/**         platform-only rules (rules/cursor/; rules/claude/ → Claude symlink, no _dist)
 global-instructions.md         —                                 Claude: ~/.claude/CLAUDE.md ◄── symlink to source
 mcp.json (_platforms tag)      _dist/cursor/mcp.json             Claude: no MCP deploy
 global-instructions.md         _dist/codex/AGENTS.md             Codex: AGENTS.md copy only (no plugin)

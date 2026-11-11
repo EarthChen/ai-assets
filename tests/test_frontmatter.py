@@ -68,13 +68,3 @@ def test_convert_rule_to_mdc_keeps_explicit_always_apply(tmp_path: Path):
     rule = tmp_path / "r.md"
     rule.write_text("---\ndescription: d\nalwaysApply: true\n---\nb\n", encoding="utf-8")
     assert frontmatter.convert_rule_to_mdc(rule) == '---\ndescription: "d"\nalwaysApply: true\n---\nb\n'
-
-
-def test_rule_applies_to_honors_platforms_list(tmp_path: Path):
-    scoped = tmp_path / "scoped.md"
-    scoped.write_text("---\nplatforms: [cursor]\n---\nb\n", encoding="utf-8")
-    unscoped = tmp_path / "unscoped.md"
-    unscoped.write_text("b\n", encoding="utf-8")
-    assert frontmatter.rule_applies_to(scoped, "cursor") is True
-    assert frontmatter.rule_applies_to(scoped, "claude") is False
-    assert frontmatter.rule_applies_to(unscoped, "codex") is True

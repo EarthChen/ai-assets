@@ -1,5 +1,5 @@
 ---
-description: "ECC coding style: design principles, immutability, file organization, error handling, validation"
+description: "common-coding-style"
 alwaysApply: true
 ---
 # Coding Style

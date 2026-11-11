@@ -205,7 +205,7 @@ rules/
 └── common/     # 通用规则：始终加载，适用所有项目
 ```
 
-新增通用规则：在 `rules/common/` 添加 `.md` 文件 + 写 YAML frontmatter（`description`、`alwaysApply: true` 可选）。
+新增通用规则：在 `rules/common/` 添加 `.md` 文件，无需 frontmatter（build 为 Cursor 自动补 `description: "<文件名>"` 和 `alwaysApply: true`）。
 
 ### Frontmatter 格式（源文件统一格式）
 
@@ -216,13 +216,12 @@ globs: ["**/*.py", "**/*.pyi"]   # 文件匹配模式 (Cursor/Claude)
 paths:                           # 同 globs 的别名 (YAML 列表格式)
   - "**/*.java"
 alwaysApply: true                # true=始终加载; false=条件加载
-platforms: [cursor, claude]      # 平台过滤 (build-time, 不进入输出)
 ---
 ```
 
 ### 各平台 Frontmatter 转换
 
-Claude Code 不经过 build：`rules/common` 整个目录软链，文件必须直接符合 Claude 的 frontmatter（`description`、`alwaysApply: true`；用户级 `paths` 不生效）。`rules/common` 中任何排除 claude 的规则会让 `build` 报错，平台专属规则放进 `rules/<platform>/`（如 `rules/cursor/`）。
+Claude Code 不经过 build：`rules/common`、`rules/claude` 整个目录软链，Claude 只认 `paths`（用户级不生效），无 frontmatter 的规则始终加载。平台专属规则放进 `rules/<platform>/`（如 `rules/cursor/`、`rules/claude/`）。
 
 | 源字段 | Cursor (.mdc) | Codex (AGENTS.md) |
 | -------- | --------------- | -------------------- |
@@ -230,7 +229,6 @@ Claude Code 不经过 build：`rules/common` 整个目录软链，文件必须�
 | `paths` | → `globs` (JSON数组) | N/A |
 | `globs` | 保留 (JSON数组) | N/A |
 | `alwaysApply` | 保留 | N/A |
-| `platforms` | **移除** | N/A (build时过滤) |
 
 ### 各平台加载行为
 
@@ -256,16 +254,11 @@ Codex `~/.codex/AGENTS.md` 默认限制 32KB (`project_doc_max_bytes`)。
 
 ## 平台过滤机制
 
-通过 YAML frontmatter 的 `platforms` 字段标记平台归属：
+规则按目录分发，frontmatter 不标记平台：
 
-```yaml
----
-platforms: [cursor]
----
-```
-
-- 无 `platforms` 字段 → 所有平台共享
-- `platforms: [cursor]` → 仅 Cursor 加载，文件放在 `rules/cursor/`，**不能**放在 `rules/common/`（Claude 直接软链该目录，`build` 会报错）
+- `rules/common/` → 所有平台共享
+- `rules/<platform>/` → 仅该平台加载（如 `rules/cursor/`、`rules/claude/`）
+- 规则带 `platforms` 字段时 `build` 报错（该字段已废弃）
 
 MCP 配置中使用 `_platforms` 字段：
 
@@ -287,8 +280,8 @@ MCP 配置中使用 `_platforms` 字段：
 
 ## 新增规则
 
-1. 在 `rules/common/` 添加规则文件（`.md` + YAML frontmatter，`alwaysApply: true`）
-2. 平台过滤用 `platforms: [cursor, claude]`
+1. 在 `rules/common/` 添加规则文件（纯 `.md`，无需 frontmatter）
+2. 平台专属规则放进 `rules/<platform>/`，不写 `platforms` 字段
 3. 运行 `uv run install.py build` 重新生成 `_dist/`
 4. 运行 `uv run install.py install` 部署
 5. 重启 agent 生效

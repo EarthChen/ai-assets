@@ -11,7 +11,7 @@ from . import paths
 from .common import ensure_dir, log, log_section
 from .frontmatter import (
     convert_rule_to_mdc,
-    rule_applies_to,
+    parse_frontmatter,
     strip_frontmatter,
 )
 
@@ -119,20 +119,35 @@ def _clean_mattpocock_skill_symlinks(dry_run: bool = False) -> None:
         log(f"skills/ stale mattpocock symlinks removed ({count})")
 
 
-def _check_common_rules_reach_claude() -> None:
-    """Fail when a rules/common file opts out of Claude.
+def _rules_for(platform: str) -> list[Path]:
+    """Rules for one platform: rules/common/ plus rules/<platform>/.
 
-    Claude links rules/common as a directory, so no build step can filter it.
-    A platform-specific rule belongs in rules/<platform>/.
+    The directory is the only routing signal.
     """
-    common = paths.REPO_ROOT / "rules" / "common"
-    if not common.is_dir():
+    rules_dir = paths.REPO_ROOT / "rules"
+    found: list[Path] = []
+    for name in ("common", platform):
+        sub = rules_dir / name
+        if sub.is_dir():
+            found.extend(sorted(sub.rglob("*.md")))
+    return found
+
+
+def _reject_platforms_field() -> None:
+    """Fail when a rule still carries the retired `platforms` field.
+
+    Build ignores the field, so the rule would load where its author did not
+    intend. The rule's directory names its platform instead.
+    """
+    rules_dir = paths.REPO_ROOT / "rules"
+    if not rules_dir.is_dir():
         return
-    for rule_file in sorted(common.rglob("*.md")):
-        if not rule_applies_to(rule_file, "claude"):
+    for rule_file in sorted(rules_dir.rglob("*.md")):
+        metadata, _ = parse_frontmatter(rule_file.read_text(encoding="utf-8"))
+        if "platforms" in metadata:
             raise SystemExit(
-                f"{rule_file.relative_to(paths.REPO_ROOT)} excludes claude, but Claude links "
-                f"rules/common as is. Move it to rules/<platform>/."
+                f"{rule_file.relative_to(paths.REPO_ROOT)} has a `platforms` field. "
+                f"Remove it: rules/<platform>/ names the platform, rules/common/ is shared."
             )
 
 
@@ -140,7 +155,7 @@ def build_dist(dry_run: bool = False) -> None:
     """Generate platform-filtered content in _dist/."""
     log_section("Building _dist/ (platform-filtered content)")
 
-    _check_common_rules_reach_claude()
+    _reject_platforms_field()
 
     _ensure_submodules(dry_run)
     _clean_mattpocock_skill_symlinks(dry_run)
@@ -183,17 +198,15 @@ def build_dist(dry_run: bool = False) -> None:
                 mcp_out.write_text(content + "\n", encoding="utf-8")
                 log(f"_dist/{platform}/mcp.json ({len(mcp_servers)} servers)")
 
-        # Rules: filtered per platform
+        # Rules: rules/common/ + rules/<platform>/
         # - Cursor: .mdc files in rules/
-        # - Claude: none (rules/common is linked as is)
+        # - Claude: none (rules/{common,claude} are linked as is)
         # - Codex/pi: no separate rules dir (content embedded in AGENTS.md)
         rules_dir = paths.REPO_ROOT / "rules"
         rules_out = platform_dir / "rules"
         has_rules = False
         if platform == "cursor":
-            for rule_file in sorted(rules_dir.rglob("*.md")):
-                if not rule_applies_to(rule_file, platform):
-                    continue
+            for rule_file in _rules_for(platform):
                 has_rules = True
                 rel = rule_file.relative_to(rules_dir)
                 ensure_dir(rules_out / rel.parent, dry_run)
@@ -219,17 +232,15 @@ def build_dist(dry_run: bool = False) -> None:
                 else:
                     dst.write_text(mdc, encoding="utf-8")
             elif platform in ("codex", "pi"):
-                # Codex/pi AGENTS.md = global instructions + rules/common/.
+                # Codex/pi AGENTS.md = global instructions + rules/common/
+                # + rules/<platform>/.
                 # Language conventions live in skills/<lang>-development
                 # (loaded on demand), which keeps AGENTS.md under Codex's 32KB
                 # default limit. pi loads its copy from ~/.pi/agent/.
                 agents_content = gi_content
-                common_rules_dir = paths.REPO_ROOT / "rules" / "common"
-                rule_sections = []
-                if common_rules_dir.exists():
-                    for rf in sorted(common_rules_dir.rglob("*.md")):
-                        if rule_applies_to(rf, platform):
-                            rule_sections.append(strip_frontmatter(rf.read_text(encoding="utf-8")))
+                rule_sections = [
+                    strip_frontmatter(rf.read_text(encoding="utf-8")) for rf in _rules_for(platform)
+                ]
                 if rule_sections:
                     agents_content += "\n\n# --- Rules ---\n\n" + "\n\n".join(rule_sections)
                 dst = platform_dir / "AGENTS.md"

@@ -29,6 +29,8 @@ def _seed_repo(repo):
     (repo / "rules" / "common").mkdir(parents=True)
     (repo / "global-instructions.md").write_text("global\n", encoding="utf-8")
     (repo / "rules" / "common" / "r.md").write_text("rule\n", encoding="utf-8")
+    (repo / "rules" / "claude").mkdir()
+    (repo / "rules" / "claude" / "c.md").write_text("claude rule\n", encoding="utf-8")
 
 
 @pytest.fixture
@@ -62,6 +64,9 @@ def test_files_deploy_as_symlinks_into_repo(sandbox, empty_path):
     assert (claude_home / "CLAUDE.md").resolve() == sandbox.repo / "global-instructions.md"
     assert (claude_home / "rules" / "common").resolve() == sandbox.repo / "rules" / "common"
     assert (claude_home / "rules" / "common" / "r.md").read_text() == "rule\n"
+    # Claude-only rules live in rules/claude/ so no other platform loads them.
+    assert (claude_home / "rules" / "claude").resolve() == sandbox.repo / "rules" / "claude"
+    assert (claude_home / "rules" / "claude" / "c.md").read_text() == "claude rule\n"
 
 
 def test_missing_claude_cli_logs_why_plugin_steps_were_skipped(sandbox, empty_path, capsys):

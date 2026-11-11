@@ -1,5 +1,5 @@
 ---
-description: "Testing requirements: 80% coverage, TDD workflow"
+description: "common-testing"
 alwaysApply: true
 ---
 # Testing Requirements

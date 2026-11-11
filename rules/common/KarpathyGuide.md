@@ -1,7 +1,3 @@
----
-description: "Karpathy Rules: behavioral guidelines to reduce common LLM coding mistakes"
-alwaysApply: true
----
 # Karpathy Guidelines Rules
 
 These rules apply to every coding task unless explicitly overridden.

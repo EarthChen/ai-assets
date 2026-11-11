@@ -1,7 +1,3 @@
----
-description: "Security: mandatory checks, secret management"
-alwaysApply: true
----
 # Security Guidelines
 
 ## Mandatory Security Checks
