@@ -161,7 +161,7 @@ The third-party sets declared with an `install` object are **NOT plugin-distribu
 
 **Why not plugin-distributed?** The skill needs `runtime.conf` (agent-written at first use) and optional `.env` (`ANYSEARCH_API_KEY`) to persist across sessions. But plugin cache (`~/.claude/plugins/cache/.../`) is a **read-only snapshot overwritten on every version pull** — files the agent writes there are lost next session. So anysearch installs as user-level symlinks outside the plugin cache, where persistent files survive.
 
-**Upgrade:** `git submodule update --remote vendor/anysearch-skill` (re-pin to a release tag). Symlinks need no update — content flows through automatically.
+**Upgrade:** `git submodule update --remote vendor/anysearch-skill` (tracks upstream main, not release tags). Symlinks need no update — content flows through automatically.
 
 ### understand-anything
 
@@ -169,7 +169,7 @@ The third-party sets declared with an `install` object are **NOT plugin-distribu
 
 Not plugin-distributed for the same reason as anysearch: runtime files (`system.json`, generated graphs under `.understand-anything/`) must survive across sessions outside the read-only plugin cache.
 
-**Upgrade:** `git submodule update --remote vendor/understand-anything` (re-pin to a tag if upstream tags one). Symlinks need no update — content flows through automatically.
+**Upgrade:** `git submodule update --remote vendor/understand-anything` (tracks upstream main, not release tags). Symlinks need no update — content flows through automatically.
 
 ### herdr-skill
 
@@ -195,16 +195,16 @@ The [herdr](https://github.com/badlogic/herdr) terminal-multiplexer control skil
 
 ### answer-me-with-html
 
-[QingYunA/answer-me-with-html](https://github.com/QingYunA/answer-me-with-html) — renders a short Markdown draft into a one-page HTML explainer. Full submodule at `vendor/answer-me-with-html` (~12MB), pinned to a release tag. The self-owned `skills/show-me` uses its bundled CLI, `skills/answer-me-with-html/scripts/am.mjs` (one ~1MB file, nothing to install), as the page backend, and reads its upstream `SKILL.md` as the manual for that route.
+[QingYunA/answer-me-with-html](https://github.com/QingYunA/answer-me-with-html) — renders a short Markdown draft into a one-page HTML explainer. Full submodule at `vendor/answer-me-with-html` (~12MB), tracking upstream main. The self-owned `skills/show-me` uses its bundled CLI, `skills/answer-me-with-html/scripts/am.mjs` (one ~1MB file, nothing to install), as the page backend, and reads its upstream `SKILL.md` as the manual for that route.
 
-- **Upstream skill not linked**: its description tells the model to make a page for most explanations, comparisons, reviews and diagnoses, and to cut the terminal reply to 2–3 lines. No config makes it user-only. The `install` object has only `source`, so `install.py` inits the submodule and creates no link. `skills/show-me` decides when a page fits, then reads upstream `SKILL.md` sections 2–7 with four overrides (when to page, command name, reply length, updates). Upstream rules and the CLI share one tag, so they never drift apart.
+- **Upstream skill not linked**: its description tells the model to make a page for most explanations, comparisons, reviews and diagnoses, and to cut the terminal reply to 2–3 lines. No config makes it user-only. The `install` object has only `source`, so `install.py` inits the submodule and creates no link. `skills/show-me` decides when a page fits, then reads upstream `SKILL.md` sections 2–7 with four overrides (when to page, command name, reply length, updates). Upstream rules and the CLI share one commit, so they never drift apart.
 - **Wrapper**: `skills/show-me/scripts/am` runs the CLI; `am skill-dir` prints the real path of the upstream skill dir. It resolves the skill symlink with `cd -P` first: Node (and so Claude Code's Read tool) normalizes `..` as text, so `~/.claude/skills/show-me/../../vendor/...` resolves to `~/.claude/vendor/...` and fails.
 - **Runtime**: Node.js >= 20. Pages go to `~/.answer-me-with-html/pages`; `am clean` prunes them.
 - **Network**: a daily update check fetches `package.json` + `highlights.json` from `raw.githubusercontent.com`. Turn it off with `am config set update_check false` or `AM_NO_UPDATE_CHECK=1`. `am theme` reads the catalog at `answer-me-with-html.com`; `am video` calls ElevenLabs TTS.
-- **Update path trap**: the CLI's `! Update hint` tells a git-checkout install to run `git pull && npm install`. Inside the submodule that moves it off the pin and uses npm. `skills/show-me` tells the model to leave the upstream update commands unrun.
+- **Update path trap**: the CLI's `! Update hint` tells a git-checkout install to run `git pull && npm install`. Inside the submodule that moves it off the pinned commit and uses npm. `skills/show-me` tells the model to leave the upstream update commands unrun.
 - **No plugin**: upstream `INSTALL.md` installs a Claude Code plugin. Do not: it loads the upstream skill this repo leaves out.
 
-**Upgrade:** `git submodule update --remote vendor/answer-me-with-html`, re-pin to the latest release tag (`git -C vendor/answer-me-with-html checkout vX.Y.Z`), then check that the overrides in `skills/show-me/SKILL.md` ("Page route") still match upstream `SKILL.md`: the section numbers (0 settings, 1 when to page, 2–7 workflow), the `node "${CLAUDE_SKILL_DIR}/scripts/am.mjs"` command string, the 2–3 line reply rule, and the `✓ <path>` success line. Also check the `am.mjs` path in `scripts/am`.
+**Upgrade:** `git submodule update --remote vendor/answer-me-with-html` (tracks upstream main, not release tags), then check that the overrides in `skills/show-me/SKILL.md` ("Page route") still match upstream `SKILL.md`: the section numbers (0 settings, 1 when to page, 2–7 workflow), the `node "${CLAUDE_SKILL_DIR}/scripts/am.mjs"` command string, the 2–3 line reply rule, and the `✓ <path>` success line. Also check the `am.mjs` path in `scripts/am`.
 
 ### mattpocock/skills
 
@@ -222,7 +222,7 @@ Upstream v1.3.0 deleted its merge-conflict skill with no replacement (it keeps a
 ```bash
 uv run install.py manual mattpocock-skills              # install all 27
 git submodule update --remote vendor/mattpocock-skills  # update upstream (symlinks auto-flow)
-# then re-pin to a release tag: git add vendor/mattpocock-skills
+# then stage the new pin: git add vendor/mattpocock-skills
 ```
 
 ## Common Workflows
