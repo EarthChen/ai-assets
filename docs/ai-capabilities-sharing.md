@@ -92,7 +92,7 @@ rules 目录下分两类，其**加载方式**完全不同，此为第一层设�
 
 ## 一·五、Context Mode：上下文窗口的基础设施层
 
-前三层（rules / skills / agents）解决的是"让 agent 在合适的时机用合适的资源"，但都没直接解决一个更底层的问题——**agent 的工作产物本身会淹没上下文窗口**。一次 Playwright 快照 56 KB，二十个 GitHub issue 59 KB，一份访问日志 45 KB，30 分钟后 40% 的上下文即被原始数据占满；当 agent 压缩对话以释放空间时，又会丢失"正在编辑哪些文件、哪些任务进行中、用户刚问了什么"。Context Mode（`mksglu/context-mode`）正是补这一层的外部基础设施——它不在仓库的 rules/skills/agents 三层内，而是作为 MCP 服务器横跨四平台（Claude Code / Codex / Cursor / pi），为三层资产提供一个"上下文不被淹没"的运行时底座。
+前三层（rules / skills / agents）解决的是"让 agent 在合适的时机用合适的资源"，但都没直接解决一个更底层的问题——**agent 的工作产物本身会淹没上下文窗口**。一次 Playwright 快照 56 KB，二十个 GitHub issue 59 KB，一份访问日志 45 KB，30 分钟后 40% 的上下文即被原始数据占满；当 agent 压缩对话以释放空间时，又会丢失"正在编辑哪些文件、哪些任务进行中、用户刚问了什么"。Context Mode（`mksglu/context-mode`）正是补这一层的外部基础设施——它不在仓库的 rules/skills/agents 三层内，而是作为 MCP 服务器横跨三平台（Claude Code / Codex / pi；v2 起不再支持 Cursor），为三层资产提供一个"上下文不被淹没"的运行时底座。
 
 ### 1.5.1 解决问题的四个面
 
@@ -100,7 +100,7 @@ Context Mode 把"上下文问题"拆为四个正交的面，逐项设防：
 
 | 面 | 解决的问题 | 机制 |
 | ---- | ----------- | ------ |
-| **Context Saving** | 原始工具输出淹没上下文 | 沙箱工具（`ctx_execute` / `ctx_execute_file` / `ctx_batch_execute`）在子进程跑代码，只回传 `console.log` 的结果。315 KB 变 5.4 KB，98% 压缩。 |
+| **Context Saving** | 原始工具输出淹没上下文 | 沙箱工具（`ctx_execute` / `ctx_batch`）在子进程跑代码，只回传 `console.log` 的结果。315 KB 变 5.4 KB，98% 压缩。 |
 | **Session Continuity** | 压缩后丢失任务进度 | 每次文件编辑、git 操作、任务、错误、用户决策均记入 SQLite；压缩时不回灌全量，而是用 FTS5 + BM25 检索仅与当前相关的片段，模型"拾起断点继续"。 |
 | **Think in Code** | agent 把自己当数据处理器去读原始数据 | 范式强制：LLM 写脚本做分析、只 `console.log` 答案，而非把 50 个文件读进上下文再心算。1 个脚本替代 10 次工具调用，省 100 倍上下文。 |
 | **No prose enforcement** | 强制简洁文案反而损推理质量 | 只管"数据去哪"，不管"模型怎么说话"。简洁度/完整度/格式留给模型自己的 `CLAUDE.md`/`AGENTS.md`——激进简洁 prompt 已被证明会退化编码/推理基准。 |
