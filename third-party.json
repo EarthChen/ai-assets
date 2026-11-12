@@ -202,19 +202,19 @@
     },
     {
       "name": "context-mode",
-      "description": "MCP server + session-continuity layer by mksglu/context-mode. Saves context by sandboxing tool output (ctx_execute/ctx_execute_file/ctx_batch_execute/ctx_fetch_and_index/ctx_index/ctx_search) and tracking session events in FTS5-backed SQLite for restore across compactions. NOT a skill distributed by this repo — installed per-platform via each platform's native plugin or npm path. This repo's AGENTS.md already references ctx-* tools, so this entry formalizes their provenance.",
+      "description": "MCP server + session-continuity layer by mksglu/context-mode (v2.1.8). Saves context by sandboxing tool output (ctx_execute/ctx_batch/ctx_index/ctx_search) and tracking session events in FTS5-backed SQLite for restore across compactions. NOT a skill distributed by this repo — installed per-platform via each platform's native plugin or npm path. This entry records its provenance; docs/ai-capabilities-sharing.md section 1.5 describes it.",
       "platforms": {
         "claude": {
           "marketplace_ref": "mksglu/context-mode",
           "plugin_id": "context-mode@context-mode",
-          "note": "Auto-installed by install.py via `claude plugin marketplace add mksglu/context-mode` + `claude plugin install context-mode@context-mode --scope user`. Provides 11 MCP tools (6 sandbox + 5 meta) and all hooks (PreToolUse/PostToolUse/UserPromptSubmit/PreCompact/SessionStart/Stop) via the plugin's own manifest; routing is automatic via SessionStart hook. Requires Claude Code v1.0.33+. Verify with /context-mode:ctx-doctor."
+          "note": "Auto-installed by install.py via `claude plugin marketplace add mksglu/context-mode` + `claude plugin install context-mode@context-mode --scope user`. Provides 9 MCP tools (ctx_execute/ctx_batch/ctx_index/ctx_search + ctx_resume/ctx_stats/ctx_doctor/ctx_upgrade/ctx_purge) and hooks (PreToolUse/PostToolUse/UserPromptSubmit/SessionStart) via the plugin's own manifest; routing is automatic via SessionStart hook. Verify with /context-mode:ctx-doctor."
         },
         "codex": {
-          "install_cmd": "codex plugin marketplace add mksglu/context-mode  # then enable [features] plugin_hooks=true and hooks=true in ~/.codex/config.toml",
-          "note": "Codex native plugin (.codex-plugin/mcp.json + hooks.json + skills/). Plugin hooks are gated behind the plugin_hooks feature flag until Codex enables them by default; review and trust hooks when Codex prompts. Manual fallback (builds without plugin_hooks): pnpm add -g context-mode + [mcp_servers.context-mode] in ~/.codex/config.toml + ~/.codex/hooks.json — see README Codex CLI section."
+          "install_cmd": "codex plugin marketplace add mksglu/context-mode && codex plugin add context-mode@context-mode && pnpm add -g context-mode && context-mode setup --agents codex  # last two steps trust the plugin hooks",
+          "note": "Codex native plugin (.codex-plugin/ with MCP + hooks.json + skills/). Update: `codex plugin marketplace upgrade context-mode`. Check: `codex mcp list`."
         },
         "cursor": {
-          "note": "Installed via Cursor marketplace (user-managed, not installed by this repo). Plugin auto-registers MCP + hooks (preToolUse/postToolUse/sessionStart/stop/afterAgentResponse) + rules + skills. Upstream README still lists marketplace as 'awaiting Cursor team review' (#485) with local-folder fallback, but install completed successfully via marketplace on this machine."
+          "note": "Unsupported since v2: context-mode lists Cursor in UNSUPPORTED_HOSTS and its README no longer offers a Cursor install. A Cursor plugin installed earlier stays on v1.x and no longer receives updates; remove it from the Cursor marketplace when convenient."
         }
       }
     },

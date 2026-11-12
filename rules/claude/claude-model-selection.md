@@ -5,9 +5,9 @@
 Set `model` on every Agent / workflow `agent()` call by the kind of work:
 
 - `haiku`: work where a mistake is cheap to spot. Find files, read logs, run tests, summarize, classify, extract.
-- `sonnet`: well-scoped work against a clear spec. Repeated investigation, review, or drafting tasks. Bulk workers under a lead model.
-- Session model (omit `model`): code edits, judgment calls, architecture, review verdicts.
-- `fable`: major refactors or migrations, architecture planning, deep research, leading many subagents.
+- `sonnet`: well-scoped work against a clear spec. Repeated investigation, review, or drafting tasks. Research legwork: read docs and source, extract facts with citations. Bulk workers under a lead model.
+- Session model (omit `model`): code edits, judgment calls, architecture, research synthesis, review verdicts.
+- `fable`: major refactors or migrations, architecture planning, a lead that coordinates 10 or more agents.
 
 Built-in agents such as Explore inherit the session model. Set `model` on them too.
 
@@ -17,7 +17,7 @@ A migration or a performance optimization stays on the session model or higher, 
 
 Take these steps in order. Stop at the first one that works.
 
-1. Give the work a self-check: a test, a build, or a script that calls the endpoint.
+1. Give the work a self-check: a test, a build, a script that calls the endpoint, or for research, a spot-check of cited claims against their sources.
 2. Raise effort one level, up to `high`.
 3. Move to the next model up, at a lower effort than the smaller model used. After `high`, that is `medium`.
 
