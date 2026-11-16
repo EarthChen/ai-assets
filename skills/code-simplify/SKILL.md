@@ -24,4 +24,4 @@ Dispatch is justified by the scan's context weight, not by default — a small d
 
 ## Execute
 
-Read [`rules.md`](rules.md) in this skill's directory and execute every section in order. Include this skill directory's absolute path in every dispatch prompt so the agent reads `rules.md` from there.
+Read [`rules.md`](rules.md) in this skill's directory and execute every section in order. Include this skill directory's absolute path and the word `user-requested` in every dispatch prompt, so the agent reads `rules.md` from there and applies the file-level fence instead of Pipeline mode.

@@ -154,4 +154,4 @@ Production builds should ship without source maps, or with sourcemaps uploaded t
 
 ## Agent Support
 
-- Use the `code-reviewer` agent (its security lens) for comprehensive security audits and for React/TypeScript patterns and the above rules in active code review; on Claude Code, the built-in `/security-review` command also reviews pending changes
+- Use the `code-reviewer` agent (its security lens) for comprehensive security audits and for React/TypeScript patterns and the above rules in active code review

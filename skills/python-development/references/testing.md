@@ -1,10 +1,10 @@
 # Python Testing Patterns
 
-pytest conventions that go beyond the defaults. Run everything through `uv run pytest`.
+pytest conventions that go beyond the defaults. Commands below use `uv run pytest` (new projects); an existing project with another dependency manager runs them through that tool (`SKILL.md`, Always).
 
 ## Coverage
 
-Test-first loop: the `tdd` skill. Coverage target: the global 80% rule; critical paths 100%. Measure: `uv run pytest --cov=mypackage --cov-report=term-missing`. Declare `--strict-markers` and the `slow` / `integration` / `unit` markers once in `pyproject.toml` (see `patterns.md` → pyproject.toml Baseline). Select with `uv run pytest -m "not slow"`.
+Test-first loop: the `tdd` skill. Gate: the global testing rule (every agreed seam has a test; 80% coverage is a reference, not a gate). Measure: `uv run pytest --cov=mypackage --cov-report=term-missing`. Declare `--strict-markers` and the `slow` / `integration` / `unit` markers once in `pyproject.toml` (see `patterns.md` → pyproject.toml Baseline). Select with `uv run pytest -m "not slow"`.
 
 ## Async Tests
 

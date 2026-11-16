@@ -1,6 +1,6 @@
 # Python Project Conventions
 
-Project layout, typing baseline, and tooling commands. Every command runs through `uv run`; dependencies live in `pyproject.toml`.
+Project layout, typing baseline, and tooling commands. Commands below use `uv run` (new projects); an existing project with another dependency manager runs them through that tool (`SKILL.md`, Always).
 
 ## Type Hints
 

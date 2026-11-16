@@ -215,7 +215,6 @@ mattpocock `tdd` 的核心机制 seam 值得单独展开。seam 的本质是**�
 
   如此分工的设计依据是：内置工具的优势在于**零依赖、零配置、始终可用**，适合快速事实查询与富媒体内容提取（YouTube 视频、GitHub 仓库）；anysearch 的优势在于**专业领域的召回质量与多意图并行**——其垂直域能返回结构化数据（如股票代码、CVE 编号、DOI 的精确记录），通用搜索做不到。`global-instructions.md` 规定"anysearch 首选、内置回退"而非二选一，原因正是两者能力正交：垂直域与批量并行用 anysearch，富媒体提取与零配置场景用内置工具，按查询性质分流而非按偏好绑定。
 - `research`：对高信源做调研并沉淀为 markdown。
-- `llm-wiki`：Karpathy 式自编译 Obsidian 知识库，支持摄入原始素材、编译交叉链接概念页、查询问答。手动加载 skill（`/skill:llm-wiki`）。
 - `yao-meta-skill`（三方 vendor，yaojingang/yao-meta-skill）：创建、优化、评估、打包与治理 skill（Skill OS：Skill IR、目标编译器、评测、发布门禁）。vendor submodule + symlink 分发，替代原自有 `skill-creator`（2026-09-04 移除）。
 - `project-docs-init`：初始化项目的 AGENTS.md / CLAUDE.md / README.md。
 

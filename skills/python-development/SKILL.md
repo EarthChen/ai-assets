@@ -19,9 +19,9 @@ Python conventions. Load only the reference matching the current task branch.
 
 ## Always
 
-- Run every tool through `uv run`; dependencies live in `pyproject.toml`.
-- Test-first: call the Skill tool with "tdd"; coverage target is the global 80% testing rule; fix the implementation, not the failing test.
+- Tooling follows the global tech-stack rule. A new project uses uv: every tool runs through `uv run`, dependencies live in `pyproject.toml`. An existing project keeps its own dependency manager (`poetry.lock` → `poetry run`, `Pipfile.lock` → `pipenv run`, none → the commands in its README / Makefile / CI); the `uv run` commands in the references then run through that tool.
+- Test-first: load the `tdd` skill; the gate is the global testing rule (every agreed seam has a test; 80% coverage is a reference); fix the implementation, not the failing test.
 
 ## Completion criterion
 
-`uv run ruff check .`, `uv run mypy .`, and `uv run pytest --cov` all pass, and coverage meets the 80% target.
+The project's lint, type-check, and test commands pass (uv project: `uv run ruff check .`, `uv run mypy .`, `uv run pytest --cov`), every agreed seam has a test, and the coverage figure is in your final message.

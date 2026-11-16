@@ -38,7 +38,7 @@ Show a diff and wait for confirmation **only** when a change deletes or heavily 
 
 ## Generate
 
-Regenerate each file whole, not as a patch. Match the dominant language from the probe. Before generating AGENTS.md, call the Skill tool with "writing-for-agents". README.md is human-facing; the section structure and constraints below apply to it.
+Regenerate each file whole, not as a patch. Match the dominant language from the probe. Before generating AGENTS.md, load the `writing-for-agents` skill. README.md is human-facing; the section structure and constraints below apply to it.
 
 ### AGENTS.md — six sections, ≤190 lines hard
 
@@ -90,7 +90,7 @@ Handle CLAUDE.md per the argument (default `--symlink` on). Adaptive: whichever 
 
 ## Grill
 
-When you hit intent the code cannot yield — a positioning phrase you can't pin, a team boundary rule, a statement with no code corroboration — call the Skill tool with "grilling" for **these points only**. It carries the interview mechanics (design tree, frontier rounds, each question with your recommended answer). Scope the session to the unresolved intent points this run surfaced.
+When you hit intent the code cannot yield — a positioning phrase you can't pin, a team boundary rule, a statement with no code corroboration — load the `grilling` skill for **these points only**. It carries the interview mechanics (design tree, frontier rounds, each question with your recommended answer). Scope the session to the unresolved intent points this run surfaced.
 
 Grill fires for intent and for destructive changes (see the gate). Pure additions, dedup, and obviously stale facts need no question.
 

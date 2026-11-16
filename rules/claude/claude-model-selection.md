@@ -34,6 +34,4 @@ Recommend the switch at a natural break, with `/compact` first. The prompt cache
 
 ## Delegation
 
-Keep the main context for decisions. Send verbose reading (logs, search sweeps, large files) to a cheaper subagent that returns a summary.
-
-Use a lead with parallel cheaper workers only when the work is larger than one context window. Use one agent loop for a chain of dependent steps or for work that fits in one context window.
+When to use a subagent at all, and how many: the `agent-orchestration` skill. This rule only picks the model.

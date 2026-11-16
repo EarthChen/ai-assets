@@ -13,7 +13,8 @@
   - 首句给核心结论与论据；省去客套、赞美、免责声明（如“作为一个AI…”）与情绪化填料。
   - 采用简化技术英语（ASD-STE100）的语气：短句（每句一个判断）、一词一义（同一概念只用一个词）、主动语态（“函数抛错”而非“错误被抛出”）、字面表述（无隐喻、无情绪化修辞）。适用于所有交付文本——代码注释、提交信息、技术文档、与用户的对话。
 - **批量优先（Batch-First）**：
-  - 同一回合内，所有已确定且无相互依赖的工具调用一次性并发——读多文件、跑独立命令、fan-out 子代理。
+  - 同一回合内，所有已确定且无相互依赖的工具调用一次性并发——读多文件、跑独立命令。
+  - 是否派子代理、派几个：按 `agent-orchestration` skill 的「Delegate only when it pays」一节。
   - 模糊或需确认的事项先问再做。
 - **金字塔表达（Pyramid Principle）**：
   - 对话、分析说明、方案汇报、Issue/PR 描述等沟通内容，先结论后论据、先全局后细节、先结果后过程；结构化时按互斥且穷尽（MECE）分组。
@@ -47,7 +48,12 @@
 
 - **首选 `anysearch` skill**（本机已标配）：`search` 通用搜索、垂直域搜索、`batch_search` 多意图并行、`extract` 页面全文提取（含 SPA/JS 渲染页）。
 - **垂直域查询**（finance / academic / code / security 等 16 域）：**先 `get_sub_domains` 发现 `sub_domain` 与必填参数再带参搜索**——结果显著优于通用搜索。其余用法细节见 skill 文档。
-- **回退**：anysearch 不可用（配额耗尽/调用失败）时，退回 `WebSearch` / `WebFetch`，并告知用户。
+- **回退**：anysearch 不可用（配额耗尽/调用失败）时，退回当前平台内置的网页搜索与抓取工具。
+
+# 5. 加载 Skill
+
+- 正文写“加载 `X` skill”、“Load / invoke the `X` skill”或“call the Skill tool with X”时：用平台的 skill 工具加载；没有该工具，就读 skill 列表中 `X` 的 `SKILL.md` 并执行（正文相对路径以其所在目录为基准）。
+- 加载失败（找不到，或为用户触发型 skill）时依次：去掉 `X` 中冒号及之前的部分重试（`mattpocock-skills:code-review` → `code-review`）；正文给了 `SKILL.md` 路径就直接读；仍不行，告知用户并跳过该步（用户触发型 skill 请用户输入对应命令）。
 
 
 # --- Rules ---
@@ -209,26 +215,33 @@ Before committing code that handles requests, user input, or data access, check 
 
 # 技术栈约束 (Strict Tech Stack)
 
-## Python 环境管理
+## 已有项目：沿用现有依赖管理
+- 按 lockfile 判断工具（如 `poetry.lock` → poetry，`package-lock.json` → npm）；没有 lockfile 就按 README、Makefile 或 CI 里的命令。
+- 不换包管理器，不新建或删除 lockfile。
+
+## 新项目、一次性脚本、临时环境：只用 uv / pnpm
+
+### Python 环境管理
 - **唯一工具**：仅用 `uv`（禁止 `pip`、`conda`、`poetry`）。
 - **标准工作流**（项目依赖必须进 `pyproject.toml`）：
   - 初始化：`uv init`（临时环境可用 `uv venv`）
   - 依赖安装：`uv add <package>`（同步用 `uv sync`；`uv pip install` 不写入 `pyproject.toml`，仅限一次性脚本/临时环境）
   - 脚本执行：`uv run <script>.py`（一次性依赖用 `uv run --with <pkg>`）
 
-## Node.js 生态
+### Node.js 生态
 - **唯一工具**：仅用 `pnpm`（禁止 `npm`、`yarn`）。
 - **自动转换**：若用户提供 `npm` 指令，必须自动将其转换为 `pnpm` 等效版本后再执行。
 
 ## 代码与架构标准
 - **默认脚本**：自动化脚本首选 Python。
 - **设计原则**：函数短小精悍，逻辑原子化。
-- **可视化**：复杂逻辑、系统架构或调用链路优先使用 `Mermaid` 或 `PlantUML` 提供可视化图表。
 
 
 # Testing Requirements
 
 Applies to changes in executable code. Documentation-only and configuration-only changes are exempt.
 
-- Minimum test coverage: 80%.
 - TDD is mandatory for new features and bug fixes — the red-green-refactor loop is carried by the `tdd` skill (part of the `feature-workflow` skill pipeline).
+- **The gate**: every seam agreed in the `tdd` loop has a test. When no `tdd` loop ran (for example a refactor), list the seams the change touches and confirm them with the user before you mark the work done.
+- **Coverage is a reference**: when the project has a coverage command, report line coverage against 80%. Do not block on it, do not add coverage tooling for it, and do not write tests only to raise it.
+- **A project-configured coverage gate must pass**: run the project's full verification command (the one that runs every configured check), not the test command alone. When that gate fails, propose the uncovered seams to the user, test the ones the user confirms, and never lower the gate. If the user confirms none, stop and report the failing gate.

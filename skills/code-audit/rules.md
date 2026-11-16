@@ -25,7 +25,7 @@ Three sub-agents run independently. A change can pass one and fail the others; f
 
 ### Standards and Spec axes
 
-Preparation happens in this session; the two sub-agents are plain workers. Locate the mattpocock `code-review` SKILL.md and read it (do not invoke it as a Skill tool — it is a process document, read for its prompt templates):
+Preparation happens in this session; the two sub-agents are plain workers. Locate the mattpocock `code-review` SKILL.md and read the file directly (do not load it as a skill — it is a process document, read for its prompt templates):
 
 ```bash
 find -L "$PWD/skills" ~/.agents/skills ~/.pi/agent/skills ~/.claude/plugins/cache ~/.codex/plugins ~/.cursor/plugins -path '*/code-review/SKILL.md' -exec ls -t {} + 2>/dev/null | head -1

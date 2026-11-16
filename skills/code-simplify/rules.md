@@ -19,6 +19,10 @@ Use the scope the user names. Unspecified: uncommitted changes if any exist, els
 
 For a PR/MR, `<base>` is the merge target (`main`, `master`, or the MR's target branch); the three-dot form shows only what this branch adds. If the branch is stale, sync base first — otherwise base drift pollutes the diff.
 
+**Pipeline mode** is the default. The file-level fence applies only when the user asked for this simplification: the user invoked the `code-simplify` skill, or the dispatch prompt says `user-requested`. When the user asks in words for a simplification ("simplify my changes"), the dispatcher puts `user-requested` in the dispatch prompt. Every other run is pipeline mode, including step 3 of the `feature-workflow` skill and any dispatch the model starts on its own.
+
+In pipeline mode the fence is tighter than the file list. Edit only lines this change added or modified, plus residue this change made unused (imports, variables, functions). Pipeline mode overrides every Scan item below: a finding whose fix edits a line this change did not add or modify goes under "adjacent problems" in the Report; do not edit it.
+
 Then:
 
 1. List the changed files; that list is the working scope. Drop generated, vendored, and lockfile paths from it.
@@ -83,7 +87,7 @@ Deletion needs proof, not a hunch:
 Findings to look for:
 
 - **Duplicated logic** — same 5+ lines in multiple places → extract to a shared function.
-- **Dead code in the changed region** — unreachable branches, unused vars, commented-out blocks → prove dead, remove.
+- **Dead code in the changed region** (pipeline mode: added or modified lines only) — unreachable branches, unused vars, commented-out blocks → prove dead, remove.
 - **Unnecessary abstraction** — a wrapper that adds no value → inline; call the underlying function directly.
 - **Over-engineering** — factory-for-a-factory, strategy-with-one-strategy → replace with the direct approach.
 - **Redundant type assertions** — casting to a type already inferred → remove.
