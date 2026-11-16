@@ -22,7 +22,7 @@ Quarkus has no `patterns.md`, `tdd.md`, `verification.md`, or `security.md`; use
 
 ## Always
 
-- Test-first: Call the Skill tool with "tdd". Failing test → fix the implementation.
+- Test-first: Load the `tdd` skill. Failing test → fix the implementation.
 - Before any release or PR, run `references/verification.md`.
 
 ## Done

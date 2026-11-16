@@ -49,7 +49,7 @@ You DO NOT refactor or rewrite code — you report findings only.
 - **CSRF disabled without justification**: Stateless JWT APIs may disable/omit it but must document why
   - **[QUARKUS]**: Form-based endpoints must use `quarkus-csrf-reactive`
 
-If any CRITICAL security issue is found, stop and report it first, then run the security lens in `lens-review.md` on the same code (on Claude Code, the built-in `/security-review` command also reviews pending changes).
+If any CRITICAL security issue is found, stop and report it first, then run the security lens in `lens-review.md` on the same code.
 
 ### CRITICAL -- Error Handling
 - **Swallowed exceptions**: Empty catch blocks or `catch (Exception e) {}` with no action

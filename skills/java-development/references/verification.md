@@ -29,9 +29,10 @@ mvn -T 4 spotbugs:check pmd:check checkstyle:check
 
 ## Phase 4: Tests + Coverage
 
+Run the project's full verification command (the one that runs every configured check, coverage checks included), not the test command alone. Maven:
+
 ```bash
-mvn -T 4 verify   # tests + JaCoCo report + check (fails below 80% line coverage; snippet in tdd.md)
-./gradlew test jacocoTestReport
+mvn -T 4 verify   # tests + JaCoCo report (snippet in tdd.md) + every configured check
 ```
 
 Report total tests, passed/failed, and line/branch coverage.
@@ -81,4 +82,4 @@ Issues to Fix:
 1. ...
 ```
 
-READY means: Build and Tests PASS, coverage is at least 80%, Static is PASS or SKIP, and Security has no unhandled CVE with CVSS 7.0 or higher (adjust the threshold to the project's policy).
+READY means: Build and Tests PASS, every agreed seam has a test, any project-configured coverage check passes (80% is a reference figure, not a gate), Static is PASS or SKIP, and Security has no unhandled CVE with CVSS 7.0 or higher (adjust the threshold to the project's policy).

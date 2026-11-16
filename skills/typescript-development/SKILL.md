@@ -12,7 +12,7 @@ Testing: Read `references/integration-testing.md` (vitest/jest, supertest, testc
 ## Always
 
 - Testing principles (boundaries, sociable/solitary, narrow integration, isolation rules) live once in `../testing-principles/SKILL.md` (Read it); this skill carries only TypeScript specifics.
-- Test-first: call the Skill tool with "tdd".
+- Test-first: load the `tdd` skill.
 - Every endpoint has at least one integration test asserting the persisted side effect — a status code alone proves nothing.
 
 ## Completion criterion

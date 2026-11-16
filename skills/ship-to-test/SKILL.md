@@ -36,7 +36,7 @@ An inter-service dependency is an artifact one workspace project publishes and a
 The project's current branch is its feature branch; the **target branch** is the one named in the invocation argument (`test` when none is given). Every step ends on its stated criterion.
 
 1. **Commit the working tree** — skip when the tree is already clean. Otherwise:
-   - **Commit** by calling the Skill tool with "git-workflow": analyze the diff and create conventional, atomic commits (one concern per commit), committing directly, without confirmation.
+   - **Commit** by loading the `git-workflow` skill: analyze the diff and create conventional, atomic commits (one concern per commit), committing directly, without confirmation.
    - **Secret scan before each `git commit`**: `gitleaks git --staged` when gitleaks is installed, else grep the added lines of the staged diff for common key/token patterns: `git diff --cached -U0 | grep '^+' | grep -iE 'BEGIN [A-Z ]*PRIVATE KEY|AKIA[0-9A-Z]{16}|(api[_-]?key|secret|token|password)["'\'']?[[:space:]]*[:=][[:space:]]*["'\''][^"'\'']{8,}'`. A hit fails the project and hands off: unstage, leave the working tree untouched, and report the hit.
    - Done when the tree is clean.
 2. **Push the feature branch** — add `-u` when upstream is missing. Rejected because the remote branch moved → **Feature-branch catch-up**. Done when the branch is on the remote.
@@ -52,7 +52,7 @@ The project's current branch is its feature branch; the **target branch** is the
 
 ## Feature-branch catch-up
 
-A feature push rejected as non-fast-forward means the remote feature branch moved — typically another worktree or a teammate pushed to it. A shared branch moves by merge only, same as the target:
+A feature push rejected as non-fast-forward means the remote feature branch moved — typically another worktree or a teammate pushed to it. A branch others push to moves by merge only, same as the target:
 
 1. **Integrate** — fetch, then merge `origin/<feature>` into the local feature branch. Conflicts → **Conflict resolution**. Done when the merge commit exists.
 2. **Retry the push** — done when the push succeeds; rejected again → hand off per **Failure & isolation**.

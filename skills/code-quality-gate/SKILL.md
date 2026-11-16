@@ -32,19 +32,17 @@ Required where the project has the corresponding test surface:
 2. **Integration Tests** — API endpoints, database operations
 3. **E2E Tests** — critical user flows (framework chosen per language)
 
-Troubleshooting failures: diagnose by calling the Skill tool with "diagnosing-bugs" → check test isolation → verify mocks are correct → fix the implementation, not the tests (unless the tests are wrong).
+Troubleshooting failures: diagnose by loading the `diagnosing-bugs` skill → check test isolation → verify mocks are correct → fix the implementation, not the tests (unless the tests are wrong).
 
 ## 4. Review standards
 
-**MANDATORY review triggers:**
+**MANDATORY review triggers** (each is a concrete event). The review is the mattpocock `code-review` skill (Claude Code name: `mattpocock-skills:code-review`); a diff that hits the security list below also gets the `code-reviewer` agent. A diff already reviewed in this session (the same diff, or that diff plus fixes for its findings) needs no second review.
 
-- After writing or modifying code
-- Before any commit to shared branches
-- When security-sensitive code is changed (auth, payments, user data)
-- When architectural changes are made
-- Before merging pull requests
+- Before a push to a shared branch: the default branch, or a release or environment branch (`release/*`, `staging`, `test`). Your own feature branch is not shared. The `ship-to-test` skill is exempt: the user invokes it, and its target is a test environment.
+- Before merging a PR / MR
+- Step 4 of the `feature-workflow` skill
 
-**Security review triggers — STOP and use the `code-reviewer` agent when touching:** authentication/authorization code, user input handling, database queries, file system operations, external API calls, cryptographic operations, payment or financial code. The security checks themselves live in the security rule.
+**Security review triggers — STOP and use the `code-reviewer` agent when the diff touches any of:** authentication or authorization, cryptography, payment or financial logic, secrets or credentials handling, handling of user-supplied input (request parameters, uploads, URLs, file paths, shell arguments), SQL built from strings. Other diffs need no security dispatch. The security checks themselves live in the security rule.
 
 **Severity** (applies to `code-reviewer` agent / code-audit output only; the mattpocock `code-review` skill reports Standards and Spec findings without severity — address every Spec finding, fix or explicitly justify each Standards finding):
 

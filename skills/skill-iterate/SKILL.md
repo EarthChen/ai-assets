@@ -12,9 +12,9 @@ A skill misfired: wrong tool, repeated exploration, or a correction from the use
 ## Steps
 
 1. Find the miss. Read the session (current, or the one the user names) for the user's corrections, the wrong first command, and exploration that a stable fact would have saved. Ask the user to run `/retro` when the miss spans more than the skill. Write each miss as: task in the user's words → what the agent did → what it should have done.
-2. Rewrite the narrowest layer. Call the Skill tool with `writing-for-agents`. A routing miss changes a Route row or the description; a missing stable fact goes into the reference file of its tool; a missing order of work becomes a short reference with a "Done when" line. Derived data (field lists, current values) stays out.
+2. Rewrite the narrowest layer. Load the `writing-for-agents` skill. A routing miss changes a Route row or the description; a missing stable fact goes into the reference file of its tool; a missing order of work becomes a short reference with a "Done when" line. Derived data (field lists, current values) stays out.
 3. Verify with a blind task. Dispatch one subagent per miss:
-   - Give it the path to the skill's `SKILL.md` (a user-invoked skill cannot load through the Skill tool, so it reads the path) and the task in the user's words.
+   - Give it the path to the skill's `SKILL.md` (a user-invoked skill cannot be loaded by the model, so the subagent reads the path) and the task in the user's words.
    - Leave out the commands, flags, and file names. The skill alone must lead to them.
    - Set the limits: read-only; no file edits, commits, or write operations; a write path stops at the skill's own preview step (for example `--dry-run`).
    - Ask for the references it read, each command it ran, and the answer.

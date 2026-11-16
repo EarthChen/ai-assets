@@ -4,7 +4,7 @@ Spring-specific test application. Cross-stack testing principles (boundaries, so
 
 ## Workflow
 
-Red-green-refactor loop: the `tdd` skill. Coverage target: the global 80% testing rule, enforced by the JaCoCo `check` execution below.
+Red-green-refactor loop: the `tdd` skill. Gate: the global testing rule (every agreed seam has a test; 80% coverage is a reference). The snippet below reports coverage without failing the build. A project that already configures a JaCoCo `check` rule keeps it, and that rule must pass.
 
 ## Slice Selection
 
@@ -43,6 +43,8 @@ class MarketControllerTest {
 
 ## Coverage (JaCoCo)
 
+Add this plugin only when the user asks for coverage tooling (global testing rule: do not add coverage tooling on your own).
+
 ```xml
 <plugin>
   <groupId>org.jacoco</groupId>
@@ -56,25 +58,6 @@ class MarketControllerTest {
       <id>report</id>
       <phase>verify</phase>
       <goals><goal>report</goal></goals>
-    </execution>
-    <execution>
-      <id>check</id>
-      <phase>verify</phase>
-      <goals><goal>check</goal></goals>
-      <configuration>
-        <rules>
-          <rule>
-            <element>BUNDLE</element>
-            <limits>
-              <limit>
-                <counter>LINE</counter>
-                <value>COVEREDRATIO</value>
-                <minimum>0.80</minimum>
-              </limit>
-            </limits>
-          </rule>
-        </rules>
-      </configuration>
     </execution>
   </executions>
 </plugin>

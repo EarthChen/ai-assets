@@ -73,7 +73,7 @@ pnpm run --if-present typecheck     # Canonical TypeScript check when the projec
 tsc --noEmit -p <relevant-config>    # Fallback type check for the tsconfig that owns the changed files
 eslint . --ext .ts,.tsx,.js,.jsx    # Linting
 prettier --check .                  # Format check
-pnpm audit                          # Dependency vulnerabilities (or the equivalent yarn/bun audit command when the lockfile says so)
+pnpm audit                          # Dependency vulnerabilities; use the audit command of the project's package manager (npm / yarn / bun) per the global tech-stack rule
 vitest run                          # Tests (Vitest)
 jest --ci                           # Tests (Jest)
 ```
