@@ -27,6 +27,7 @@ A PR or issue claims a bug and a fix. Reproduce both claims before you judge the
    | not reproducible, or intended behavior | comment, with what you ran |
 
    Write the review text in the language the upstream repo already uses (check recent PR reviews and issue comments there), not the chat language. Say which language the draft is in when you show it.
+   When your report explains a failure mechanism spanning three or more components, load the `show-me` skill and draw that call chain as one inline diagram for the user; keep the upstream review text plain unless the user asks to embed the diagram.
 
 6. Submit only after the user confirms the exact text and verdict: `gh pr review <n> --approve|--request-changes|--comment -b "<body>"`. Pushing a fix to the author's branch needs a separate yes.
 7. Clean up the worktree and its branch.
