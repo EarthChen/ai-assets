@@ -25,7 +25,7 @@ Planning, TDD, and code review use workflow skills, not sub-agents. Only the use
    - Identify dependencies and risks
 
 2. **TDD Approach**
-   - Load the `tdd` skill for the red-green-refactor loop; the gate is the global testing rule (every agreed seam has a test; 80% coverage is a reference)
+   - Load the `tdd` skill for the red-green-refactor loop; the gate is the global testing rule (every agreed seam has a test; 80% coverage is a reference); cross-stack testing principles (boundaries, isolation, flaky prevention, verification): Read `../testing-principles/SKILL.md`
 
 3. **Code Simplification**
    - Run the `code-simplifier` agent on the feature's git scope — uncommitted changes, recent commits, or the full branch diff against the merge target; include the `code-simplify` skill directory path and the words `apply` and `pipeline mode` in the dispatch prompt so the agent loads its `rules.md`, applies the findings, and stays inside Pipeline mode (the agent probes standard install locations if no path is given)
