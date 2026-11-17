@@ -1,6 +1,6 @@
 ---
 name: ship-to-test
-description: Ship each workspace project's feature branch to the test branch: commit, push, merge into the target branch (`test` by default), push (triggers CI/CD), deploy changed artifacts at test-SNAPSHOT.
+description: "Ship each workspace project's feature branch to the test branch: commit, push, merge into the target branch (`test` by default), push (triggers CI/CD), deploy changed artifacts at test-SNAPSHOT."
 disable-model-invocation: true
 argument-hint: "[branch]  test-environment branch to merge into (default: test)"
 ---
