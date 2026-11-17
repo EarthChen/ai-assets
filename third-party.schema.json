@@ -46,6 +46,11 @@
           "items": { "type": "string" },
           "description": "Explicit user-level paths; each -> source root. For single-skill repos (e.g. anysearch). Mutually exclusive with generate."
         },
+        "frontmatter": {
+          "type": "object",
+          "additionalProperties": { "type": ["boolean", "string"] },
+          "description": "Key-value pairs injected into each linked skill's YAML frontmatter right after the opening --- (idempotent: a key already holding the declared value is left alone). Applied on every manual-skills run, so a submodule upgrade self-heals on the next install; the vendor worktree intentionally shows modified content."
+        },
         "generate": {
           "$ref": "#/definitions/generateConfig",
           "description": "Discover skills then symlink each into link_dir + extra_links. Mutually exclusive with links."

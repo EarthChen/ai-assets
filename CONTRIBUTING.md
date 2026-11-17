@@ -139,9 +139,10 @@ The third-party sets declared with an `install` object are **NOT plugin-distribu
 | **playwright-cli** | `vendor/playwright-cli` | `generate.scan_dir` (scans `skills/` — single playwright-cli skill) | `~/.agents/skills/` + `~/.claude/skills/` (via `extra_links`) |
 | **yao-meta-skill** | `vendor/yao-meta-skill` | `links` (explicit list, single skill at repo root) | `~/.claude/skills/yao-meta-skill` + `~/.agents/skills/yao-meta-skill` |
 | **momo-tools** | `vendor/momo-tools` | `generate.scan_dir` (scans `skills/` — single momo-tools skill; private upstream) | `~/.agents/skills/` + `~/.claude/skills/` (via `extra_links`) |
+| **dingtalk-workspace-cli** | `vendor/dingtalk-workspace-cli` | `generate.scan_dir` (scans `skills/multi/` — sparse submodule pinned to the doc/wiki/shared subset) | `~/.agents/skills/` + `~/.claude/skills/` (via `extra_links`) |
 | **answer-me-with-html** | `vendor/answer-me-with-html` | `install.source` only — inits the submodule; its CLI is the page backend of self-owned `skills/show-me` | none |
 
-`install.py manual <name>` remains as a single-skill reinstall entry point. All four platforms (Claude, Codex, Cursor, pi) follow these symlinks correctly; no per-platform workaround needed. Adding a third-party skill = adding a `third-party.json` entry with an `install` object (choose `links` for single-skill repos, `generate.from+field` if upstream declares a skill list, `generate.scan_dir` if it doesn't, `source` alone for a submodule that must be checked out but links no skill) — no `install.py` code change. See `third-party.schema.json` for the `install`/`installConfig`/`generateConfig` schema.
+`install.py manual <name>` remains as a single-skill reinstall entry point. All four platforms (Claude, Codex, Cursor, pi) follow these symlinks correctly; no per-platform workaround needed. Adding a third-party skill = adding a `third-party.json` entry with an `install` object (choose `links` for single-skill repos, `generate.from+field` if upstream declares a skill list, `generate.scan_dir` if it doesn't, `source` alone for a submodule that must be checked out but links no skill; add `frontmatter` keys to have the installer inject them into each linked skill's YAML frontmatter, idempotently) — no `install.py` code change. See `third-party.schema.json` for the `install`/`installConfig`/`generateConfig` schema.
 
 **Name-collision guard**: `install_manual_skills` runs after the self-owned links, so it skips any third-party link whose name matches a `skills/<name>` dir and logs `ERROR` (e.g. upstream show-me vs the self-owned `skills/show-me`). Rename one of them or drop it from `third-party.json`.
 
@@ -191,6 +192,33 @@ The [herdr](https://github.com/badlogic/herdr) terminal-multiplexer control skil
 - **Dev checkout first**: `install.local_source` is `~/work/momo/momo-tools`, the checkout the CLIs are editable-installed from. When it exists, the skill links point there, so skill edits apply at once and match the CLI behavior (uncommitted edits and the checked-out branch included). Other machines lack the path and link the submodule. Rerun `install.py manual momo-tools` after creating or removing that checkout.
 
 **Upgrade:** `git submodule update --remote vendor/momo-tools` (no upstream release tags — re-pin to a main commit). Symlinks flow automatically; rerun `uv tool install --force` to update the CLIs.
+
+### dingtalk-workspace-cli
+
+[DingTalk-Real-AI/dingtalk-workspace-cli](https://github.com/DingTalk-Real-AI/dingtalk-workspace-cli) — 钉钉 `dws` CLI 的 agent skills。**按需引入**：上游 `skills/multi/` 有 16 个按产品拆分的 skill（doc、wiki、chat、drive、todo…）+ 1 个 `mono` 全量 skill，本仓库不装全量，而是用 **sparse submodule** 只检出当前需要的子集：
+
+- 当前检出：`skills/multi/{dingtalk-doc,dingtalk-wiki,dingtalk-shared}`（436K）。`dingtalk-shared` 是认证/权限/错误语义 reference，被每个产品 skill 以 `../dingtalk-shared/...` 相对路径引用，必须随装；它自带 SKILL.md，会被 `scan_dir` 一并链接（与上游布局一致）。
+- **加组件**：`git -C vendor/dingtalk-workspace-cli sparse-checkout add skills/multi/dingtalk-<name> && git submodule update --remote vendor/dingtalk-workspace-cli`（re-pin 新 SHA），symlink 自动流动，`third-party.json` 无需改动。
+- **运行时依赖 `dws` 二进制**（skill frontmatter 声明 `requires.bins: [dws]`、`cli_version >= 0.2.14`）。安装走 **Homebrew**（formula 在上游仓库内，随 release 同步更新；新版 Homebrew 需先 `brew trust`）：
+  ```bash
+  brew tap DingTalk-Real-AI/dingtalk-workspace-cli https://github.com/DingTalk-Real-AI/dingtalk-workspace-cli.git
+  brew trust dingtalk-real-ai/dingtalk-workspace-cli
+  brew install dingtalk-workspace-cli
+  ```
+  keg 捆绑的 skill 只在手动 `dws skill setup` 时才写进 agent 目录——**不要跑它**，按需引入靠本仓库的 symlink。升级：`brew upgrade dingtalk-workspace-cli`（brew 安装的 `dws upgrade` 会自动转交包管理器，不会双轨）。备选：`curl -fsSL .../install.sh | DWS_NO_SKILLS=1 sh` + `dws upgrade`。
+- **升级后检查**：升级后若 `~/.agents/skills/` 或 `~/.claude/skills/` 出现非 sparse 集合的 `dingtalk-*` 链接（`dws skill setup` 或意外全量写入），手动删掉；本仓库只保留 sparse 集合内的三个。
+- doc/wiki 的 SKILL.md 会把「最近文档」路由到 `dingtalk-drive`、白板到 `dingtalk-misc`、找人/私信到 `dingtalk-aisearch`/`dingtalk-chat`——这些未安装时对应路由会报漂移并停止，doc/wiki 核心读写不受影响；需要时按上一条扩 sparse 集合即可。
+- **手动触发（2026-11-17 起）**：doc/wiki/shared 的 `disable-model-invocation: true` 由安装器写入，声明在 `third-party.json` 的 `install.frontmatter` 字段（通用机制，非 dingtalk 硬编码）：每次 manual-skills 运行幂等重打，子模块升级后跑一次 install 即自愈；vendor 工作树因此显示 `modified content`，属预期。效果：Claude 零上下文、仅显式调用（Codex 如需等效需在 skill 旁加 `agents/openai.yaml` 写 `policy.allow_implicit_invocation: false`；Cursor/pi 大概率忽略该字段仍自动触发）。统一入口是自有的手动路由 skill `skills/dingtalk`（`/dingtalk`）：判断意图属于 doc 还是 wiki，再按同级目录路径读取对应 SKILL.md 执行——路由靠文件读取，补丁只拦 Skill 工具调用，链路不受影响。
+- **升级流程**：
+  ```bash
+  git -C vendor/dingtalk-workspace-cli checkout -- skills/   # 丢弃旧补丁，否则 update 可能因本地改动被拒
+  git submodule update --remote vendor/dingtalk-workspace-cli && git add vendor/dingtalk-workspace-cli
+  uv run install.py manual dingtalk-workspace-cli            # 幂等重打 frontmatter 补丁 + 重建 symlink
+  brew upgrade dingtalk-workspace-cli                        # 二进制与 skill 同步升，校验 frontmatter cli_version
+  ```
+- 企业数据访问需要企业管理员授权（co-creation 阶段），首次 `dws auth login` 时完成。
+
+**Upgrade:** `git -C vendor/dingtalk-workspace-cli checkout -- skills/` → `git submodule update --remote vendor/dingtalk-workspace-cli`（tracks upstream main，re-pin）→ `uv run install.py manual dingtalk-workspace-cli`（幂等重打 frontmatter 补丁）+ `brew upgrade dingtalk-workspace-cli`。Symlinks flow automatically.
 
 ### answer-me-with-html
 

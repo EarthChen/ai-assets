@@ -8,6 +8,7 @@ from pathlib import Path
 
 from . import paths
 from .common import create_symlink, log, log_section
+from .frontmatter import parse_frontmatter
 
 
 def _load_third_party_plugins() -> list[dict]:
@@ -37,8 +38,10 @@ def _load_third_party_plugins() -> list[dict]:
 #   "install": {"source": "vendor/<name>", "links": ["~/.claude/skills/<name>", ...]}
 # `links` entries use ~ which is expanded with Path.expanduser(). Platform-
 # specific caveats live in each platform's `note` field. This loader is
-# generic: adding a second manual skill means adding a third-party.json entry
-# with an `install` object, no code change here.
+# generic: adding a manual skill means adding a third-party.json entry
+# with an `install` object; an optional `install.frontmatter` object
+# injects keys into each linked skill's YAML frontmatter (idempotent,
+# so a submodule upgrade self-heals on the next install run).
 #
 # `generate` has two skill-discovery forms (mutually exclusive):
 #   - {from, field, link_dir}: read <source>/<from> JSON, take <field> as a
@@ -113,6 +116,42 @@ def _expand_install_links(install: dict, source: Path) -> list[tuple[Path, Path]
     return []
 
 
+def _apply_frontmatter_patch(install: dict, targets: set[Path], dry_run: bool) -> None:
+    """Inject declared keys into each linked skill's YAML frontmatter.
+
+    Idempotent: a key already holding the declared value is left untouched,
+    so re-running install after a `git submodule update --remote` re-applies
+    a lost patch. The edit lands in the vendor worktree by design — the flag
+    must live in the very file the agent reads through the symlink — so the
+    submodule reports `modified content`; document that in third-party.json.
+    """
+    patch = install.get("frontmatter")
+    if not isinstance(patch, dict) or not patch:
+        return
+    for target in sorted(targets):
+        skill_md = target / "SKILL.md"
+        if not skill_md.is_file():
+            continue
+        content = skill_md.read_text(encoding="utf-8")
+        if not content.startswith("---"):
+            log(f"ERROR: {skill_md} has no frontmatter; frontmatter patch skipped")
+            continue
+        metadata, _ = parse_frontmatter(content)
+        missing = {k: v for k, v in patch.items() if metadata.get(k) != v}
+        if not missing:
+            continue
+        lines = [
+            f"{k}: {str(v).lower() if isinstance(v, bool) else v}"
+            for k, v in missing.items()
+        ]
+        if dry_run:
+            log(f"[DRY-RUN] would patch {skill_md} frontmatter: {', '.join(lines)}")
+            continue
+        head, rest = content.split("\n", 1)
+        skill_md.write_text(f"{head}\n" + "\n".join(lines) + f"\n{rest}", encoding="utf-8")
+        log(f"Patched {skill_md.name} frontmatter: {', '.join(lines)}")
+
+
 def _resolve_source(install: dict) -> Path:
     """Return `local_source` when it is a non-empty dir, else the submodule.
 
@@ -142,7 +181,8 @@ def _manual_skills() -> list[dict]:
             continue
         source = _resolve_source(install)
         pairs = _expand_install_links(install, source)
-        result.append({"name": plugin["name"], "source": source, "pairs": pairs})
+        result.append({"name": plugin["name"], "source": source,
+                       "pairs": pairs, "install": install})
     return result
 
 
@@ -192,6 +232,10 @@ def install_manual_skills(name: str | None, dry_run: bool = False) -> None:
                 if result.returncode != 0:
                     log(f"ERROR: submodule init failed: {result.stderr.strip()}")
                     continue
+
+        # Frontmatter patches (third-party.json `install.frontmatter`) go in
+        # before the links so the files the symlinks point at are final.
+        _apply_frontmatter_patch(skill["install"], {t for _, t in pairs}, dry_run)
 
         log(f"[{skill['name']}] {len(pairs)} symlink(s) from {src}")
         for link, target in pairs:

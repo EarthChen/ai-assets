@@ -37,6 +37,7 @@ ai-assets/
 │   ├── playwright-cli/        # microsoft/playwright-cli 浏览器自动化技能
 │   ├── yao-meta-skill/        # skill 工程元技能 (替代原 skill-creator)
 │   ├── momo-tools/            # EarthChen/momo-tools 内部系统 CLI 技能 (私有仓库)
+│   ├── dingtalk-workspace-cli/ # 钉钉 dws CLI 技能 (sparse submodule，按需检出 doc/wiki/shared)
 │   └── answer-me-with-html/   # 自有 show-me 的页面渲染后端 (am CLI，需 Node 20+；不链接其 skill)
 ├── mcp.json                   # 统一 MCP 配置 (_platforms 过滤)
 ├── _dist/                     # 自动生成的平台产物 (已提交；skills/agents 不复制进此)
@@ -304,6 +305,7 @@ MCP 配置中使用 `_platforms` 字段：
 | yao-meta-skill | vendor submodule（单技能，仓库根即 skill） | symlink 进 `~/.claude/skills/` + `~/.agents/skills/` |
 | momo-tools | vendor submodule（私有仓库，单技能；依赖 `uv tool install` 装的 CLI） | symlink 进 `~/.agents/skills/` + `~/.claude/skills/` |
 | answer-me-with-html | vendor submodule（只用其 am CLI，作为自有 `show-me` 的页面后端；需 Node 20+） | 不链接 skill；`install` 只初始化 submodule |
+| dingtalk-workspace-cli | vendor submodule（sparse，按需检出钉钉 `dws` 的 doc/wiki/shared 技能；依赖 `dws` 二进制） | symlink 进 `~/.agents/skills/` + `~/.claude/skills/` |
 | context-mode | 仅溯源登记 | 不经本仓库分发；各平台原生插件/npm 安装（Claude 由 install.py 自动装） |
 | merman | Claude Code mod（终端里画 Mermaid、彩色表格和代码；自有 `show-me` 依赖它在终端画图） | 仅 Claude，install.py 自动装插件；`diagramHints` 需手动设为 `false` |
 
