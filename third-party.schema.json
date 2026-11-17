@@ -51,6 +51,19 @@
           "additionalProperties": { "type": ["boolean", "string"] },
           "description": "Key-value pairs injected into each linked skill's YAML frontmatter right after the opening --- (idempotent: a key already holding the declared value is left alone). Applied on every manual-skills run, so a submodule upgrade self-heals on the next install; the vendor worktree intentionally shows modified content."
         },
+        "cli": {
+          "type": "object",
+          "required": ["update"],
+          "additionalProperties": false,
+          "description": "Local CLI runtime dependency of the skill (dws, playwright-cli, the momo-tools CLIs, herdr). `update` shell commands run on every manual-skills pass, after the symlinks; `{source}` expands to the resolved source dir (local_source when present, else the submodule). A failed command is logged as ERROR and never aborts the run.",
+          "properties": {
+            "update": {
+              "type": "array",
+              "items": { "type": "string" },
+              "description": "Shell commands that refresh the skill's local CLI, e.g. 'brew upgrade dingtalk-workspace-cli' or 'uv tool install --force --editable {source}'."
+            }
+          }
+        },
         "generate": {
           "$ref": "#/definitions/generateConfig",
           "description": "Discover skills then symlink each into link_dir + extra_links. Mutually exclusive with links."

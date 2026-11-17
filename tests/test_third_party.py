@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import json
+import subprocess
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 from conftest import make_skill
@@ -121,3 +123,84 @@ def test_third_party_link_never_replaces_a_self_owned_skill(sandbox, capsys):
     assert (link_dir / "upstream-only").resolve() == (vendor / "skills" / "upstream-only").resolve()
     out = capsys.readouterr().out
     assert "ERROR" in out and "show-me" in out
+
+
+def _fake_run(calls: list[str], rc: int = 0):
+    def fake_run(cmd, shell=False, capture_output=False, text=False):
+        assert shell is True
+        calls.append(cmd)
+        return SimpleNamespace(returncode=rc, stdout="", stderr="boom" if rc else "")
+    return fake_run
+
+
+def test_cli_update_commands_run_after_links_with_source_substitution(sandbox, monkeypatch, capsys):
+    # A skill's CLI dependency refreshes on every manual-skills pass, from the
+    # same tree the skill links point at: local_source when present, else the
+    # submodule ({source} placeholder).
+    make_skill(sandbox.repo / "vendor" / "one" / "skills", "s1")
+    local = sandbox.home / "dev" / "one"
+    make_skill(local / "skills", "s1")
+    (sandbox.repo / "third-party.json").write_text(json.dumps({"plugins": [{
+        "name": "one", "platforms": {},
+        "install": {"source": "vendor/one", "local_source": str(local),
+                    "cli": {"update": ["uv tool install --force --editable {source}"]},
+                    "generate": {"scan_dir": "skills", "link_dir": "~/.agents/skills"}},
+    }]}), encoding="utf-8")
+
+    calls: list[str] = []
+    monkeypatch.setattr(subprocess, "run", _fake_run(calls))
+
+    third_party.install_manual_skills(None)
+
+    assert calls == [f"uv tool install --force --editable {local}"]
+    assert "CLI update ok" in capsys.readouterr().out
+
+
+def test_failing_cli_update_logs_error_and_does_not_abort(sandbox, monkeypatch, capsys):
+    # The CLI may be absent on a machine (no brew tap, private repo): the
+    # symlinks for every skill must still land.
+    for name in ("one", "two"):
+        make_skill(sandbox.repo / "vendor" / name / "skills", "s")
+    (sandbox.repo / "third-party.json").write_text(json.dumps({"plugins": [
+        {"name": name, "platforms": {},
+         "install": {"source": f"vendor/{name}", "cli": {"update": ["brew upgrade x"]},
+                     "generate": {"scan_dir": "skills", "link_dir": "~/.agents/skills"}}}
+        for name in ("one", "two")
+    ]}), encoding="utf-8")
+
+    calls: list[str] = []
+    monkeypatch.setattr(subprocess, "run", _fake_run(calls, rc=1))
+
+    third_party.install_manual_skills(None)
+
+    assert len(calls) == 2  # both skills ran their update despite the failure
+    out = capsys.readouterr().out
+    assert out.count("ERROR: [one] CLI update failed") == 1
+    assert "Symlinked s ->" in out
+
+
+def test_cli_update_is_dry_run_safe(sandbox, monkeypatch, capsys):
+    make_skill(sandbox.repo / "vendor" / "one" / "skills", "s1")
+    (sandbox.repo / "third-party.json").write_text(json.dumps({"plugins": [{
+        "name": "one", "platforms": {},
+        "install": {"source": "vendor/one", "cli": {"update": ["brew upgrade x"]},
+                    "generate": {"scan_dir": "skills", "link_dir": "~/.agents/skills"}},
+    }]}), encoding="utf-8")
+
+    # The sandbox blocks any real subprocess.run; reaching one fails the test.
+    third_party.install_manual_skills(None, dry_run=True)
+
+    assert "[DRY-RUN] [one] would run: brew upgrade x" in capsys.readouterr().out
+
+
+def test_install_without_cli_field_never_spawns_a_subprocess(sandbox):
+    # No `cli` declared -> no update attempt at all (the sandbox's subprocess
+    # blocker fails the test on any call).
+    make_skill(sandbox.repo / "vendor" / "one" / "skills", "s1")
+    (sandbox.repo / "third-party.json").write_text(json.dumps({"plugins": [{
+        "name": "one", "platforms": {},
+        "install": {"source": "vendor/one",
+                    "generate": {"scan_dir": "skills", "link_dir": "~/.agents/skills"}},
+    }]}), encoding="utf-8")
+
+    third_party.install_manual_skills(None)

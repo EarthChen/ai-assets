@@ -42,6 +42,11 @@ def _load_third_party_plugins() -> list[dict]:
 # with an `install` object; an optional `install.frontmatter` object
 # injects keys into each linked skill's YAML frontmatter (idempotent,
 # so a submodule upgrade self-heals on the next install run).
+# An optional `install.cli.update` list names the shell commands that
+# refresh the skill's local CLI runtime dependency (dws, playwright-cli,
+# the momo-tools CLIs, herdr); they run on every manual-skills pass,
+# `{source}` expands to the resolved source dir, and a failure is logged
+# without aborting the remaining skills.
 #
 # `generate` has two skill-discovery forms (mutually exclusive):
 #   - {from, field, link_dir}: read <source>/<from> JSON, take <field> as a
@@ -186,6 +191,34 @@ def _manual_skills() -> list[dict]:
     return result
 
 
+def _update_cli_deps(skill: dict, dry_run: bool) -> None:
+    """Run the CLI update commands declared in `install.cli.update`.
+
+    A skill may need a CLI installed outside this repo (dws via Homebrew,
+    playwright-cli via pnpm, the momo-tools CLIs via uv tool). `{source}`
+    in a command expands to the resolved source dir — `local_source` when
+    it exists (the editable dev checkout the CLIs are installed from), else
+    the submodule — so the CLI refreshes from the same tree the skill links
+    point at. A failed command is logged as ERROR and never aborts the
+    remaining skills: the CLIs may be absent (no brew tap, private repo)
+    and the symlinks must still land.
+    """
+    commands = (skill["install"].get("cli") or {}).get("update") or []
+    for cmd in commands:
+        rendered = cmd.replace("{source}", str(skill["source"]))
+        if dry_run:
+            log(f"[DRY-RUN] [{skill['name']}] would run: {rendered}")
+            continue
+        log(f"[{skill['name']}] updating CLI: {rendered}")
+        # pi-lens-ignore: ast-grep:unchecked-throwing-call-python
+        result = subprocess.run(rendered, shell=True, capture_output=True, text=True)
+        if result.returncode != 0:
+            log(f"ERROR: [{skill['name']}] CLI update failed "
+                f"(rc={result.returncode}): {(result.stderr or result.stdout).strip()}")
+        else:
+            log(f"[{skill['name']}] CLI update ok")
+
+
 def install_manual_skills(name: str | None, dry_run: bool = False) -> None:
     """Install manual (symlink) skills declared in third-party.json.
 
@@ -245,6 +278,10 @@ def install_manual_skills(name: str | None, dry_run: bool = False) -> None:
                     f"Rename one of them or drop it from third-party.json.")
                 continue
             create_symlink(target.resolve(), link, dry_run)
+
+        # CLI runtime dependencies refresh after the links: a failed update
+        # (no brew tap, private repo unreachable) must not block symlinking.
+        _update_cli_deps(skill, dry_run)
 
     if dry_run:
         return
