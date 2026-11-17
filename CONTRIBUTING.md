@@ -144,6 +144,8 @@ The third-party sets declared with an `install` object are **NOT plugin-distribu
 
 `install.py manual <name>` remains as a single-skill reinstall entry point. All four platforms (Claude, Codex, Cursor, pi) follow these symlinks correctly; no per-platform workaround needed. Adding a third-party skill = adding a `third-party.json` entry with an `install` object (choose `links` for single-skill repos, `generate.from+field` if upstream declares a skill list, `generate.scan_dir` if it doesn't, `source` alone for a submodule that must be checked out but links no skill; add `frontmatter` keys to have the installer inject them into each linked skill's YAML frontmatter, idempotently) — no `install.py` code change. See `third-party.schema.json` for the `install`/`installConfig`/`generateConfig` schema.
 
+**CLI runtime dependencies** (`install.cli.update`, 2026-11-17 起)：skills whose runtime needs a CLI installed outside this repo declare shell commands there — `dingtalk-workspace-cli` → `brew upgrade dingtalk-workspace-cli`、`momo-tools` → `uv tool install --force --editable {source}`、`playwright-cli` → `pnpm add -g @playwright/cli`、`herdr` → `brew upgrade herdr`. Every manual-skills pass (`install.py install` 或 `manual <name>`) runs them after the symlinks; `{source}` expands to the resolved source dir (local_source 优先，与 skill 链接同源，momo-tools 因此保持 editable 安装不被覆盖)。命令失败只记 `ERROR` 不中断：机器上可能没有 brew tap 或私有仓库，symlink 必须照常落位。新增 CLI 依赖 skill 时把更新命令写进 `install.cli.update` 即可，同样无需改代码。
+
 **Name-collision guard**: `install_manual_skills` runs after the self-owned links, so it skips any third-party link whose name matches a `skills/<name>` dir and logs `ERROR` (e.g. upstream show-me vs the self-owned `skills/show-me`). Rename one of them or drop it from `third-party.json`.
 
 **Stale-link caveat**: `install_manual_skills` only creates links — it never prunes. When upstream deletes or renames a skill, the old link survives as a dangling symlink, so after any vendor upgrade check `find ~/.agents/skills ~/.claude/skills -maxdepth 1 -type l ! -exec test -e {} \; -print` and delete what it lists. Hit in practice: a 2026-09 upstream skill deletion left one behind.
@@ -175,7 +177,7 @@ Not plugin-distributed for the same reason as anysearch: runtime files (`system.
 
 The [herdr](https://github.com/badlogic/herdr) terminal-multiplexer control skill, pinned as a **sparse submodule** at `vendor/herdr-skill` (tracks upstream, checks out only the single skill). Same symlink distribution as the other sets; gives Claude/Codex/Cursor/pi the `herdr` CLI etiquette without vendoring the whole upstream repo.
 
-**Upgrade:** `git submodule update --remote vendor/herdr-skill`. Symlinks flow automatically.
+**Upgrade:** `git submodule update --remote vendor/herdr-skill`. Symlinks flow automatically. The `herdr` binary itself is a homebrew/core formula and a runtime dependency of the skill; `install.cli.update` runs `brew upgrade herdr` on every manual-skills pass.
 
 ### yao-meta-skill
 
@@ -188,10 +190,10 @@ The [herdr](https://github.com/badlogic/herdr) terminal-multiplexer control skil
 [EarthChen/momo-tools](https://github.com/EarthChen/momo-tools) — CLIs and one skill for wemomo.com internal systems (`hubble`, `mse`, `kibana`, `store`). Full (not sparse) submodule at `vendor/momo-tools`: the repo is small, and the checkout doubles as the CLI install source.
 
 - **Private upstream**: this repo is public, so the `.gitmodules` URL and the pinned SHA are visible; the skill content is not. A clone without access to `EarthChen/momo-tools` fails to init the submodule; `install_manual_skills` logs the error and skips the entry, and the other skills still install.
-- **Runtime dependency**: the skill calls the CLIs on PATH. Install them with `uv tool install --force vendor/momo-tools` (or from any local clone). Without them the skill tells the agent to ask the user to install.
+- **Runtime dependency**: the skill calls the CLIs on PATH. Install them with `uv tool install --force vendor/momo-tools` (or from any local clone). Without them the skill tells the agent to ask the user to install. `install.cli.update` refreshes them on every manual-skills pass (`uv tool install --force --editable {source}`; `{source}` resolves to local_source first, keeping the editable install).
 - **Dev checkout first**: `install.local_source` is `~/work/momo/momo-tools`, the checkout the CLIs are editable-installed from. When it exists, the skill links point there, so skill edits apply at once and match the CLI behavior (uncommitted edits and the checked-out branch included). Other machines lack the path and link the submodule. Rerun `install.py manual momo-tools` after creating or removing that checkout.
 
-**Upgrade:** `git submodule update --remote vendor/momo-tools` (no upstream release tags — re-pin to a main commit). Symlinks flow automatically; rerun `uv tool install --force` to update the CLIs.
+**Upgrade:** `git submodule update --remote vendor/momo-tools` (no upstream release tags — re-pin to a main commit). Symlinks and the CLIs flow automatically (`install.cli.update` reinstalls from the resolved source on the next install run).
 
 ### dingtalk-workspace-cli
 
@@ -205,7 +207,7 @@ The [herdr](https://github.com/badlogic/herdr) terminal-multiplexer control skil
   brew trust dingtalk-real-ai/dingtalk-workspace-cli
   brew install dingtalk-workspace-cli
   ```
-  keg 捆绑的 skill 只在手动 `dws skill setup` 时才写进 agent 目录——**不要跑它**，按需引入靠本仓库的 symlink。升级：`brew upgrade dingtalk-workspace-cli`（brew 安装的 `dws upgrade` 会自动转交包管理器，不会双轨）。备选：`curl -fsSL .../install.sh | DWS_NO_SKILLS=1 sh` + `dws upgrade`。
+  keg 捆绑的 skill 只在手动 `dws skill setup` 时才写进 agent 目录——**不要跑它**，按需引入靠本仓库的 symlink。升级：`brew upgrade dingtalk-workspace-cli`（brew 安装的 `dws upgrade` 会自动转交包管理器，不会双轨），已声明在 `install.cli.update`，每次 install 自动执行。备选：`curl -fsSL .../install.sh | DWS_NO_SKILLS=1 sh` + `dws upgrade`。
 - **升级后检查**：升级后若 `~/.agents/skills/` 或 `~/.claude/skills/` 出现非 sparse 集合的 `dingtalk-*` 链接（`dws skill setup` 或意外全量写入），手动删掉；本仓库只保留 sparse 集合内的三个。
 - doc/wiki 的 SKILL.md 会把「最近文档」路由到 `dingtalk-drive`、白板到 `dingtalk-misc`、找人/私信到 `dingtalk-aisearch`/`dingtalk-chat`——这些未安装时对应路由会报漂移并停止，doc/wiki 核心读写不受影响；需要时按上一条扩 sparse 集合即可。
 - **手动触发（2026-11-17 起）**：doc/wiki/shared 的 `disable-model-invocation: true` 由安装器写入，声明在 `third-party.json` 的 `install.frontmatter` 字段（通用机制，非 dingtalk 硬编码）：每次 manual-skills 运行幂等重打，子模块升级后跑一次 install 即自愈；vendor 工作树因此显示 `modified content`，属预期。效果：Claude 零上下文、仅显式调用（Codex 如需等效需在 skill 旁加 `agents/openai.yaml` 写 `policy.allow_implicit_invocation: false`；Cursor/pi 大概率忽略该字段仍自动触发）。统一入口是自有的手动路由 skill `skills/dingtalk`（`/dingtalk`）：判断意图属于 doc 还是 wiki，再按同级目录路径读取对应 SKILL.md 执行——路由靠文件读取，补丁只拦 Skill 工具调用，链路不受影响。
@@ -213,12 +215,11 @@ The [herdr](https://github.com/badlogic/herdr) terminal-multiplexer control skil
   ```bash
   git -C vendor/dingtalk-workspace-cli checkout -- skills/   # 丢弃旧补丁，否则 update 可能因本地改动被拒
   git submodule update --remote vendor/dingtalk-workspace-cli && git add vendor/dingtalk-workspace-cli
-  uv run install.py manual dingtalk-workspace-cli            # 幂等重打 frontmatter 补丁 + 重建 symlink
-  brew upgrade dingtalk-workspace-cli                        # 二进制与 skill 同步升，校验 frontmatter cli_version
+  uv run install.py manual dingtalk-workspace-cli            # 幂等重打 frontmatter 补丁 + 重建 symlink + brew upgrade dws
   ```
 - 企业数据访问需要企业管理员授权（co-creation 阶段），首次 `dws auth login` 时完成。
 
-**Upgrade:** `git -C vendor/dingtalk-workspace-cli checkout -- skills/` → `git submodule update --remote vendor/dingtalk-workspace-cli`（tracks upstream main，re-pin）→ `uv run install.py manual dingtalk-workspace-cli`（幂等重打 frontmatter 补丁）+ `brew upgrade dingtalk-workspace-cli`。Symlinks flow automatically.
+**Upgrade:** `git -C vendor/dingtalk-workspace-cli checkout -- skills/` → `git submodule update --remote vendor/dingtalk-workspace-cli`（tracks upstream main，re-pin）→ `uv run install.py manual dingtalk-workspace-cli`（幂等重打 frontmatter 补丁 + `install.cli.update` 自动 `brew upgrade dingtalk-workspace-cli`）。Symlinks flow automatically.
 
 ### answer-me-with-html
 

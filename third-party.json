@@ -80,6 +80,9 @@
       "description": "Herdr terminal multiplexer skill by herdrdev/herdr — control Herdr (workspaces/tabs/panes/agents) from inside a managed pane. Single-skill repo; only skills/herdr is materialized on disk via git sparse-checkout (submodule .gitmodules sets sparse=true), so the 48MB Rust tree is never checked out. Submodule at vendor/herdr-skill stays out of build/_dist.",
       "install": {
         "source": "vendor/herdr-skill",
+        "cli": {
+          "update": ["brew upgrade herdr"]
+        },
         "generate": {
           "scan_dir": "skills",
           "link_dir": "~/.agents/skills",
@@ -106,6 +109,9 @@
       "description": "Microsoft's official browser-automation skill for coding agents (microsoft/playwright-cli). Single skill (skills/playwright-cli/SKILL.md + references/) teaching agents to drive @playwright/cli — a CLI alternative to Playwright MCP with zero tool-schema context cost (snapshot + refs interaction model). Requires the CLI itself at runtime: pnpm add -g @playwright/cli. Submodule pinned to an upstream release tag (`git submodule status` shows which); upgrade via git submodule update --remote vendor/playwright-cli + re-pin to a tag. Submodule stays out of build/_dist.",
       "install": {
         "source": "vendor/playwright-cli",
+        "cli": {
+          "update": ["pnpm add -g @playwright/cli"]
+        },
         "generate": {
           "scan_dir": "skills",
           "link_dir": "~/.agents/skills",
@@ -158,6 +164,9 @@
       "install": {
         "source": "vendor/momo-tools",
         "local_source": "~/work/momo/momo-tools",
+        "cli": {
+          "update": ["uv tool install --force --editable {source}"]
+        },
         "generate": {
           "scan_dir": "skills",
           "link_dir": "~/.agents/skills",
@@ -207,6 +216,9 @@
         "source": "vendor/dingtalk-workspace-cli",
         "frontmatter": {
           "disable-model-invocation": true
+        },
+        "cli": {
+          "update": ["brew upgrade dingtalk-workspace-cli"]
         },
         "generate": {
           "scan_dir": "skills/multi",
