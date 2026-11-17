@@ -1,7 +1,7 @@
 ---
 name: code-audit
 disable-model-invocation: true
-description: Deep code audit along three axes: Standards compliance, Spec fidelity against a diff, and language traps plus cross-language lenses (silent failure, type design, security). For a Standards + Spec review alone, use the mattpocock `code-review` skill.
+description: "Deep code audit along three axes: Standards compliance, Spec fidelity against a diff, and language traps plus cross-language lenses (silent failure, type design, security). For a Standards + Spec review alone, use the mattpocock `code-review` skill."
 ---
 
 # Code Audit
