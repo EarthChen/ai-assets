@@ -25,3 +25,8 @@
 [submodule "vendor/answer-me-with-html"]
 	path = vendor/answer-me-with-html
 	url = git@github.com:QingYunA/answer-me-with-html.git
+[submodule "vendor/dingtalk-workspace-cli"]
+	path = vendor/dingtalk-workspace-cli
+	url = https://github.com/DingTalk-Real-AI/dingtalk-workspace-cli.git
+	branch = main
+	sparse = true

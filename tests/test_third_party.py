@@ -62,6 +62,43 @@ def test_install_object_without_links_or_generate_yields_nothing():
     assert third_party._expand_install_links({"source": "vendor/x"}, Path("/nonexistent")) == []
 
 
+def test_frontmatter_patch_injects_declared_keys_and_is_idempotent(sandbox):
+    vendor = sandbox.repo / "vendor" / "upstream"
+    make_skill(vendor / "skills", "alpha")
+    (sandbox.repo / "third-party.json").write_text(json.dumps({"plugins": [{
+        "name": "upstream", "platforms": {},
+        "install": {"source": "vendor/upstream", "frontmatter": {"disable-model-invocation": True},
+                    "generate": {"scan_dir": "skills", "link_dir": "~/.agents/skills"}},
+    }]}), encoding="utf-8")
+
+    third_party.install_manual_skills(None)
+
+    skill_md = vendor / "skills" / "alpha" / "SKILL.md"
+    content = skill_md.read_text(encoding="utf-8")
+    assert content.startswith("---\ndisable-model-invocation: true\nname: alpha\n")
+
+    # Rerun (e.g. after a submodule upgrade re-applies nothing): no duplicate line.
+    third_party.install_manual_skills(None)
+    assert skill_md.read_text(encoding="utf-8") == content
+
+
+def test_frontmatter_patch_leaves_existing_value_alone(sandbox):
+    vendor = sandbox.repo / "vendor" / "upstream"
+    skill = make_skill(vendor / "skills", "alpha")
+    skill_md = skill / "SKILL.md"
+    skill_md.write_text("---\nname: alpha\ndisable-model-invocation: true\n---\nbody",
+                        encoding="utf-8")
+    (sandbox.repo / "third-party.json").write_text(json.dumps({"plugins": [{
+        "name": "upstream", "platforms": {},
+        "install": {"source": "vendor/upstream", "frontmatter": {"disable-model-invocation": True},
+                    "generate": {"scan_dir": "skills", "link_dir": "~/.agents/skills"}},
+    }]}), encoding="utf-8")
+
+    third_party.install_manual_skills(None)
+
+    assert "disable-model-invocation: true\nname: alpha" not in skill_md.read_text(encoding="utf-8")
+
+
 def test_third_party_link_never_replaces_a_self_owned_skill(sandbox, capsys):
     # install_manual_skills runs after the self-owned links, so a same-name
     # third-party skill would silently take over ~/.agents/skills/<name>.
