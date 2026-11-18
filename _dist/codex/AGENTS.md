@@ -10,7 +10,7 @@
   - 发现用户的方案、逻辑或假设存在漏洞时，**主动反驳**并优先给出反例/对抗性论点（Anti-Sycophancy）。
   - 评估**方案、决策、架构判断**时，先找失效条件或最强反例，再表态；找不到就明说。事实性问答与纯执行步骤不适用。反例必须真实，牵强的反例比没有更糟。
 - **无废话原则**：
-  - 首句给核心结论与论据；省去客套、赞美、免责声明（如“作为一个AI…”）与情绪化填料。
+  - 首句给核心结论与论据，直陈判断。
   - 采用简化技术英语（ASD-STE100）的语气：短句（每句一个判断）、一词一义（同一概念只用一个词）、主动语态（“函数抛错”而非“错误被抛出”）、字面表述（无隐喻、无情绪化修辞）。适用于所有交付文本——代码注释、提交信息、技术文档、与用户的对话。
 - **批量优先（Batch-First）**：
   - 同一回合内，所有已确定且无相互依赖的工具调用一次性并发——读多文件、跑独立命令。
@@ -196,15 +196,7 @@ Before ANY commit:
 
 - [ ] No hardcoded secrets (API keys, passwords, tokens)
 
-Before committing code that handles requests, user input, or data access, check the items that apply:
-
-- [ ] All user inputs validated
-- [ ] SQL injection prevention (parameterized queries)
-- [ ] XSS prevention (sanitized HTML)
-- [ ] CSRF protection enabled
-- [ ] Authentication/authorization verified
-- [ ] Rate limiting on public endpoints
-- [ ] Error messages don't leak sensitive data
+Before committing code that handles requests, user input, or data access, run the security checklist in the `code-quality-gate` skill (Review standards) and check the items that apply.
 
 ## Secret Management
 
@@ -242,7 +234,9 @@ Before committing code that handles requests, user input, or data access, check 
 Applies to changes in executable code. Documentation-only and configuration-only changes are exempt.
 
 - TDD is mandatory for new features and bug fixes — the red-green-refactor loop is carried by the `tdd` skill (part of the `feature-workflow` skill pipeline).
-- **Testing principles** (ladder boundaries, isolation, flaky prevention, property/differential tests, run-the-change verification): Read `skills/testing-principles/SKILL.md` from the ai-assets repo root.
+- **Testing principles** (ladder boundaries, isolation, flaky prevention, property/differential tests, run-the-change verification): Read the `testing-principles` skill's `SKILL.md` from the platform skills directory (`~/.claude/skills/` on Claude, `~/.agents/skills/` elsewhere).
 - **The gate**: every seam agreed in the `tdd` loop has a test. When no `tdd` loop ran (for example a refactor), list the seams the change touches and confirm them with the user before you mark the work done.
+- **Run the change**: a behavior-affecting change is not done until the real system runs the affected flow through its public interface — "all tests pass" alone is not evidence (E2E: Read the `e2e-testing` skill's `SKILL.md` from the same platform skills directory). If the project has no verify skill (boots, drives, and inspects the running app), offer to create one.
+- **Failure bound**: after 3 rounds of the same check still failing, stop fixing and report to the user with the failure evidence.
 - **Coverage is a reference**: when the project has a coverage command, report line coverage against 80%. Do not block on it, do not add coverage tooling for it, and do not write tests only to raise it.
 - **A project-configured coverage gate must pass**: run the project's full verification command (the one that runs every configured check), not the test command alone. When that gate fails, propose the uncovered seams to the user, test the ones the user confirms, and never lower the gate. If the user confirms none, stop and report the failing gate.
