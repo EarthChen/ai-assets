@@ -24,7 +24,7 @@ pi/skills/ + pi/agents/ ─────── pi only (install_pi symlinks into 
 
 Each platform loads self-owned skills from exactly one place: Claude from the `~/.claude/skills/` symlinks; pi, Cursor and Codex from the `~/.agents/skills/` symlinks. Cursor and Codex auto-discover a plugin's `skills/` and do not merge same-name skills, so the Cursor plugin copy omits `skills/` and Codex loads no repo plugin.
 
-Code lives in `installer/`; `install.py` is a thin entrypoint. `uv run pytest` includes a golden test that fails when the committed `_dist/` is stale: run `uv run install.py build` after changing `rules/`, `global-instructions.md`, or `mcp.json`. `install` writes to `~`; run it only with the user's go-ahead.
+Code lives in `installer/`; `install.py` is a thin entrypoint. `uv run pytest` includes a golden test that fails when the committed `_dist/` is stale: run `uv run install.py build` after changing `rules/`, `global-instructions.md`, or `mcp.json`. Changes to `rules/`, `global-instructions.md`, or `mcp.json` modify the checks themselves — the golden test output is the completion evidence for them; skill changes bypass `build` and verify by reload in the consuming platform. `install` writes to `~`; run it only with the user's go-ahead.
 
 ## Gotchas
 

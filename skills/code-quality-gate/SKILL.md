@@ -42,7 +42,17 @@ Troubleshooting failures: diagnose by loading the `diagnosing-bugs` skill → ch
 - Before merging a PR / MR
 - Step 4 of the `feature-workflow` skill
 
-**Security review triggers — STOP and use the `code-reviewer` agent when the diff touches any of:** authentication or authorization, cryptography, payment or financial logic, secrets or credentials handling, handling of user-supplied input (request parameters, uploads, URLs, file paths, shell arguments), SQL built from strings. Other diffs need no security dispatch. The security checks themselves live in the security rule.
+**Security review triggers — STOP and use the `code-reviewer` agent when the diff touches any of:** authentication or authorization, cryptography, payment or financial logic, secrets or credentials handling, handling of user-supplied input (request parameters, uploads, URLs, file paths, shell arguments), SQL built from strings. Other diffs need no security dispatch.
+
+When the diff handles requests, user input, or data access (even without a dispatch trigger), check the items that apply:
+
+- [ ] All user inputs validated
+- [ ] SQL injection prevention (parameterized queries)
+- [ ] XSS prevention (sanitized HTML)
+- [ ] CSRF protection enabled
+- [ ] Authentication/authorization verified
+- [ ] Rate limiting on public endpoints
+- [ ] Error messages don't leak sensitive data
 
 **Severity** (applies to `code-reviewer` agent / code-audit output only; the mattpocock `code-review` skill reports Standards and Spec findings without severity — address every Spec finding, fix or explicitly justify each Standards finding):
 
@@ -57,8 +67,12 @@ Troubleshooting failures: diagnose by loading the `diagnosing-bugs` skill → ch
 
 **Approval** (`code-reviewer` output; the single source for approval rules): Approve = no CRITICAL or HIGH; Warning = MEDIUM issues only (merge with caution); Block = CRITICAL or HIGH issues found. The code-audit language checklists use the same rule.
 
-> Quality/security checklists live in the coding-style, security, and testing rules.
+> The coding-style and testing rules carry further checklists.
+
+## 5. Misses become checks
+
+When human review catches something the gate missed, turn it into a diff-triggered checklist item: phrase the trigger so it reads from a diff, add it only after the same gap appears twice, and try to disprove it before enrolling. Prune stale items on each pass — a checklist that only grows trains ignoring.
 
 ## Completion criterion
 
-Checklist passes for the change, required test types exist, review routing decided — and the incident protocol ran if anything security-related surfaced.
+Checklist passes for the change, required test types exist, review routing decided — and the incident protocol ran if anything security-related surfaced. A completion claim carries its evidence: the checks that ran with their results (E2E: screenshot or trace; a reported failure: the original output).
