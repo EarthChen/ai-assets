@@ -8,6 +8,10 @@ disable-model-invocation: true
 
 本机已装 `dws`(Homebrew `dingtalk-workspace-cli`)。未认证时,先让用户执行 `dws auth login`。
 
+## 文件命名约定
+
+上传、导入或导出到钉盘的文件,本地暂存名即最终名:用业务文档标题作文件名(可读中文名 + 原扩展名,如 `UserPunishmentHit ES 迁移 · 完整设计文档.html`)。用户明确指定名称时用用户名。上传后再 rename 仅作纠错兜底,不作常规流程。
+
 ## 步骤
 
 1. 按意图选目标,读取对应 SKILL.md 并在整轮会话中遵循其执行契约。目标 skill 与本 skill 部署在同一用户级 skill 目录(`~/.claude/skills/`、`~/.agents/skills/`),互为同级目录,路径按本 skill 实际所在目录解析:

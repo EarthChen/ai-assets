@@ -11,12 +11,15 @@ Per project, in order:
 
    ```bash
    cd P && glab mr create --source-branch <branch> --target-branch <default> \
-     --title "<conventional title>" --description-file body.md --remove-source-branch --yes
+     --title "<conventional title>" --description-file body.md \
+     --remove-source-branch --squash-before-merge --yes
    ```
+
+   `--remove-source-branch` 与 `--squash-before-merge` 是默认必勾项（即 MR 页的 Delete source branch / Squash commits 两个勾选框），除非用户明确要求保留源分支或不 squash。
 
    Write `body.md` the way Land a Branch, step 4 of `SKILL.md`, writes a PR body. One MR per project; the bodies may reference each other's URLs.
 5. Check mergeability: `glab mr view <id> -F json --jq '.detailed_merge_status'`. `mergeable` is the goal; `conflict`, `ci_must_pass`, or `not_approved` go in the report with the MR URL.
 
-Merge only when the user asked for it: `glab mr merge <id> --yes`, adding `--squash` or `--rebase` to match the project's history (Land a Branch, step 5). Projects with a build dependency between them merge in dependency order.
+Merge only when the user asked for it: `glab mr merge <id> --squash --remove-source-branch --yes`（与创建时的两个默认勾选一致；仅当用户明确要求 merge/rebase 或保留源分支时才换策略）。Projects with a build dependency between them merge in dependency order.
 
 Done when every project has an MR URL and a merge status, or a stated reason it has none.
